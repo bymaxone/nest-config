@@ -1,6 +1,6 @@
 # Phase 0: repository-scaffold
 
-> **Status**: 🔄 In Progress · **Progress**: 4 / 6 tasks · **Last updated**: 2026-07-16
+> **Status**: 🔄 In Progress · **Progress**: 5 / 6 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P0)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §3, §9, §10, §11
 
@@ -43,7 +43,7 @@ At the start of this phase the repository contains only `docs/` and an empty `ma
 | 0.2 | Build config: tsconfig set + `tsup.config.ts` + placeholder barrels                                                                                    | ✅ Done | P0       | S    | 0.1                     |
 | 0.3 | Quality tooling: ESLint flat config, Prettier, jest configs, Stryker                                                                                   | ✅ Done | P0       | M    | 0.2                     |
 | 0.4 | Governance and community files: husky, commitlint, lint-staged, LICENSE, SECURITY, CONTRIBUTING, CODE_OF_CONDUCT, CHANGELOG, README skeleton           | ✅ Done | P0       | M    | 0.1                     |
-| 0.5 | Scripts and workflows: `check-size.mjs`, `dogfood-smoke-test.mjs`, `ci.yml`, `codeql.yml`, `scorecard.yml`, `release.yml`, dependabot, issue templates | 📋 ToDo | P0       | L    | 0.2, 0.3                |
+| 0.5 | Scripts and workflows: `check-size.mjs`, `dogfood-smoke-test.mjs`, `ci.yml`, `codeql.yml`, `scorecard.yml`, `release.yml`, dependabot, issue templates | ✅ Done | P0       | L    | 0.2, 0.3                |
 | 0.6 | Phase close: full-gate verification, dashboards, PR with Copilot review                                                                                | 📋 ToDo | P0       | S    | 0.1, 0.2, 0.3, 0.4, 0.5 |
 
 ---
@@ -406,7 +406,7 @@ Completion Protocol (after you finish):
 
 ### Task 0.5: Scripts and workflows
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: L
 - **Depends on**: 0.2, 0.3
@@ -417,12 +417,12 @@ Add the quality scripts (`check-size.mjs` brotli budget gate, `dogfood-smoke-tes
 
 #### Acceptance criteria
 
-- [ ] `scripts/check-size.mjs`: zero-dependency (node builtins only), budgets in KiB brotli, provisional values with a comment stating they are recalibrated when the real artifact exists.
-- [ ] `scripts/dogfood-smoke-test.mjs`: SUBPATHS `['.', './testing']`, validates ESM and CJS resolution from a packed tarball; EXPECTED_EXPORTS empty until the public API lands (documented in the script header).
-- [ ] `.github/workflows/ci.yml`: on push to main and on pull_request; jobs run lint, typecheck, build, and `test:cov:all` sequentially with pnpm cache.
-- [ ] `.github/workflows/codeql.yml` and `scorecard.yml` present (activate when the repository is public); `.github/workflows/release.yml` tag-driven (`v*.*.*`), publishes with npm provenance via OIDC, never with a long-lived token.
-- [ ] `.github/dependabot.yml` and issue templates ported from the sibling.
-- [ ] CI executes green on the phase branch.
+- [x] `scripts/check-size.mjs`: zero-dependency (node builtins only), budgets in KiB brotli, provisional values with a comment stating they are recalibrated when the real artifact exists.
+- [x] `scripts/dogfood-smoke-test.mjs`: SUBPATHS `['.', './testing']`, validates ESM and CJS resolution from a packed tarball; EXPECTED_EXPORTS empty until the public API lands (documented in the script header).
+- [x] `.github/workflows/ci.yml`: on push to main and on pull_request; jobs run lint, typecheck, build, and `test:cov:all` sequentially with pnpm cache.
+- [x] `.github/workflows/codeql.yml` and `scorecard.yml` present (activate when the repository is public); `.github/workflows/release.yml` tag-driven (`v*.*.*`), publishes with npm provenance via OIDC, never with a long-lived token.
+- [x] `.github/dependabot.yml` and issue templates ported from the sibling.
+- [x] CI executes green on the phase branch.
 
 #### Files to create / modify
 
@@ -588,3 +588,4 @@ Completion Protocol (after you finish):
 - 0.2 ✅ 2026-07-16 tsconfig set, tsup.config.ts (two entries), placeholder barrels; typecheck and build green
 - 0.3 ✅ 2026-07-16 eslint.config.mjs (extended denied-import list), prettier, both jest configs at 100% threshold, stryker.config.json; lint and test green
 - 0.4 ✅ 2026-07-16 husky pre-commit/commit-msg, commitlint, lint-staged, LICENSE, SECURITY, CONTRIBUTING, CODE_OF_CONDUCT, CHANGELOG, README skeleton; malformed commit rejected locally
+- 0.5 ✅ 2026-07-16 check-size.mjs and dogfood-smoke-test.mjs (both green against placeholder barrels), four workflows, dependabot, issue templates

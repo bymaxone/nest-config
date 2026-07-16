@@ -312,6 +312,26 @@ describe('validateEnv strict mode', () => {
     expect(issues.get('DATABASE_TYPO')?.code).toBe(ConfigErrorCode.UNKNOWN_KEY)
   })
 
+  it('returns unknown-key issues sorted by variable for a stable report', () => {
+    /**
+     * Deterministic ordering.
+     *
+     * Unknown-key issues are sorted by variable name so the aggregated report
+     * does not depend on the source key-enumeration order, which can vary
+     * across platforms and runs.
+     */
+    const error = captureError(
+      appSchema,
+      { ...validSource, DATABASE_ZEBRA: 'z', DATABASE_ALPHA: 'a' },
+      { strict: true }
+    )
+    const unknownVariables = error.issues
+      .filter((issue) => issue.code === ConfigErrorCode.UNKNOWN_KEY)
+      .map((issue) => issue.variable)
+
+    expect(unknownVariables).toEqual(['DATABASE_ALPHA', 'DATABASE_ZEBRA'])
+  })
+
   it('ignores a prefixed key whose value is undefined under strict mode', () => {
     /**
      * Absent-value tolerance.

@@ -1,6 +1,6 @@
 # Phase 2: validation-pipeline
 
-> **Status**: 📋 ToDo · **Progress**: 0 / 5 tasks · **Last updated**: 2026-07-06
+> **Status**: 🔄 In Progress · **Progress**: 1 / 5 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P2)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §6, §1.5
 
@@ -36,13 +36,13 @@ Phase 1 is merged: `defineEnv`, source mapping, and `deepFreeze` are available. 
 
 ## Task index
 
-| ID | Task | Status | Priority | Size | Depends on |
-|---|---|---|---|---|---|
-| 2.1 | Branch + error codes + `ConfigIssue` + `BymaxConfigValidationError` | 📋 ToDo | P0 | M | none |
-| 2.2 | Report formatter (value-free, aligned, snapshot-pinned) | 📋 ToDo | P0 | S | 2.1 |
-| 2.3 | Validator: single-pass parse + issue aggregation | 📋 ToDo | P0 | M | 2.1 |
-| 2.4 | Strict mode: undeclared-variable detection | 📋 ToDo | P1 | S | 2.3 |
-| 2.5 | Phase close: gates, dashboards, PR with Copilot review | 📋 ToDo | P0 | S | 2.2, 2.3, 2.4 |
+| ID  | Task                                                                | Status  | Priority | Size | Depends on    |
+| --- | ------------------------------------------------------------------- | ------- | -------- | ---- | ------------- |
+| 2.1 | Branch + error codes + `ConfigIssue` + `BymaxConfigValidationError` | ✅ Done | P0       | M    | none          |
+| 2.2 | Report formatter (value-free, aligned, snapshot-pinned)             | 📋 ToDo | P0       | S    | 2.1           |
+| 2.3 | Validator: single-pass parse + issue aggregation                    | 📋 ToDo | P0       | M    | 2.1           |
+| 2.4 | Strict mode: undeclared-variable detection                          | 📋 ToDo | P1       | S    | 2.3           |
+| 2.5 | Phase close: gates, dashboards, PR with Copilot review              | 📋 ToDo | P0       | S    | 2.2, 2.3, 2.4 |
 
 ---
 
@@ -50,7 +50,7 @@ Phase 1 is merged: `defineEnv`, source mapping, and `deepFreeze` are available. 
 
 ### Task 2.1: Branch + error codes + `ConfigIssue` + `BymaxConfigValidationError`
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: none
@@ -61,11 +61,11 @@ Create the phase branch and the error model: the frozen code catalog, the `Confi
 
 #### Acceptance criteria
 
-- [ ] Branch `feat/phase-02-validation-pipeline` created with `git switch -c`.
-- [ ] `src/errors.ts` exports the code constants (`BYMAX_CONFIG_VALIDATION`, `BYMAX_CONFIG_MISSING`, `BYMAX_CONFIG_INVALID`, `BYMAX_CONFIG_UNKNOWN_KEY`) as a frozen object plus the `ConfigIssueCode` union, the `ConfigIssue` interface, and `BymaxConfigValidationError` (`code`, `issues: ReadonlyArray<ConfigIssue>`).
-- [ ] The error's `name` is stable, `instanceof` works across ESM/CJS boundaries (constructor sets the prototype explicitly), and `issues` is immutable.
-- [ ] Tests cover construction, immutability of `issues`, and serialization shape.
-- [ ] 100% coverage on the new files.
+- [x] Branch `feat/phase-02-validation-pipeline` created with `git switch -c`.
+- [x] `src/errors.ts` exports the code constants (`BYMAX_CONFIG_VALIDATION`, `BYMAX_CONFIG_MISSING`, `BYMAX_CONFIG_INVALID`, `BYMAX_CONFIG_UNKNOWN_KEY`) as a frozen object plus the `ConfigIssueCode` union, the `ConfigIssue` interface, and `BymaxConfigValidationError` (`code`, `issues: ReadonlyArray<ConfigIssue>`).
+- [x] The error's `name` is stable, `instanceof` works across ESM/CJS boundaries (constructor sets the prototype explicitly), and `issues` is immutable.
+- [x] Tests cover construction, immutability of `issues`, and serialization shape.
+- [x] 100% coverage on the new files.
 
 #### Files to create / modify
 
@@ -74,7 +74,7 @@ Create the phase branch and the error model: the frozen code catalog, the `Confi
 
 #### Agent prompt
 
-````
+```
 You are a senior TypeScript library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11: Zod v4 schema
@@ -123,7 +123,7 @@ Completion Protocol (after you finish):
 5. Update the P2 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): add error model and code catalog (2.1)`.
-````
+```
 
 ---
 
@@ -151,7 +151,7 @@ Implement the multi-line human-readable report attached to `BymaxConfigValidatio
 
 #### Agent prompt
 
-````
+```
 You are a senior TypeScript library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11. The validation
@@ -196,7 +196,7 @@ Completion Protocol (after you finish):
 5. Update the P2 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): implement value-free report formatter (2.2)`.
-````
+```
 
 ---
 
@@ -227,7 +227,7 @@ Implement the validator that maps the flat source record onto the nested schema 
 
 #### Agent prompt
 
-````
+```
 You are a senior TypeScript library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11 (Zod v4).
@@ -276,7 +276,7 @@ Completion Protocol (after you finish):
 5. Update the P2 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): implement single-pass env validator (2.3)`.
-````
+```
 
 ---
 
@@ -304,7 +304,7 @@ Add opt-in `strict` behavior: source variables that match the schema's namespace
 
 #### Agent prompt
 
-````
+```
 You are a senior TypeScript library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11. Strict mode
@@ -348,7 +348,7 @@ Completion Protocol (after you finish):
 5. Update the P2 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): add strict-mode unknown-key detection (2.4)`.
-````
+```
 
 ---
 
@@ -375,7 +375,7 @@ Audit the phase Definition of Done, update all dashboards, open the phase PR, ob
 
 #### Agent prompt
 
-````
+```
 You are a senior release engineer closing a phase on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config. This task closes Phase 2 (validation-pipeline).
@@ -422,10 +422,12 @@ Completion Protocol (after you finish):
 5. Update the P2 row and overall progress in docs/development_plan.md §1 and the folder index
    in docs/tasks/README.md.
 6. Final commit on main after merge: `docs(config): mark phase 2 complete (2.5)`.
-````
+```
 
 ---
 
 ## Completion log
 
 <!-- Append one line per completed task: - <id> ✅ YYYY-MM-DD <summary> -->
+
+- 2.1 ✅ 2026-07-16 Added the frozen error-code catalog, value-free ConfigIssue shape, and BymaxConfigValidationError with immutable issues and stable instanceof.

@@ -63,7 +63,9 @@ The `pre-commit` hook runs lint-staged (ESLint + Prettier on staged files).
 
 - Keep PRs focused and small.
 - Record user-facing changes under the `Unreleased` section of `CHANGELOG.md`.
-- All CI checks (`ci`, `codeql`, `scorecard`) must be green.
+- All active CI checks must be green. The `ci` workflow runs on every pull
+  request; the `codeql` and `scorecard` security workflows activate once the
+  repository is public.
 
 ## License
 

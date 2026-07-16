@@ -89,6 +89,9 @@ jobs:
         # exchanges the GitHub OIDC token (`id-token: write` above) for a
         # short-lived publish credential. `--no-git-checks` is required
         # because the CI runner checks out a detached HEAD at the tag SHA.
+        # `--ignore-scripts` avoids re-running the lifecycle hooks
+        # (prepublishOnly, prepare) that already ran in the verify and
+        # package smoke-test steps above.
         # Skips gracefully when the version was already published manually
         # (for example during the bootstrap of the first release).
         run: |
@@ -96,7 +99,7 @@ jobs:
           if npm view "@bymax-one/nest-config@${PKG_VERSION}" version 2>/dev/null | grep -qF "$PKG_VERSION"; then
             echo "Version ${PKG_VERSION} already published on npm, skipping publish step."
           else
-            pnpm publish --provenance --no-git-checks
+            pnpm publish --provenance --no-git-checks --ignore-scripts
           fi
 
       - name: Extract release notes from CHANGELOG

@@ -210,10 +210,14 @@ function longestMatchingPrefix(
   prefixes: readonly NamespacePrefix[],
   key: string
 ): NamespacePrefix | undefined {
-  return prefixes
-    .filter((entry) => key.startsWith(entry.prefix))
-    .sort((left, right) => right.prefix.length - left.prefix.length)
-    .at(0)
+  let match: NamespacePrefix | undefined
+  for (const entry of prefixes) {
+    if (!key.startsWith(entry.prefix)) continue
+    if (match === undefined || entry.prefix.length > match.prefix.length) {
+      match = entry
+    }
+  }
+  return match
 }
 
 /**

@@ -350,6 +350,28 @@ describe('validateEnv strict mode', () => {
     expect(issues.get('APP_CONFIG_TYPO')?.code).toBe(ConfigErrorCode.UNKNOWN_KEY)
     expect(issues.get('APP_CONFIG_TYPO')?.path).toBe('appConfig')
   })
+
+  it('prefers the longest prefix regardless of namespace declaration order', () => {
+    /**
+     * Order independence.
+     *
+     * With the broader namespace declared first (appConfig before app), an
+     * unknown key under the more specific prefix must still resolve to the most
+     * specific namespace, proving the match does not depend on iteration order.
+     */
+    const reorderedSchema = defineEnv({
+      appConfig: z.object({ retries: z.coerce.number().int().default(3) }),
+      app: z.object({ name: z.string().min(1) })
+    })
+    const error = captureError(
+      reorderedSchema,
+      { APP_NAME: 'svc', APP_CONFIG_TYPO: 'oops' },
+      { strict: true }
+    )
+    const issues = issuesByVariable(error)
+
+    expect(issues.get('APP_CONFIG_TYPO')?.path).toBe('appConfig')
+  })
 })
 
 describe('validateEnv value-free guarantee', () => {

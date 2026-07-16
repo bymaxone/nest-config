@@ -90,6 +90,26 @@ describe('BymaxConfigValidationError construction', () => {
     expect(error.name).toBe('BymaxConfigValidationError')
   })
 
+  it('locks code and issues so the contract cannot be reassigned at runtime', () => {
+    /**
+     * Contract immutability.
+     *
+     * `code` and `issues` are non-writable, non-configurable, so the error is a
+     * tamper-proof contract object at runtime, not merely readonly in the type
+     * system (the issues array and its entries are already frozen).
+     */
+    const error = new BymaxConfigValidationError(sampleIssues)
+
+    expect(() => {
+      ;(error as { code: string }).code = 'X'
+    }).toThrow(TypeError)
+    expect(() => {
+      ;(error as { issues: unknown }).issues = []
+    }).toThrow(TypeError)
+    expect(error.code).toBe('BYMAX_CONFIG_VALIDATION')
+    expect(error.issues).toHaveLength(sampleIssues.length)
+  })
+
   it('pluralizes the header from the issue count, singular for one issue', () => {
     /**
      * Header pluralization boundary.

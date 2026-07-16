@@ -120,5 +120,9 @@ export class BymaxConfigValidationError extends Error {
     // Restore the prototype chain so `instanceof` holds across transpilation
     // targets and ESM/CJS realm boundaries.
     Object.setPrototypeOf(this, BymaxConfigValidationError.prototype)
+    // Lock the contract properties so the error is fully immutable at runtime,
+    // matching the readonly type, the frozen issues, and the stable name.
+    Object.defineProperty(this, 'code', { writable: false, configurable: false })
+    Object.defineProperty(this, 'issues', { writable: false, configurable: false })
   }
 }

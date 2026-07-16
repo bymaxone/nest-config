@@ -60,7 +60,7 @@ describe('BymaxConfigModule registration', () => {
      *
      * An application may intentionally scope configuration to a submodule; the
      * isGlobal:false extra must flow through setExtras to global === false with
-     * no @Global() decorator involved.
+     * no global decorator involved.
      */
     const dynamic = BymaxConfigModule.forRoot({ schema, isGlobal: false })
 

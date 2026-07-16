@@ -1,6 +1,6 @@
 # Phase 3: dynamic-module-di
 
-> **Status**: 🔄 In Progress · **Progress**: 2 / 5 tasks · **Last updated**: 2026-07-16
+> **Status**: 🔄 In Progress · **Progress**: 3 / 5 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P3)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §2, §4.3, §4.4
 
@@ -38,7 +38,7 @@ Phases 1 and 2 are merged: schema engine and validator are available. Phase 4 (t
 | --- | ---------------------------------------------------------------------- | ------- | -------- | ---- | ---------- |
 | 3.1 | Branch + DI tokens + module options types                              | ✅ Done | P0       | S    | none       |
 | 3.2 | Module definition: `ConfigurableModuleBuilder` + `setExtras(isGlobal)` | ✅ Done | P0       | M    | 3.1        |
-| 3.3 | Provider factory: validate, freeze, hook, register `BYMAX_CONFIG`      | 📋 ToDo | P0       | M    | 3.2        |
+| 3.3 | Provider factory: validate, freeze, hook, register `BYMAX_CONFIG`      | ✅ Done | P0       | M    | 3.2        |
 | 3.4 | Bootstrap fixtures: fail-fast and success e2e-style module tests       | 📋 ToDo | P0       | M    | 3.3        |
 | 3.5 | Phase close: gates, dashboards, PR with Copilot review                 | 📋 ToDo | P0       | S    | 3.4        |
 
@@ -204,7 +204,7 @@ Completion Protocol (after you finish):
 
 ### Task 3.3: Provider factory: validate, freeze, hook, register `BYMAX_CONFIG`
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: 3.2
@@ -215,12 +215,12 @@ Implement the heart of the module: the `BYMAX_CONFIG` provider factory that reso
 
 #### Acceptance criteria
 
-- [ ] Provider factory injects `BYMAX_CONFIG_OPTIONS` explicitly and produces the frozen validated config under `BYMAX_CONFIG`; module exports it.
-- [ ] `source` defaults to `process.env`; a custom source is used verbatim (no env fallback merge).
-- [ ] On failure: hook called once with `ReadonlyArray<ConfigIssue>`, then `BymaxConfigValidationError` propagates; hook throwing does not replace or swallow the original error path (tested).
-- [ ] On success: registered object is deep-frozen (mutation throws) and identical through repeated injection.
-- [ ] `strict` flows from options into the validator.
-- [ ] 100% coverage on the changed files.
+- [x] Provider factory injects `BYMAX_CONFIG_OPTIONS` explicitly and produces the frozen validated config under `BYMAX_CONFIG`; module exports it.
+- [x] `source` defaults to `process.env`; a custom source is used verbatim (no env fallback merge).
+- [x] On failure: hook called once with `ReadonlyArray<ConfigIssue>`, then `BymaxConfigValidationError` propagates; hook throwing does not replace or swallow the original error path (tested).
+- [x] On success: registered object is deep-frozen (mutation throws) and identical through repeated injection.
+- [x] `strict` flows from options into the validator.
+- [x] 100% coverage on the changed files.
 
 #### Files to create / modify
 
@@ -434,3 +434,4 @@ Completion Protocol (after you finish):
 
 - 3.1 ✅ 2026-07-16 Symbol DI tokens (BYMAX_CONFIG_OPTIONS, BYMAX_CONFIG) and the BymaxConfigModuleOptions contract, exported from the barrel with 100% coverage.
 - 3.2 ✅ 2026-07-16 ConfigurableModuleBuilder definition (options token bridged to BYMAX_CONFIG_OPTIONS, forRoot/forRootAsync, isGlobal extra mapped via setExtras) and the BymaxConfigModule class; registration-shape tests at 100% coverage.
+- 3.3 ✅ 2026-07-16 Fail-fast BYMAX_CONFIG provider factory: default/verbatim source, strict forwarding, deep-frozen output, and the observability hook invoked once before the throw yet unable to suppress it (throwing-hook and non-validation-error paths tested); wired into and exported from BymaxConfigModule at 100% coverage.

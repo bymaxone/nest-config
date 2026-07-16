@@ -4,7 +4,7 @@
  * BYMAX_CONFIG_OPTIONS Symbol token, renames the registration methods to
  * `forRoot` / `forRootAsync`, and maps the `isGlobal` extra (default true) to
  * `DynamicModule.global` through `setExtras`. Globality therefore flows through
- * the builder extras, never through an `@Global()` decorator.
+ * the builder extras, never through a global decorator.
  * @layer Module
  */
 
@@ -49,3 +49,9 @@ export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN, OPTIONS_TYPE, ASYN
       global: extras.isGlobal
     }))
     .build()
+
+/** Parameter type of `BymaxConfigModule.forRoot`: the options plus the `isGlobal` extra. */
+export type BymaxConfigForRootOptions = typeof OPTIONS_TYPE
+
+/** Parameter type of `BymaxConfigModule.forRootAsync`: async options plus the `isGlobal` extra. */
+export type BymaxConfigForRootAsyncOptions = typeof ASYNC_OPTIONS_TYPE

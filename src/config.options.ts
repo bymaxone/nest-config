@@ -1,7 +1,7 @@
 /**
  * @fileoverview Public options contract for the BymaxConfigModule dynamic
  * module: the schema to validate against, an optional raw source (defaulting to
- * `process.env` inside the provider factory), an optional value-free
+ * the process environment inside the provider factory), an optional value-free
  * observability hook invoked before the fail-fast throw, and an optional strict
  * unknown-key flag. This file declares only types and carries no runtime code.
  * @layer Types
@@ -29,9 +29,9 @@ export interface BymaxConfigModuleOptions<TSchema extends EnvSchema = EnvSchema>
   readonly schema: TSchema
 
   /**
-   * Raw source record. Defaults to `process.env` in the provider factory.
-   * Injectable for tests and tooling; a supplied source is used verbatim, with
-   * no `process.env` fallback or merge.
+   * Raw source record. Defaults to the process environment in the provider
+   * factory. Injectable for tests and tooling; a supplied source is used
+   * verbatim, with no environment fallback or merge.
    */
   readonly source?: Record<string, string | undefined>
 

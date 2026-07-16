@@ -158,6 +158,7 @@ describe('BymaxConfigValidationError serialization', () => {
 
     expect(serialized.code).toBe('BYMAX_CONFIG_VALIDATION')
     expect(serialized.issues).toHaveLength(sampleIssues.length)
+    expect(Object.keys(JSON.parse(JSON.stringify(error))).sort()).toEqual(['code', 'issues'])
     for (const issue of serialized.issues) {
       expect(Object.keys(issue).sort()).toEqual(['code', 'message', 'path', 'variable'])
     }

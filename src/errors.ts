@@ -107,7 +107,15 @@ export class BymaxConfigValidationError extends Error {
       })
     )
     super(formatIssueReport(normalized))
-    this.name = 'BymaxConfigValidationError'
+    // Keep `name` non-enumerable so JSON.stringify(error) surfaces only the
+    // code and the value-free issues, while it stays available for
+    // String(error) and stack traces.
+    Object.defineProperty(this, 'name', {
+      value: 'BymaxConfigValidationError',
+      enumerable: false,
+      writable: true,
+      configurable: true
+    })
     this.issues = Object.freeze(normalized)
     // Restore the prototype chain so `instanceof` holds across transpilation
     // targets and ESM/CJS realm boundaries.

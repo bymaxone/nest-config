@@ -9,11 +9,11 @@ import globals from 'globals'
 
 // Denied packages shared by the production, scripts, and config-file rule sets.
 // This is the package's security contract at lint time: never read raw
-// environment variables outside config.module.ts, never reach for a
+// environment variables outside src/config.module.ts, never reach for a
 // non-node: crypto implementation, and never pull in the id/formatting/http
 // libraries the standard library already covers.
 const deniedImports = [
-  { name: 'dotenv', message: 'process.env is read exactly once in config.module.ts.' },
+  { name: 'dotenv', message: 'process.env is read exactly once in src/config.module.ts.' },
   { name: 'crypto', message: "Use 'node:crypto' with the node: prefix instead." },
   { name: 'bcrypt', message: 'Use node:crypto scrypt instead.' },
   { name: 'argon2', message: 'Use node:crypto scrypt instead.' },

@@ -75,8 +75,14 @@ jobs:
             exit 1
           fi
 
-      - name: Verify (typecheck, lint, test, build)
+      - name: Verify (typecheck, lint, test, build, size)
         run: pnpm prepublishOnly
+
+      - name: Package smoke test (packed tarball, both subpaths, ESM + CJS)
+        # Runs the dogfood check as its own release gate rather than inside
+        # prepublishOnly: it packs a tarball, which must stay out of the
+        # `pnpm publish` lifecycle to avoid packing during the publish itself.
+        run: pnpm dogfood
 
       - name: Publish to npm with provenance
         # OIDC trusted publishing: pnpm delegates to the npm CLI, which

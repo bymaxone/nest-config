@@ -2,8 +2,9 @@
  * @fileoverview BymaxConfigModule: the dynamic module consumers import once via
  * `forRoot` / `forRootAsync`. It extends the generated ConfigurableModuleClass,
  * inheriting the `isGlobal` extra mapping, and augments each returned definition
- * with the validated, deep-frozen BYMAX_CONFIG provider so the config is
- * produced (and validation runs) as part of module resolution.
+ * with the validated, deep-frozen BYMAX_CONFIG provider and the typed
+ * ConfigService accessor, so the config is produced (and validation runs) as
+ * part of module resolution and both surfaces are exported for consumers.
  * @layer Module
  */
 
@@ -16,22 +17,23 @@ import type {
   BymaxConfigForRootOptions
 } from './config.module-definition'
 import { bymaxConfigProvider } from './config.providers'
+import { ConfigService } from './config.service'
 import { BYMAX_CONFIG } from './config.tokens'
 
 /**
- * Append an item to a possibly-absent module-definition list.
+ * Append items to a possibly-absent module-definition list.
  *
  * The builder returns `providers` populated and `exports` absent, so both the
  * present-list and absent-list cases occur; this normalizes each to a fresh
- * array with the item appended.
+ * array with the items appended.
  *
  * @typeParam TItem - The element type of the list.
  * @param list - The existing list, or undefined when the builder omitted it.
- * @param item - The item to append.
- * @returns A new array containing the existing items followed by `item`.
+ * @param items - The items to append.
+ * @returns A new array containing the existing items followed by `items`.
  */
-function appendTo<TItem>(list: readonly TItem[] | undefined, item: TItem): TItem[] {
-  return list === undefined ? [item] : [...list, item]
+function appendTo<TItem>(list: readonly TItem[] | undefined, ...items: TItem[]): TItem[] {
+  return list === undefined ? [...items] : [...list, ...items]
 }
 
 /**
@@ -71,16 +73,21 @@ export class BymaxConfigModule extends ConfigurableModuleClass {
   }
 
   /**
-   * Append the frozen config provider to a generated definition and export it.
+   * Append the config provider and typed accessor to a generated definition.
+   *
+   * Registers the frozen {@link BYMAX_CONFIG} provider and the {@link ConfigService}
+   * accessor (which injects that token), then exports both so consumers can
+   * inject either the raw frozen object or the typed service.
    *
    * @param definition - The dynamic module produced by the builder base class.
-   * @returns A definition that also provides and exports {@link BYMAX_CONFIG}.
+   * @returns A definition that provides and exports {@link BYMAX_CONFIG} and
+   * {@link ConfigService}.
    */
   private static withConfigProvider(definition: DynamicModule): DynamicModule {
     return {
       ...definition,
-      providers: appendTo(definition.providers, bymaxConfigProvider),
-      exports: appendTo(definition.exports, BYMAX_CONFIG)
+      providers: appendTo(definition.providers, bymaxConfigProvider, ConfigService),
+      exports: appendTo(definition.exports, BYMAX_CONFIG, ConfigService)
     }
   }
 }

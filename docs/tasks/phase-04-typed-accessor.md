@@ -1,6 +1,6 @@
 # Phase 4: typed-accessor
 
-> **Status**: 🔄 In Progress · **Progress**: 2 / 4 tasks · **Last updated**: 2026-07-16
+> **Status**: 🔄 In Progress · **Progress**: 3 / 4 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P4)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §5, §12.1
 
@@ -37,7 +37,7 @@ Phase 1 is merged. This phase runs in parallel with Phases 2 and 3 (disjoint fil
 | --- | ---------------------------------------------------------- | ------- | -------- | ---- | ---------- |
 | 4.1 | Branch + `Path` / `PathValue` type utilities + type tests  | ✅ Done | P0       | M    | none       |
 | 4.2 | `ConfigService`: `get`, `getAll`, `has`                    | ✅ Done | P0       | M    | 4.1        |
-| 4.3 | Service registration in the module + global injection test | 📋 ToDo | P0       | S    | 4.2        |
+| 4.3 | Service registration in the module + global injection test | ✅ Done | P0       | S    | 4.2        |
 | 4.4 | Phase close: gates, dashboards, PR with Copilot review     | 📋 ToDo | P0       | S    | 4.3        |
 
 ---
@@ -199,7 +199,7 @@ Completion Protocol (after you finish):
 
 ### Task 4.3: Service registration in the module + global injection test
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: 4.2
@@ -210,9 +210,9 @@ Register `ConfigService` as a module provider/export (coordinating with the Phas
 
 #### Acceptance criteria
 
-- [ ] `BymaxConfigModule` provides and exports `ConfigService` alongside `BYMAX_CONFIG`.
-- [ ] Integration spec: feature provider injects `ConfigService<AppConfig>` without importing the module (global default) and reads typed values.
-- [ ] 100% coverage maintained package-wide.
+- [x] `BymaxConfigModule` provides and exports `ConfigService` alongside `BYMAX_CONFIG`.
+- [x] Integration spec: feature provider injects `ConfigService<AppConfig>` without importing the module (global default) and reads typed values.
+- [x] 100% coverage maintained package-wide.
 
 #### Files to create / modify
 
@@ -344,3 +344,4 @@ Completion Protocol (after you finish):
 
 - 4.1 ✅ 2026-07-16 Added two-level `Path`/`PathValue` dot-path utilities to `types.ts` with compile-time type tests pinning accepted paths, their value types, and rejected paths.
 - 4.2 ✅ 2026-07-16 Implemented injectable `ConfigService<T>` (`get`/`getAll`/`has`) over the frozen `BYMAX_CONFIG` with explicit `@Inject`, 100% coverage, and inferred-return type tests.
+- 4.3 ✅ 2026-07-16 Registered `ConfigService` as a provider and export of `BymaxConfigModule`; proved typed global injection from a non-importing feature module in the integration suite (95 tests, 100% package-wide).

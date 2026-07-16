@@ -4,9 +4,18 @@
  */
 
 export { BymaxConfigModule } from './config.module'
+export { ConfigService } from './config.service'
 export { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 export type { BymaxConfigModuleOptions } from './config.options'
 export { defineEnv } from './define-env'
 export { BymaxConfigValidationError, ConfigErrorCode } from './errors'
 export type { ConfigIssue, ConfigIssueCode, ConfigValidationCode } from './errors'
-export type { EnvLeaf, EnvNamespace, EnvOutput, EnvSchema, EnvShape } from './types'
+export type {
+  EnvLeaf,
+  EnvNamespace,
+  EnvOutput,
+  EnvSchema,
+  EnvShape,
+  Path,
+  PathValue
+} from './types'

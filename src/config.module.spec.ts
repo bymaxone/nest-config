@@ -12,7 +12,8 @@
 import { z } from 'zod'
 
 import { BymaxConfigModule } from './config.module'
-import { BYMAX_CONFIG_OPTIONS } from './config.tokens'
+import { ConfigService } from './config.service'
+import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { defineEnv } from './define-env'
 
 const schema = defineEnv({
@@ -52,6 +53,23 @@ describe('BymaxConfigModule registration', () => {
     expect(dynamic.module).toBe(BymaxConfigModule)
     expect(dynamic.global).toBe(true)
     expect(findProvider(dynamic.providers, BYMAX_CONFIG_OPTIONS)).toBeDefined()
+  })
+
+  it('provides and exports the frozen config and the typed accessor', () => {
+    /**
+     * Consumption surface exposure.
+     *
+     * Both the raw frozen BYMAX_CONFIG provider and the ConfigService class must
+     * be registered as providers and re-exported, so a downstream module can
+     * inject either the frozen object or the typed accessor. This pins the
+     * public DI contract the accessor phase adds to the module.
+     */
+    const dynamic = BymaxConfigModule.forRoot({ schema })
+
+    expect(dynamic.providers).toContain(ConfigService)
+    expect(dynamic.exports).toContain(ConfigService)
+    expect(dynamic.exports).toContain(BYMAX_CONFIG)
+    expect(findProvider(dynamic.providers, BYMAX_CONFIG)).toBeDefined()
   })
 
   it('disables globality when isGlobal is false', () => {

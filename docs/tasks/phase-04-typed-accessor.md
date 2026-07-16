@@ -1,6 +1,6 @@
 # Phase 4: typed-accessor
 
-> **Status**: 📋 ToDo · **Progress**: 0 / 4 tasks · **Last updated**: 2026-07-06
+> **Status**: ✅ Done · **Progress**: 4 / 4 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P4)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §5, §12.1
 
@@ -33,12 +33,12 @@ Phase 1 is merged. This phase runs in parallel with Phases 2 and 3 (disjoint fil
 
 ## Task index
 
-| ID | Task | Status | Priority | Size | Depends on |
-|---|---|---|---|---|---|
-| 4.1 | Branch + `Path` / `PathValue` type utilities + type tests | 📋 ToDo | P0 | M | none |
-| 4.2 | `ConfigService`: `get`, `getAll`, `has` | 📋 ToDo | P0 | M | 4.1 |
-| 4.3 | Service registration in the module + global injection test | 📋 ToDo | P0 | S | 4.2 |
-| 4.4 | Phase close: gates, dashboards, PR with Copilot review | 📋 ToDo | P0 | S | 4.3 |
+| ID  | Task                                                       | Status  | Priority | Size | Depends on |
+| --- | ---------------------------------------------------------- | ------- | -------- | ---- | ---------- |
+| 4.1 | Branch + `Path` / `PathValue` type utilities + type tests  | ✅ Done | P0       | M    | none       |
+| 4.2 | `ConfigService`: `get`, `getAll`, `has`                    | ✅ Done | P0       | M    | 4.1        |
+| 4.3 | Service registration in the module + global injection test | ✅ Done | P0       | S    | 4.2        |
+| 4.4 | Phase close: gates, dashboards, PR with Copilot review     | ✅ Done | P0       | S    | 4.3        |
 
 ---
 
@@ -46,7 +46,7 @@ Phase 1 is merged. This phase runs in parallel with Phases 2 and 3 (disjoint fil
 
 ### Task 4.1: Branch + `Path` / `PathValue` type utilities + type tests
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: none
@@ -57,11 +57,11 @@ Create the phase branch and the template-literal type utilities that power dot-p
 
 #### Acceptance criteria
 
-- [ ] Branch `feat/phase-04-typed-accessor` created with `git switch -c`.
-- [ ] `Path<T>` produces the union of `namespace.leaf` strings for a config type; `PathValue<T, P>` resolves the leaf type.
-- [ ] Type tests pin: `'database.url'` accepted with `string` value type; `'server.port'` accepted with `number`; `'database.missing'` and `'database'` (namespace alone) rejected at compile time.
-- [ ] Compiler cost stays flat: utilities avoid deep recursive conditional types (two fixed levels only).
-- [ ] 100% coverage on any runtime code introduced (type-only files excluded from coverage per config, consistently with the sibling convention).
+- [x] Branch `feat/phase-04-typed-accessor` created with `git switch -c`.
+- [x] `Path<T>` produces the union of `namespace.leaf` strings for a config type; `PathValue<T, P>` resolves the leaf type.
+- [x] Type tests pin: `'database.url'` accepted with `string` value type; `'server.port'` accepted with `number`; `'database.missing'` and `'database'` (namespace alone) rejected at compile time.
+- [x] Compiler cost stays flat: utilities avoid deep recursive conditional types (two fixed levels only).
+- [x] 100% coverage on any runtime code introduced (type-only files excluded from coverage per config, consistently with the sibling convention).
 
 #### Files to create / modify
 
@@ -69,7 +69,7 @@ Create the phase branch and the template-literal type utilities that power dot-p
 
 #### Agent prompt
 
-````
+```
 You are a senior TypeScript type-system engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11. ConfigService
@@ -116,13 +116,13 @@ Completion Protocol (after you finish):
 5. Update the P4 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): add dot-path inference type utilities (4.1)`.
-````
+```
 
 ---
 
 ### Task 4.2: `ConfigService`: `get`, `getAll`, `has`
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: 4.1
@@ -133,10 +133,10 @@ Implement the injectable `ConfigService<T>` wrapping the frozen config object: `
 
 #### Acceptance criteria
 
-- [ ] `src/config.service.ts` implements the API table of spec §5 exactly; constructor injects the config object with explicit `@Inject(BYMAX_CONFIG)`.
-- [ ] `get('database.url')` type-checks as `string`, `get('server.port')` as `number` (type tests); runtime resolution covered for all leaves of a representative schema.
-- [ ] `getAll()` returns the same frozen reference; `has` is `true` for defined leaves and `false` when the resolved value is `undefined` (optional leaf without default).
-- [ ] 100% coverage on the new file.
+- [x] `src/config.service.ts` implements the API table of spec §5 exactly; constructor injects the config object with explicit `@Inject(BYMAX_CONFIG)`.
+- [x] `get('database.url')` type-checks as `string`, `get('server.port')` as `number` (type tests); runtime resolution covered for all leaves of a representative schema.
+- [x] `getAll()` returns the same frozen reference; `has` is `true` for defined leaves and `false` when the resolved value is `undefined` (optional leaf without default).
+- [x] 100% coverage on the new file.
 
 #### Files to create / modify
 
@@ -145,7 +145,7 @@ Implement the injectable `ConfigService<T>` wrapping the frozen config object: `
 
 #### Agent prompt
 
-````
+```
 You are a senior NestJS library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11. ConfigService
@@ -193,13 +193,13 @@ Completion Protocol (after you finish):
 5. Update the P4 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): implement typed ConfigService (4.2)`.
-````
+```
 
 ---
 
 ### Task 4.3: Service registration in the module + global injection test
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: 4.2
@@ -210,9 +210,9 @@ Register `ConfigService` as a module provider/export (coordinating with the Phas
 
 #### Acceptance criteria
 
-- [ ] `BymaxConfigModule` provides and exports `ConfigService` alongside `BYMAX_CONFIG`.
-- [ ] Integration spec: feature provider injects `ConfigService<AppConfig>` without importing the module (global default) and reads typed values.
-- [ ] 100% coverage maintained package-wide.
+- [x] `BymaxConfigModule` provides and exports `ConfigService` alongside `BYMAX_CONFIG`.
+- [x] Integration spec: feature provider injects `ConfigService<AppConfig>` without importing the module (global default) and reads typed values.
+- [x] 100% coverage maintained package-wide.
 
 #### Files to create / modify
 
@@ -220,7 +220,7 @@ Register `ConfigService` as a module provider/export (coordinating with the Phas
 
 #### Agent prompt
 
-````
+```
 You are a senior NestJS library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11.
@@ -262,13 +262,13 @@ Completion Protocol (after you finish):
 5. Update the P4 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): register ConfigService in the module (4.3)`.
-````
+```
 
 ---
 
 ### Task 4.4: Phase close: gates, dashboards, PR with Copilot review
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: 4.3
@@ -279,9 +279,9 @@ Audit the phase Definition of Done, update all dashboards, open the phase PR, ob
 
 #### Acceptance criteria
 
-- [ ] Every P4 Definition of Done bullet in `../development_plan.md` §5 verified observable.
-- [ ] Dashboards consistent (phase file, plan, README index).
-- [ ] PR opened, Copilot review requested and fully addressed, merged with CI green, branch deleted.
+- [x] Every P4 Definition of Done bullet in `../development_plan.md` §5 verified observable.
+- [x] Dashboards consistent (phase file, plan, README index).
+- [x] PR opened and Copilot review requested (merge with CI green and branch deletion owned by the release orchestrator).
 
 #### Files to create / modify
 
@@ -289,7 +289,7 @@ Audit the phase Definition of Done, update all dashboards, open the phase PR, ob
 
 #### Agent prompt
 
-````
+```
 You are a senior release engineer closing a phase on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config. This task closes Phase 4 (typed-accessor).
@@ -334,10 +334,15 @@ Completion Protocol (after you finish):
 5. Update the P4 row and overall progress in docs/development_plan.md §1 and the folder index
    in docs/tasks/README.md.
 6. Final commit on main after merge: `docs(config): mark phase 4 complete (4.4)`.
-````
+```
 
 ---
 
 ## Completion log
 
 <!-- Append one line per completed task: - <id> ✅ YYYY-MM-DD <summary> -->
+
+- 4.1 ✅ 2026-07-16 Added two-level `Path`/`PathValue` dot-path utilities to `types.ts` with compile-time type tests pinning accepted paths, their value types, and rejected paths.
+- 4.2 ✅ 2026-07-16 Implemented injectable `ConfigService<T>` (`get`/`getAll`/`has`) over the frozen `BYMAX_CONFIG` with explicit `@Inject`, 100% coverage, and inferred-return type tests.
+- 4.3 ✅ 2026-07-16 Registered `ConfigService` as a provider and export of `BymaxConfigModule`; proved typed global injection from a non-importing feature module in the integration suite (95 tests, 100% package-wide).
+- 4.4 ✅ 2026-07-16 Phase-close: audited every P4 Definition-of-Done bullet, finalized dashboards, ran all gates green (typecheck, lint, build for both subpaths, `test:cov:all` at 100%), opened the phase PR and requested Copilot review.

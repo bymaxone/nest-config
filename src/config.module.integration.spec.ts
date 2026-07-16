@@ -6,8 +6,10 @@
  * a valid source yields a frozen, injectable config; an invalid source aborts
  * compilation with BymaxConfigValidationError before any consumer provider is
  * built; forRootAsync resolves the source through a factory with explicit
- * inject; and globality (default on, off with isGlobal:false) governs whether a
- * nested module resolves the config without importing the module.
+ * inject; globality (default on, off with isGlobal:false) governs whether a
+ * nested module resolves the config without importing the module; and the typed
+ * ConfigService is injectable from a non-importing module through the global
+ * export, returning values typed by their dot-path.
  * Mocks: none. Sources are in-test records; the real process environment is
  * never read or mutated. No HTTP server is created and no port is bound.
  */
@@ -17,6 +19,7 @@ import { Test } from '@nestjs/testing'
 import { z } from 'zod'
 
 import { BymaxConfigModule } from './config.module'
+import { ConfigService } from './config.service'
 import { BYMAX_CONFIG } from './config.tokens'
 import { defineEnv } from './define-env'
 import { BymaxConfigValidationError } from './errors'
@@ -45,6 +48,16 @@ class ConfigConsumer {
 /** A feature module that consumes the config without importing the config module. */
 @Module({ providers: [ConfigConsumer], exports: [ConfigConsumer] })
 class FeatureModule {}
+
+/** A feature provider that injects the typed ConfigService through its class token. */
+@Injectable()
+class TypedConsumer {
+  public constructor(@Inject(ConfigService) public readonly config: ConfigService<AppConfig>) {}
+}
+
+/** A feature module that consumes ConfigService without importing the config module. */
+@Module({ providers: [TypedConsumer], exports: [TypedConsumer] })
+class TypedFeatureModule {}
 
 /** A module that exports the async source token for forRootAsync resolution. */
 @Module({
@@ -144,6 +157,31 @@ describe('BymaxConfigModule integration', () => {
     const consumer = moduleRef.get(ConfigConsumer, { strict: false })
 
     expect(consumer.config.database.url).toBe('postgres://localhost:5432/app')
+  })
+
+  it('injects the typed ConfigService into a nested module without an import', async () => {
+    /**
+     * Typed global injection.
+     *
+     * The module exports ConfigService alongside BYMAX_CONFIG, so a feature
+     * provider in a module that never imports BymaxConfigModule can inject the
+     * typed accessor through the global export and read dot-path values whose
+     * types are inferred from the schema. The `number`/`string` annotations
+     * compile only if `get` returns the inferred leaf type, and the accessor
+     * shares the single frozen root the module registered.
+     */
+    const moduleRef = await Test.createTestingModule({
+      imports: [BymaxConfigModule.forRoot({ schema, source: VALID_SOURCE }), TypedFeatureModule]
+    }).compile()
+
+    const consumer = moduleRef.get(TypedConsumer, { strict: false })
+    const port: number = consumer.config.get('server.port')
+    const url: string = consumer.config.get('database.url')
+
+    expect(port).toBe(4000)
+    expect(url).toBe('postgres://localhost:5432/app')
+    expect(consumer.config.has('database.url')).toBe(true)
+    expect(consumer.config.getAll()).toBe(moduleRef.get(BYMAX_CONFIG))
   })
 
   it('does not reach a non-importing module when isGlobal is false', async () => {

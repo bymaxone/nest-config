@@ -1,16 +1,21 @@
 /**
- * Unit tests for the foundational schema shape types.
+ * Unit tests for the foundational schema shape types and the dot-path
+ * inference utilities.
  *
  * Layer: unit.
- * Goal: pin the two-level namespace contract (accepted and rejected shapes) and
- * prove that the inferred output type equals native Zod inference.
+ * Goal: pin the two-level namespace contract (accepted and rejected shapes),
+ * prove that the inferred output type equals native Zod inference, and pin the
+ * `Path`/`PathValue` accessor inference (accepted paths with their value types,
+ * rejected paths at compile time).
  * Mocks: none. Type-level assertions run at compile time via ts-jest; the
+ * `@ts-expect-error` markers in the rejection specs are positive compile-time
+ * assertions (an unused directive fails the build), not suppressions. The
  * runtime `expect` calls guard the structural invariants the types depend on.
  */
 
 import { z } from 'zod'
 
-import type { EnvLeaf, EnvNamespace, EnvOutput, EnvShape } from './types'
+import type { EnvLeaf, EnvNamespace, EnvOutput, EnvShape, Path, PathValue } from './types'
 
 /**
  * Compile-time equality between two types.
@@ -100,5 +105,66 @@ describe('EnvOutput inference', () => {
     const parsed = z.object(shape).parse({ server: {}, database: { url: 'https://db.local' } })
     expect(parsed.server.port).toBe(3000)
     expect(parsed.database.url).toBe('https://db.local')
+  })
+})
+
+/** A representative two-level config type used by the dot-path assertions. */
+type SampleConfig = {
+  server: { port: number; env: 'development' | 'test' | 'production' }
+  database: { url: string }
+}
+
+describe('Path dot-path inference', () => {
+  it('produces the union of every namespace.leaf string for a config type', () => {
+    /**
+     * Accepted-path enumeration.
+     *
+     * `Path<SampleConfig>` must equal exactly the union of the two-level dot
+     * paths, one per leaf across every namespace. This pins the core accessor
+     * contract that `get` only accepts declared paths.
+     */
+    type Expected = 'server.port' | 'server.env' | 'database.url'
+    type _Paths = Expect<Equal<Path<SampleConfig>, Expected>>
+
+    expect<Path<SampleConfig>>('server.port').toBe('server.port')
+  })
+
+  it('rejects namespace-only, missing-leaf, and arbitrary-string paths', () => {
+    /**
+     * Rejected-path assertions.
+     *
+     * A namespace alone, an undeclared leaf, and an arbitrary string are all
+     * invalid paths and must fail to type-check. Each `@ts-expect-error` is a
+     * positive assertion: if the path were wrongly accepted the directive would
+     * be unused and ts-jest would report the spec red.
+     */
+    // @ts-expect-error a namespace alone is not a leaf path
+    const namespaceOnly: Path<SampleConfig> = 'database'
+    // @ts-expect-error a leaf that is not declared on the namespace is rejected
+    const missingLeaf: Path<SampleConfig> = 'database.missing'
+    // @ts-expect-error an arbitrary string is not a declared path
+    const arbitrary: Path<SampleConfig> = 'not.a.path'
+
+    expect([namespaceOnly, missingLeaf, arbitrary]).toHaveLength(3)
+  })
+})
+
+describe('PathValue leaf inference', () => {
+  it('resolves each declared path to its leaf value type', () => {
+    /**
+     * Value-type inference.
+     *
+     * `PathValue` must resolve every accepted path to the exact declared leaf
+     * type: a primitive `number` for `server.port`, the literal union for
+     * `server.env`, and `string` for `database.url`. This is the guarantee that
+     * `get('server.port')` is typed `number` with no cast at the call site.
+     */
+    type _Port = Expect<Equal<PathValue<SampleConfig, 'server.port'>, number>>
+    type _Env = Expect<
+      Equal<PathValue<SampleConfig, 'server.env'>, 'development' | 'test' | 'production'>
+    >
+    type _Url = Expect<Equal<PathValue<SampleConfig, 'database.url'>, string>>
+
+    expect<PathValue<SampleConfig, 'server.port'>>(3000).toBe(3000)
   })
 })

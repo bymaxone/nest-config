@@ -186,34 +186,58 @@ function synthesizeString(def: LeafDefinition): string {
  * @param upper - The inclusive upper bound, when declared.
  * @returns The bounded midpoint, a present bound, or the fixed default.
  */
-function selectNumber(lower: number | undefined, upper: number | undefined): number {
-  if (lower !== undefined && upper !== undefined) return Math.floor((lower + upper) / 2)
-  if (lower !== undefined) return lower
-  if (upper !== undefined) return upper
+function selectNumber(bounds: {
+  lower?: number
+  upper?: number
+  lowerExclusive: boolean
+  upperExclusive: boolean
+  integer: boolean
+}): number {
+  const { lower, upper, integer } = bounds
+  if (lower !== undefined && upper !== undefined) {
+    // The midpoint of any interval is strictly inside it, so it satisfies both
+    // inclusive and exclusive bounds without stepping; integers floor into range.
+    const midpoint = (lower + upper) / 2
+    return integer ? Math.floor(midpoint) : midpoint
+  }
+  // With one bound only, step past an exclusive edge (there is no opposite bound
+  // to cross); a fractional step keeps a float leaf strictly beyond its edge.
+  if (lower !== undefined) return bounds.lowerExclusive ? lower + (integer ? 1 : 0.5) : lower
+  if (upper !== undefined) return bounds.upperExclusive ? upper - (integer ? 1 : 0.5) : upper
   return DEFAULT_NUMBER
 }
 
 /**
  * Synthesize a placeholder for a number leaf within its declared range.
  *
- * Exclusive bounds are stepped inward by one so the chosen value stays strictly
- * inside an open interval; an integer format truncates the result.
+ * Reads the greater-than/less-than bounds and whether the leaf is an integer,
+ * then picks an in-range value: the midpoint for a two-sided range (floored for
+ * integers), or a value stepped just past a single exclusive edge.
  *
  * @param def - The number leaf definition.
  * @returns The string form of a constraint-compliant number.
  */
 function synthesizeNumber(def: LeafDefinition): string {
-  let lower: number | undefined
-  let upper: number | undefined
-  let integer = false
+  const bounds = { lowerExclusive: false, upperExclusive: false, integer: false } as {
+    lower?: number
+    upper?: number
+    lowerExclusive: boolean
+    upperExclusive: boolean
+    integer: boolean
+  }
   for (const wrapper of checksOf(def)) {
     const check = wrapper._zod.def
-    if (check.check === 'greater_than') lower = check.inclusive ? check.value : check.value + 1
-    if (check.check === 'less_than') upper = check.inclusive ? check.value : check.value - 1
-    if (check.check === 'number_format') integer = true
+    if (check.check === 'greater_than') {
+      bounds.lower = check.value
+      bounds.lowerExclusive = check.inclusive !== true
+    }
+    if (check.check === 'less_than') {
+      bounds.upper = check.value
+      bounds.upperExclusive = check.inclusive !== true
+    }
+    if (check.check === 'number_format') bounds.integer = true
   }
-  const value = selectNumber(lower, upper)
-  return String(integer ? Math.trunc(value) : value)
+  return String(selectNumber(bounds))
 }
 
 /**
@@ -288,7 +312,9 @@ export function synthesizePlaceholderSource<TShape extends EnvShape = EnvShape>(
       if (value !== undefined) valueByPath.set(`${namespace}.${leafKey}`, value)
     }
   }
-  const source: Record<string, string> = {}
+  // Null-prototype object so a meta({ env }) override named `__proto__` (or
+  // similar) becomes a plain own key instead of mutating Object.prototype.
+  const source = Object.create(null) as Record<string, string>
   for (const binding of resolveSourceNames(schema)) {
     const value = valueByPath.get(binding.path)
     if (value !== undefined) source[binding.variable] = value

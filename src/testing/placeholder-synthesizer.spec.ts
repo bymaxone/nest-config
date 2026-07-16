@@ -110,6 +110,38 @@ describe('synthesizePlaceholderSource', () => {
     expect(workers).toBeLessThanOrEqual(64)
   })
 
+  it('synthesizes in-range numbers for single-sided, exclusive, and fractional ranges', () => {
+    // Scenario: greater-than/less-than bounds, exclusive edges, and fractional
+    // ranges each yield a value inside the declared interval, not only the
+    // two-sided integer case.
+    const schema = defineEnv({
+      nums: z.object({
+        floatRange: z.coerce.number().min(0.1).max(0.2),
+        gtInt: z.coerce.number().int().gt(5),
+        gtFloat: z.coerce.number().gt(1.5),
+        minOnly: z.coerce.number().min(5),
+        ltInt: z.coerce.number().int().lt(10),
+        ltFloat: z.coerce.number().lt(2.5),
+        maxOnly: z.coerce.number().max(10),
+        plain: z.coerce.number()
+      })
+    })
+    const source = synthesizePlaceholderSource(schema)
+    const num = (key: string): number => Number(required(source, key))
+
+    expect(num('NUMS_FLOAT_RANGE')).toBeGreaterThanOrEqual(0.1)
+    expect(num('NUMS_FLOAT_RANGE')).toBeLessThanOrEqual(0.2)
+    expect(Number.isInteger(num('NUMS_FLOAT_RANGE'))).toBe(false)
+    expect(num('NUMS_GT_INT')).toBeGreaterThan(5)
+    expect(Number.isInteger(num('NUMS_GT_INT'))).toBe(true)
+    expect(num('NUMS_GT_FLOAT')).toBeGreaterThan(1.5)
+    expect(num('NUMS_MIN_ONLY')).toBe(5)
+    expect(num('NUMS_LT_INT')).toBeLessThan(10)
+    expect(num('NUMS_LT_FLOAT')).toBeLessThan(2.5)
+    expect(num('NUMS_MAX_ONLY')).toBe(10)
+    expect(num('NUMS_PLAIN')).toBe(1)
+  })
+
   it('emits a coercible placeholder for boolean leaves', () => {
     // Scenario: a boolean leaf becomes a value the coercion accepts.
     const source = synthesizePlaceholderSource(representativeSchema)

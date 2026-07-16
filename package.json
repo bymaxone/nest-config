@@ -1,0 +1,129 @@
+{
+  "name": "@bymax-one/nest-config",
+  "version": "0.1.0",
+  "description": "Typed and validated environment configuration entry point for NestJS 11 applications, built on Zod v4.",
+  "author": "Bymax One <support@bymax.one>",
+  "license": "MIT",
+  "homepage": "https://github.com/bymaxone/nest-config#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bymaxone/nest-config.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bymaxone/nest-config/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.mjs",
+      "require": "./dist/testing/index.cjs"
+    }
+  },
+  "scripts": {
+    "build": "pnpm clean && tsup",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "test": "jest",
+    "test:cov": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:cov:all": "jest --config jest.coverage.config.ts --coverage",
+    "mutation": "stryker run",
+    "mutation:incremental": "stryker run --incremental",
+    "mutation:dry-run": "stryker run --dryRunOnly",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.build.json",
+    "size": "node scripts/check-size.mjs",
+    "dogfood": "node scripts/dogfood-smoke-test.mjs",
+    "clean": "node -e \"const fs=require('node:fs');for(const d of ['dist','coverage'])fs.rmSync(d,{recursive:true,force:true})\"",
+    "prepublishOnly": "pnpm typecheck && pnpm lint && pnpm test:cov:all && pnpm build && pnpm size",
+    "release": "pnpm publish --provenance",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs,cjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "reflect-metadata": "^0.2.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.0.2",
+    "@commitlint/config-conventional": "^21.0.2",
+    "@eslint/js": "^9.39.4",
+    "@nestjs/common": "^11.1.20",
+    "@nestjs/core": "^11.1.20",
+    "@nestjs/platform-express": "^11.1.20",
+    "@nestjs/testing": "^11.1.20",
+    "@stryker-mutator/core": "^9",
+    "@stryker-mutator/jest-runner": "^9",
+    "@stryker-mutator/typescript-checker": "^9",
+    "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25",
+    "@typescript-eslint/eslint-plugin": "^8.59.3",
+    "@typescript-eslint/parser": "^8.59.3",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-security": "^4.0.0",
+    "globals": "^17.6.0",
+    "husky": "^9.1.7",
+    "jest": "^30.4.2",
+    "lint-staged": "^17.0.7",
+    "prettier": "^3.8.3",
+    "reflect-metadata": "^0.2.2",
+    "ts-jest": "^29.4.9",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "zod": "^4.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "esbuild": "^0.28.1"
+    }
+  },
+  "keywords": [
+    "nestjs",
+    "config",
+    "environment",
+    "env",
+    "zod",
+    "validation",
+    "typed-config",
+    "dependency-injection",
+    "fail-fast",
+    "configuration"
+  ],
+  "packageManager": "pnpm@10.8.1",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

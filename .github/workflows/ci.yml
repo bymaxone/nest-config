@@ -44,7 +44,11 @@ jobs:
       # until then: it activates as a real gate once the repository is public.
       - name: Dependency review
         if: github.event_name == 'pull_request'
-        continue-on-error: true
+        # dependency-review-action needs the GitHub dependency graph, which on a
+        # private repository requires GitHub Advanced Security. While private the
+        # step is advisory (non-blocking); once the repo is public it becomes a
+        # real gate that fails on high-severity advisories.
+        continue-on-error: ${{ github.event.repository.private }}
         uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high

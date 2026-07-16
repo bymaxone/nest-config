@@ -12,7 +12,7 @@
 import { z } from 'zod'
 
 import { defineEnv } from './define-env'
-import { resolveSourceNames } from './source-mapping'
+import { resolveNamespacePrefixes, resolveSourceNames } from './source-mapping'
 
 describe('resolveSourceNames derivation', () => {
   it('derives DATABASE_URL from database.url', () => {
@@ -101,6 +101,29 @@ describe('resolveSourceNames override precedence', () => {
     expect(resolveSourceNames(schema)).toEqual([
       { path: 'database.url', variable: 'DATABASE_URL' },
       { path: 'database.replicaUrl', variable: 'DATABASE_REPLICA_URL' }
+    ])
+  })
+})
+
+describe('resolveNamespacePrefixes derivation', () => {
+  it('derives the SCREAMING_SNAKE_CASE prefix of every namespace in order', () => {
+    /**
+     * Namespace prefix derivation.
+     *
+     * Strict mode recognizes a namespace's variables by their shared prefix, so
+     * each declared namespace must resolve to its uppercased key plus separator,
+     * in declaration order, including camelCase and numeric-suffix namespaces.
+     */
+    const schema = defineEnv({
+      server: z.object({ port: z.coerce.number() }),
+      database: z.object({ url: z.url() }),
+      oauth2: z.object({ clientId: z.string() })
+    })
+
+    expect(resolveNamespacePrefixes(schema)).toEqual([
+      { namespace: 'server', prefix: 'SERVER_' },
+      { namespace: 'database', prefix: 'DATABASE_' },
+      { namespace: 'oauth2', prefix: 'OAUTH2_' }
     ])
   })
 })

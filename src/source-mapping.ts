@@ -7,7 +7,7 @@
  * @layer Utility
  */
 
-import type { EnvSchema } from './types'
+import type { EnvSchema, EnvShape } from './types'
 
 /**
  * The resolved binding between one config leaf and its source variable name.
@@ -17,6 +17,16 @@ export interface SourceBinding {
   readonly path: string
   /** Resolved environment variable name, e.g. `DATABASE_URL`. */
   readonly variable: string
+}
+
+/**
+ * The variable-name prefix that every derived leaf of one namespace shares.
+ */
+export interface NamespacePrefix {
+  /** Top-level namespace key, e.g. `database`. */
+  readonly namespace: string
+  /** Shared SCREAMING_SNAKE_CASE prefix including the separator, e.g. `DATABASE_`. */
+  readonly prefix: string
 }
 
 /**
@@ -67,6 +77,7 @@ function deriveVariable(namespace: string, leafKey: string): string {
  * is total: every declared leaf maps to exactly one variable, in declaration
  * order.
  *
+ * @typeParam TShape - The two-level shape the schema was composed from.
  * @param schema - A schema produced by `defineEnv`.
  * @returns The ordered list of leaf-to-variable bindings, typed `readonly`.
  * @example
@@ -76,11 +87,40 @@ function deriveVariable(namespace: string, leafKey: string): string {
  * // => [{ path: 'database.url', variable: 'DATABASE_URL' }]
  * ```
  */
-export function resolveSourceNames(schema: EnvSchema): readonly SourceBinding[] {
+export function resolveSourceNames<TShape extends EnvShape = EnvShape>(
+  schema: EnvSchema<TShape>
+): readonly SourceBinding[] {
   return Object.entries(schema.shape).flatMap(([namespace, namespaceSchema]) =>
     Object.entries(namespaceSchema.shape).map(([leafKey, leafSchema]) => ({
       path: `${namespace}.${leafKey}`,
       variable: readEnvOverride(leafSchema) ?? deriveVariable(namespace, leafKey)
     }))
   )
+}
+
+/**
+ * Resolve the shared source-variable prefix of every declared namespace.
+ *
+ * Each derived leaf variable starts with its namespace's SCREAMING_SNAKE_CASE
+ * prefix (`database` yields `DATABASE_`). Strict validation uses these prefixes
+ * to recognize variables that look like config for a namespace but match no
+ * declared leaf, so unrelated process variables are never reported as issues.
+ *
+ * @typeParam TShape - The two-level shape the schema was composed from.
+ * @param schema - A schema produced by `defineEnv`.
+ * @returns One namespace-to-prefix entry per declared namespace, in order.
+ * @example
+ * ```typescript
+ * const schema = defineEnv({ database: z.object({ url: z.url() }) });
+ * resolveNamespacePrefixes(schema);
+ * // => [{ namespace: 'database', prefix: 'DATABASE_' }]
+ * ```
+ */
+export function resolveNamespacePrefixes<TShape extends EnvShape = EnvShape>(
+  schema: EnvSchema<TShape>
+): readonly NamespacePrefix[] {
+  return Object.keys(schema.shape).map((namespace) => ({
+    namespace,
+    prefix: `${toScreamingSnake(namespace)}_`
+  }))
 }

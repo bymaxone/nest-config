@@ -23,7 +23,7 @@
 
 ## 1. Progress Dashboard
 
-> **Overall progress: 2 / 8 phases (25%)**
+> **Overall progress: 3 / 8 phases (38%)**
 > **Active phase:** none
 > **Blocked phases:** none
 
@@ -33,7 +33,7 @@
 | --- | -------------------------- | ------ | -------- | ---- | ------------ |
 | P0  | repository-scaffold        | ✅     | 100%     | M    | 2026-07-16   |
 | P1  | schema-engine              | ✅     | 100%     | M    | 2026-07-16   |
-| P2  | validation-pipeline        | 📋     | 0%       | M    | 2026-07-06   |
+| P2  | validation-pipeline        | ✅     | 100%     | M    | 2026-07-16   |
 | P3  | dynamic-module-di          | 📋     | 0%       | M    | 2026-07-06   |
 | P4  | typed-accessor             | 📋     | 0%       | S    | 2026-07-06   |
 | P5  | testing-subpath            | 📋     | 0%       | M    | 2026-07-06   |

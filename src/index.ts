@@ -4,4 +4,6 @@
  */
 
 export { defineEnv } from './define-env'
+export { BymaxConfigValidationError, ConfigErrorCode } from './errors'
+export type { ConfigIssue, ConfigIssueCode, ConfigValidationCode } from './errors'
 export type { EnvLeaf, EnvNamespace, EnvOutput, EnvSchema, EnvShape } from './types'

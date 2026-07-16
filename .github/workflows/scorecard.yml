@@ -30,6 +30,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    # Scorecard publishes SARIF to the Security tab and mints an OIDC token for
+    # the public scorecard.dev viewer; neither works on a private repository
+    # without GitHub Advanced Security, so it stays inactive until the repo is public.
+    if: ${{ github.event.repository.private == false }}
+
     permissions:
       # Required to upload SARIF results to the Security tab.
       security-events: write

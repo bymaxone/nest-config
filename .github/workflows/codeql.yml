@@ -27,6 +27,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    # Code scanning uploads SARIF to the Security tab, which requires GitHub
+    # Advanced Security. On a private repository without GHAS that upload fails,
+    # so the analysis stays inactive until the repository is public.
+    if: ${{ github.event.repository.private == false }}
+
     permissions:
       contents: read
       # Required for CodeQL to upload its findings to the Security tab.

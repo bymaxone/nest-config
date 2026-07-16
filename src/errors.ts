@@ -72,7 +72,7 @@ export interface ConfigIssue {
  * @example
  * ```typescript
  * try {
- *   validateEnv(schema, process.env);
+ *   validateEnv(schema, source);
  * } catch (error) {
  *   if (error instanceof BymaxConfigValidationError) {
  *     for (const issue of error.issues) report(issue.variable, issue.code);

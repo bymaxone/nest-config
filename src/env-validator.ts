@@ -232,14 +232,14 @@ function detectUnknownKeys(
  *
  * @typeParam TShape - The two-level schema shape.
  * @param schema - A schema produced by `defineEnv`.
- * @param source - The flat source record, typically `process.env`.
+ * @param source - The flat source record, typically the process environment.
  * @param options - Optional behavior flags, such as strict unknown-key detection.
  * @returns The parsed, typed configuration output.
  * @throws {BymaxConfigValidationError} When any variable is missing, invalid, or
  * (under strict) an unrecognized declared-prefix variable.
  * @example
  * ```typescript
- * const config = validateEnv(envSchema, process.env, { strict: true });
+ * const config = validateEnv(envSchema, source, { strict: true });
  * config.database.url; // typed, validated, coerced
  * ```
  */

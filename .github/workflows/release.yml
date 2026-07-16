@@ -26,6 +26,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    # Provenance (`--provenance`) requires a public repository: npm rejects a
+    # provenance publish sourced from a private repo, and the transparency-log
+    # attestation is only meaningful when the source is publicly verifiable. The
+    # job is therefore gated on visibility, consistent with the CodeQL,
+    # Scorecard, and mutation workflows. While private, a pushed tag cannot
+    # attempt a publish; once the repository is public the release activates
+    # automatically with no further edit.
+    if: ${{ github.event.repository.private == false }}
+
     # The `npm-publish` environment gates the run behind a manual approval
     # (configured in repo Settings, Environments). Even an accidentally
     # pushed tag cannot publish without a reviewer clicking Approve.

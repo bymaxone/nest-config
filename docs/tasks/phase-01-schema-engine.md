@@ -1,6 +1,6 @@
 # Phase 1: schema-engine
 
-> **Status**: 🔄 In Progress · **Progress**: 3 / 5 tasks · **Last updated**: 2026-07-16
+> **Status**: 🔄 In Progress · **Progress**: 4 / 5 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P1)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §4.1, §4.2, §1.5
 
@@ -40,7 +40,7 @@ At the start of this phase the repository has the full Phase 0 toolchain on `mai
 | 1.1 | Branch + core types (`EnvSchema`, shape constraints, `ConfigIssueCode` placeholder-free types) | ✅ Done | P0       | S    | none          |
 | 1.2 | `defineEnv(shape)` factory + inferred-type helper                                              | ✅ Done | P0       | M    | 1.1           |
 | 1.3 | Source-name mapping: path derivation + `meta({ env })` override                                | ✅ Done | P0       | M    | 1.2           |
-| 1.4 | `deepFreeze` utility                                                                           | 📋 ToDo | P0       | S    | 1.1           |
+| 1.4 | `deepFreeze` utility                                                                           | ✅ Done | P0       | S    | 1.1           |
 | 1.5 | Phase close: gates, dashboards, PR with Copilot review                                         | 📋 ToDo | P0       | S    | 1.2, 1.3, 1.4 |
 
 ---
@@ -282,7 +282,7 @@ Completion Protocol (after you finish):
 
 ### Task 1.4: `deepFreeze` utility
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: 1.1
@@ -293,9 +293,9 @@ Implement the recursive freeze utility that makes the validated config immutable
 
 #### Acceptance criteria
 
-- [ ] `src/deep-freeze.ts` exports a generic `deepFreeze<T>(value: T): Readonly<T>` handling nested objects, arrays, and already-frozen values without infinite recursion.
-- [ ] Tests prove: nested object frozen, array element frozen, mutation throws in strict-mode test, primitives and null pass through, idempotent on re-freeze.
-- [ ] 100% coverage on the new file.
+- [x] `src/deep-freeze.ts` exports a generic `deepFreeze<T>(value: T): Readonly<T>` handling nested objects, arrays, and already-frozen values without infinite recursion.
+- [x] Tests prove: nested object frozen, array element frozen, mutation throws in strict-mode test, primitives and null pass through, idempotent on re-freeze.
+- [x] 100% coverage on the new file.
 
 #### Files to create / modify
 
@@ -430,3 +430,4 @@ Completion Protocol (after you finish):
 - 1.1 ✅ 2026-07-16 Added foundational schema shape types (EnvShape, EnvNamespace, EnvLeaf, EnvOutput, EnvSchema) with compile-time type tests; removed passWithNoTests from both jest configs.
 - 1.2 ✅ 2026-07-16 Implemented defineEnv factory composing namespaces into one Zod object with the infer phantom; reuses caller schemas unchanged; exported from the server barrel.
 - 1.3 ✅ 2026-07-16 Implemented internal deterministic source-name mapping (SCREAMING_SNAKE derivation, meta({ env }) override precedence) with derivation, override, and inline-snapshot contract tests.
+- 1.4 ✅ 2026-07-16 Implemented cycle-safe, idempotent deepFreeze utility (nested objects and arrays, strict-mode mutation rejection, primitive and null pass-through) at 100% branch coverage.

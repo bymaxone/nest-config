@@ -248,10 +248,16 @@ function selectNumber(bounds: {
 }): number {
   const { lower, upper, integer } = bounds
   if (lower !== undefined && upper !== undefined) {
-    // The midpoint of any interval is strictly inside it, so it satisfies both
-    // inclusive and exclusive bounds without stepping; integers floor into range.
-    const midpoint = (lower + upper) / 2
-    return integer ? Math.floor(midpoint) : midpoint
+    if (integer) {
+      // Convert exclusive bounds to the nearest inclusive integer so the floored
+      // midpoint cannot land on an excluded edge (e.g. gt(0).max(1) -> [1, 1]).
+      const lo = bounds.lowerExclusive ? lower + 1 : lower
+      const hi = bounds.upperExclusive ? upper - 1 : upper
+      return Math.floor((lo + hi) / 2)
+    }
+    // Floats: the midpoint of any interval is strictly inside it, so it
+    // satisfies inclusive and exclusive bounds alike without stepping.
+    return (lower + upper) / 2
   }
   // With one bound only, step past an exclusive edge (there is no opposite bound
   // to cross); a fractional step keeps a float leaf strictly beyond its edge.

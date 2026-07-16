@@ -123,7 +123,10 @@ describe('synthesizePlaceholderSource', () => {
         ltInt: z.coerce.number().int().lt(10),
         ltFloat: z.coerce.number().lt(2.5),
         maxOnly: z.coerce.number().max(10),
-        plain: z.coerce.number()
+        plain: z.coerce.number(),
+        gtIntMax: z.coerce.number().int().gt(0).max(1),
+        minIntLt: z.coerce.number().int().min(2).lt(10),
+        gtIntLt: z.coerce.number().int().gt(0).lt(4)
       })
     })
     const source = synthesizePlaceholderSource(schema)
@@ -140,6 +143,14 @@ describe('synthesizePlaceholderSource', () => {
     expect(num('NUMS_LT_FLOAT')).toBeLessThan(2.5)
     expect(num('NUMS_MAX_ONLY')).toBe(10)
     expect(num('NUMS_PLAIN')).toBe(1)
+    // Two-sided integer ranges with mixed exclusivity must land inside the range.
+    expect(num('NUMS_GT_INT_MAX')).toBe(1)
+    expect(num('NUMS_MIN_INT_LT')).toBeGreaterThanOrEqual(2)
+    expect(num('NUMS_MIN_INT_LT')).toBeLessThan(10)
+    expect(Number.isInteger(num('NUMS_MIN_INT_LT'))).toBe(true)
+    expect(num('NUMS_GT_INT_LT')).toBeGreaterThan(0)
+    expect(num('NUMS_GT_INT_LT')).toBeLessThan(4)
+    expect(Number.isInteger(num('NUMS_GT_INT_LT'))).toBe(true)
   })
 
   it('honors min, max, and exact lengths for url and email formats', () => {

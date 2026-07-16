@@ -39,19 +39,38 @@ import type { Path, PathValue } from './types'
  */
 @Injectable()
 export class ConfigService<TConfig> {
+  private readonly config: Readonly<TConfig>
+
+  /** Precomputed `namespace.leaf` to value lookup, built once at construction. */
+  private readonly leaves: ReadonlyMap<string, unknown>
+
   /**
    * Bind the accessor to the frozen configuration object.
    *
+   * Builds a flat `namespace.leaf` lookup once so `get`/`has` are constant-time
+   * and never rebuild a map per call. Iteration over entries (rather than dynamic
+   * bracket indexing) avoids introducing a non-literal property sink.
+   *
    * @param config - The validated, deep-frozen config injected via {@link BYMAX_CONFIG}.
    */
-  public constructor(@Inject(BYMAX_CONFIG) private readonly config: TConfig) {}
+  public constructor(@Inject(BYMAX_CONFIG) config: Readonly<TConfig>) {
+    this.config = config
+    const leaves = new Map<string, unknown>()
+    for (const [namespace, value] of Object.entries(config as Record<string, unknown>)) {
+      for (const [leaf, leafValue] of Object.entries(value as Record<string, unknown>)) {
+        leaves.set(`${namespace}.${leaf}`, leafValue)
+      }
+    }
+    this.leaves = leaves
+  }
 
   /**
    * Read a leaf value by its `namespace.leaf` dot-path.
    *
    * The return type is inferred from the path, so `get('server.port')` is typed
    * `number` with no cast. Never throws for a declared path: validation ran once
-   * at bootstrap, so the leaf is guaranteed present.
+   * at bootstrap. An optional leaf without a default may still resolve to
+   * `undefined` when its type includes it.
    *
    * @typeParam TPath - A declared path drawn from {@link Path}<TConfig>.
    * @param path - The two-level dot-path to resolve.
@@ -103,22 +122,13 @@ export class ConfigService<TConfig> {
   /**
    * Resolve a two-level dot-path to its raw leaf value.
    *
-   * Splits on the single dot dictated by the `namespace.leaf` convention and
-   * walks the two fixed levels via `Map` lookups (rather than dynamic bracket
-   * indexing) so no non-literal property sink is introduced. The structural
-   * casts bridge the generic config to a two-level record; the namespace is
-   * guaranteed to exist because a valid {@link Path} always names a declared one.
+   * Looks the path up in the precomputed `namespace.leaf` map, so an unset leaf
+   * (or, defensively, an unexpected path) yields `undefined` instead of throwing.
    *
    * @param path - The declared two-level dot-path.
    * @returns The leaf value as `unknown`, or `undefined` when the leaf is unset.
    */
   private resolve(path: Path<TConfig>): unknown {
-    const dotPath = String(path)
-    const separatorIndex = dotPath.indexOf('.')
-    const namespace = dotPath.slice(0, separatorIndex)
-    const leaf = dotPath.slice(separatorIndex + 1)
-    const namespaces = new Map(Object.entries(this.config as Record<string, unknown>))
-    const namespaceValue = namespaces.get(namespace) as Record<string, unknown>
-    return new Map(Object.entries(namespaceValue)).get(leaf)
+    return this.leaves.get(String(path))
   }
 }

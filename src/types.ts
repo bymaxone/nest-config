@@ -79,7 +79,7 @@ export type EnvSchema<TShape extends EnvShape = EnvShape> = z.ZodObject<TShape> 
  * ```
  */
 export type Path<TConfig> = {
-  [Namespace in keyof TConfig & string]: TConfig[Namespace] extends object
+  [Namespace in keyof TConfig & string]: TConfig[Namespace] extends Record<string, unknown>
     ? {
         [Leaf in keyof TConfig[Namespace] & string]: `${Namespace}.${Leaf}`
       }[keyof TConfig[Namespace] & string]

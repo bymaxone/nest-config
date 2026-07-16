@@ -25,7 +25,7 @@
 
 > **Overall progress: 7 / 8 phases (88%)**
 > **Active phase:** none
-> **Blocked phases:** none
+> **Blocked phases:** P7 (repository is private; release provenance via OIDC, CodeQL, and OpenSSF Scorecard require a public repository)
 
 ### Phase Table
 
@@ -38,7 +38,7 @@
 | P4  | typed-accessor             | ✅     | 100%     | S    | 2026-07-16   |
 | P5  | testing-subpath            | ✅     | 100%     | M    | 2026-07-16   |
 | P6  | integration-docs-dogfood   | ✅     | 100%     | M    | 2026-07-16   |
-| P7  | mutation-hardening-release | 📋     | 0%       | L    | 2026-07-06   |
+| P7  | mutation-hardening-release | ⛔     | 0%       | L    | 2026-07-16   |
 
 ---
 
@@ -294,7 +294,10 @@ These rules apply to every phase. Phase sections only add rules specific to them
   - Post-publish smoke: a scratch consumer installs the released version and boots
     the fixture successfully.
 - **Context / preconditions:** P6 done; repository public so provenance and the
-  security workflows are effective.
+  security workflows are effective. **Blocked:** the repository is currently
+  private, so the OIDC provenance release, CodeQL, and OpenSSF Scorecard cannot
+  run. Make `bymaxone/nest-config` public (and confirm npm publish access) to
+  unblock, then rerun the release phase.
 - **Rules-of-phase:** mutation runs are a release gate, not a per-commit gate; test
   changes here must not lower readability or introduce implementation coupling.
 - **References:** spec §9.3, §10.

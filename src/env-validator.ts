@@ -12,15 +12,26 @@ import type { z } from 'zod'
 
 import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
 import type { ConfigIssue } from './errors'
-import { resolveSourceNames } from './source-mapping'
-import type { SourceBinding } from './source-mapping'
+import { resolveNamespacePrefixes, resolveSourceNames } from './source-mapping'
+import type { NamespacePrefix, SourceBinding } from './source-mapping'
 import type { EnvOutput, EnvSchema, EnvShape } from './types'
 
 /** The flat, value-free source record consumed by the validator. */
 type EnvSource = Readonly<Record<string, string | undefined>>
 
+/** Options controlling validation behavior. */
+export interface EnvValidationOptions {
+  /**
+   * When true, source variables that match a declared namespace prefix but no
+   * declared leaf produce BYMAX_CONFIG_UNKNOWN_KEY issues. Defaults to false.
+   */
+  readonly strict?: boolean
+}
+
 /** A single issue as produced by a failed Zod parse. */
 type ZodValidationIssue = z.ZodError['issues'][number]
+
+const UNKNOWN_KEY_MESSAGE = 'unknown variable not declared in the schema'
 
 /** One declared leaf whose source variable carried a defined value. */
 interface PresentLeaf {
@@ -178,35 +189,78 @@ function translateIssues(
 }
 
 /**
+ * Detect source variables that match a namespace prefix but no declared leaf.
+ *
+ * The namespace-prefix gate is mandatory: unrelated process variables (such as
+ * `PATH` or `HOME`) never match a declared prefix and are therefore ignored, so
+ * strict mode reports only variables that look like configuration.
+ *
+ * @param prefixes - The declared namespace prefixes.
+ * @param bindings - The leaf-to-variable bindings, used to skip declared names.
+ * @param source - The source values keyed by variable name.
+ * @returns One BYMAX_CONFIG_UNKNOWN_KEY issue per unrecognized prefixed variable.
+ */
+function detectUnknownKeys(
+  prefixes: readonly NamespacePrefix[],
+  bindings: readonly SourceBinding[],
+  source: ReadonlyMap<string, string | undefined>
+): ConfigIssue[] {
+  const declared = new Set(bindings.map((binding) => binding.variable))
+  const issues: ConfigIssue[] = []
+  for (const key of source.keys()) {
+    if (declared.has(key)) continue
+    const match = prefixes.find((entry) => key.startsWith(entry.prefix))
+    if (match === undefined) continue
+    issues.push({
+      path: match.namespace,
+      variable: key,
+      code: ConfigErrorCode.UNKNOWN_KEY,
+      message: UNKNOWN_KEY_MESSAGE
+    })
+  }
+  return issues
+}
+
+/**
  * Validate a flat source against a schema in a single pass.
  *
  * Maps the source onto the nested schema, runs exactly one `safeParse`, and
  * either returns the typed, default-applied, coerced output or throws a
- * BymaxConfigValidationError listing every violation at once. The thrown error
- * never contains a raw source value.
+ * BymaxConfigValidationError listing every violation at once. With `strict`,
+ * unrecognized prefixed variables are aggregated alongside missing and invalid
+ * issues. The thrown error never contains a raw source value.
  *
  * @typeParam TShape - The two-level schema shape.
  * @param schema - A schema produced by `defineEnv`.
  * @param source - The flat source record, typically `process.env`.
+ * @param options - Optional behavior flags, such as strict unknown-key detection.
  * @returns The parsed, typed configuration output.
- * @throws {BymaxConfigValidationError} When any variable is missing or invalid.
+ * @throws {BymaxConfigValidationError} When any variable is missing, invalid, or
+ * (under strict) an unrecognized declared-prefix variable.
  * @example
  * ```typescript
- * const config = validateEnv(envSchema, process.env);
+ * const config = validateEnv(envSchema, process.env, { strict: true });
  * config.database.url; // typed, validated, coerced
  * ```
  */
 export function validateEnv<TShape extends EnvShape>(
   schema: EnvSchema<TShape>,
-  source: EnvSource
+  source: EnvSource,
+  options?: EnvValidationOptions
 ): EnvOutput<TShape> {
   const bindings = resolveSourceNames(schema)
   const sourceMap = new Map(Object.entries(source))
   const namespaces = Object.keys(schema.shape)
   const candidate = buildCandidate(namespaces, collectPresentLeaves(bindings, sourceMap))
   const result = schema.safeParse(candidate)
+  const unknown =
+    options?.strict === true
+      ? detectUnknownKeys(resolveNamespacePrefixes(schema), bindings, sourceMap)
+      : []
   if (result.success) {
-    return result.data
+    if (unknown.length === 0) return result.data
+    throw new BymaxConfigValidationError(unknown)
   }
-  throw new BymaxConfigValidationError(translateIssues(result.error.issues, bindings, sourceMap))
+  const issues = translateIssues(result.error.issues, bindings, sourceMap)
+  throw new BymaxConfigValidationError([...issues, ...unknown])
 }

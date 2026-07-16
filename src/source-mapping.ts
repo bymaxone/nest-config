@@ -20,6 +20,16 @@ export interface SourceBinding {
 }
 
 /**
+ * The variable-name prefix that every derived leaf of one namespace shares.
+ */
+export interface NamespacePrefix {
+  /** Top-level namespace key, e.g. `database`. */
+  readonly namespace: string
+  /** Shared SCREAMING_SNAKE_CASE prefix including the separator, e.g. `DATABASE_`. */
+  readonly prefix: string
+}
+
+/**
  * Convert one path segment to SCREAMING_SNAKE_CASE.
  *
  * Inserts a boundary before an uppercase letter that follows a lowercase letter
@@ -86,4 +96,31 @@ export function resolveSourceNames<TShape extends EnvShape = EnvShape>(
       variable: readEnvOverride(leafSchema) ?? deriveVariable(namespace, leafKey)
     }))
   )
+}
+
+/**
+ * Resolve the shared source-variable prefix of every declared namespace.
+ *
+ * Each derived leaf variable starts with its namespace's SCREAMING_SNAKE_CASE
+ * prefix (`database` yields `DATABASE_`). Strict validation uses these prefixes
+ * to recognize variables that look like config for a namespace but match no
+ * declared leaf, without ever scanning unrelated process variables.
+ *
+ * @typeParam TShape - The two-level shape the schema was composed from.
+ * @param schema - A schema produced by `defineEnv`.
+ * @returns One namespace-to-prefix entry per declared namespace, in order.
+ * @example
+ * ```typescript
+ * const schema = defineEnv({ database: z.object({ url: z.url() }) });
+ * resolveNamespacePrefixes(schema);
+ * // => [{ namespace: 'database', prefix: 'DATABASE_' }]
+ * ```
+ */
+export function resolveNamespacePrefixes<TShape extends EnvShape = EnvShape>(
+  schema: EnvSchema<TShape>
+): readonly NamespacePrefix[] {
+  return Object.keys(schema.shape).map((namespace) => ({
+    namespace,
+    prefix: `${toScreamingSnake(namespace)}_`
+  }))
 }

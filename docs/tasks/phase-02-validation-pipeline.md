@@ -1,6 +1,6 @@
 # Phase 2: validation-pipeline
 
-> **Status**: 🔄 In Progress · **Progress**: 3 / 5 tasks · **Last updated**: 2026-07-16
+> **Status**: 🔄 In Progress · **Progress**: 4 / 5 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P2)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §6, §1.5
 
@@ -41,7 +41,7 @@ Phase 1 is merged: `defineEnv`, source mapping, and `deepFreeze` are available. 
 | 2.1 | Branch + error codes + `ConfigIssue` + `BymaxConfigValidationError` | ✅ Done | P0       | M    | none          |
 | 2.2 | Report formatter (value-free, aligned, snapshot-pinned)             | ✅ Done | P0       | S    | 2.1           |
 | 2.3 | Validator: single-pass parse + issue aggregation                    | ✅ Done | P0       | M    | 2.1           |
-| 2.4 | Strict mode: undeclared-variable detection                          | 📋 ToDo | P1       | S    | 2.3           |
+| 2.4 | Strict mode: undeclared-variable detection                          | ✅ Done | P1       | S    | 2.3           |
 | 2.5 | Phase close: gates, dashboards, PR with Copilot review              | 📋 ToDo | P0       | S    | 2.2, 2.3, 2.4 |
 
 ---
@@ -293,10 +293,10 @@ Add opt-in `strict` behavior: source variables that match the schema's namespace
 
 #### Acceptance criteria
 
-- [ ] With `strict: true`, `DATABASE_TYPO` (prefix `DATABASE_` declared, leaf not) yields a `BYMAX_CONFIG_UNKNOWN_KEY` issue; unrelated variables (e.g. `PATH`, `HOME`) never do.
-- [ ] With `strict: false` or omitted, no unknown-key issues are produced.
-- [ ] Unknown-key issues aggregate together with missing/invalid issues in one error.
-- [ ] 100% coverage on the changed files.
+- [x] With `strict: true`, `DATABASE_TYPO` (prefix `DATABASE_` declared, leaf not) yields a `BYMAX_CONFIG_UNKNOWN_KEY` issue; unrelated variables (e.g. `PATH`, `HOME`) never do.
+- [x] With `strict: false` or omitted, no unknown-key issues are produced.
+- [x] Unknown-key issues aggregate together with missing/invalid issues in one error.
+- [x] 100% coverage on the changed files.
 
 #### Files to create / modify
 
@@ -433,3 +433,4 @@ Completion Protocol (after you finish):
 - 2.1 ✅ 2026-07-16 Added the frozen error-code catalog, value-free ConfigIssue shape, and BymaxConfigValidationError with immutable issues and stable instanceof.
 - 2.2 ✅ 2026-07-16 Added the pure, value-free report formatter, snapshot-pinned to the spec §6.1 layout, and wired it into the error message.
 - 2.3 ✅ 2026-07-16 Added the single-pass validator: source mapping, one safeParse, missing-vs-invalid classification, value-free constraint messages, and aggregated throw.
+- 2.4 ✅ 2026-07-16 Added opt-in strict mode: prefix-gated unknown-key detection via resolveNamespacePrefixes, aggregated with missing and invalid issues, silent by default.

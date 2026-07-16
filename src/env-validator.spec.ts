@@ -46,10 +46,11 @@ function issuesByVariable(error: BymaxConfigValidationError): Map<string, Config
 /** Run the validator and return the error it must throw. */
 function captureError(
   schema: Parameters<typeof validateEnv>[0],
-  source: Record<string, string | undefined>
+  source: Record<string, string | undefined>,
+  options?: Parameters<typeof validateEnv>[2]
 ): BymaxConfigValidationError {
   try {
-    validateEnv(schema, source)
+    validateEnv(schema, source, options)
   } catch (error) {
     if (error instanceof BymaxConfigValidationError) return error
     throw error
@@ -217,6 +218,74 @@ describe('validateEnv constraint descriptions', () => {
     expect(issues.get('LIMITS_COUNT')?.message).toBe('out of range (expected: number >= 10)')
     expect(issues.get('LIMITS_CAP')?.message).toBe('out of range (expected: number <= 5)')
     expect(issues.get('LIMITS_RATIO')?.message).toBe('invalid value')
+  })
+})
+
+describe('validateEnv strict mode', () => {
+  it('flags a prefixed variable that matches no declared leaf', () => {
+    /**
+     * Unknown-key detection.
+     *
+     * A variable under a declared namespace prefix but with no matching leaf
+     * (DATABASE_TYPO) is an operator mistake; strict mode surfaces it as a
+     * BYMAX_CONFIG_UNKNOWN_KEY issue naming the namespace.
+     */
+    const error = captureError(
+      appSchema,
+      { ...validSource, DATABASE_TYPO: 'oops' },
+      { strict: true }
+    )
+    const issues = issuesByVariable(error)
+
+    expect(issues.get('DATABASE_TYPO')?.code).toBe(ConfigErrorCode.UNKNOWN_KEY)
+    expect(issues.get('DATABASE_TYPO')?.path).toBe('database')
+  })
+
+  it('ignores variables that match no declared namespace prefix', () => {
+    /**
+     * Prefix gate.
+     *
+     * Unrelated process variables such as PATH and HOME never match a declared
+     * prefix, so strict mode leaves them untouched and validation succeeds.
+     */
+    const config = validateEnv(
+      appSchema,
+      { ...validSource, PATH: '/usr/bin', HOME: '/home/app' },
+      { strict: true }
+    )
+
+    expect(config.database.url).toBe('https://db.example.com')
+  })
+
+  it('stays silent about unknown variables when strict is omitted', () => {
+    /**
+     * Default leniency.
+     *
+     * Without strict mode, a prefixed-but-undeclared variable is tolerated and
+     * the configuration validates successfully.
+     */
+    const config = validateEnv(appSchema, { ...validSource, DATABASE_TYPO: 'oops' })
+
+    expect(config.database.url).toBe('https://db.example.com')
+  })
+
+  it('aggregates unknown-key issues together with missing and invalid ones', () => {
+    /**
+     * Combined aggregation.
+     *
+     * A single strict run must report missing, invalid, and unknown-key issues
+     * together so the operator resolves every problem at once.
+     */
+    const error = captureError(
+      appSchema,
+      { AUTH_JWT_SECRET: 'short', LEGACY_AUTH_KEY: 'k', DATABASE_TYPO: 'oops' },
+      { strict: true }
+    )
+    const issues = issuesByVariable(error)
+
+    expect(issues.get('DATABASE_URL')?.code).toBe(ConfigErrorCode.MISSING)
+    expect(issues.get('AUTH_JWT_SECRET')?.code).toBe(ConfigErrorCode.INVALID)
+    expect(issues.get('DATABASE_TYPO')?.code).toBe(ConfigErrorCode.UNKNOWN_KEY)
   })
 })
 

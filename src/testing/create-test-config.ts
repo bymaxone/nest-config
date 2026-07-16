@@ -78,7 +78,11 @@ function applyOverrides<TShape extends EnvShape>(
     const value = flat.get(binding.path)
     if (value !== undefined) entries.set(binding.variable, String(value))
   }
-  return Object.fromEntries(entries)
+  // Null-prototype record so a meta({ env }) override named `__proto__` stays a
+  // plain data key (consistent with the synthesizer) and cannot mutate a prototype.
+  const source = Object.create(null) as Record<string, string>
+  for (const [variable, value] of entries) source[variable] = value
+  return source
 }
 
 /**

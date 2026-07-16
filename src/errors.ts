@@ -51,7 +51,7 @@ export type ConfigIssueCode =
  * without leaking a secret.
  */
 export interface ConfigIssue {
-  /** Nested config path, e.g. `database.url`. */
+  /** Nested config path, e.g. `database.url`; the namespace alone (e.g. `database`) for an unknown-key issue. */
   readonly path: string
   /** Resolved environment variable name, e.g. `DATABASE_URL`. */
   readonly variable: string

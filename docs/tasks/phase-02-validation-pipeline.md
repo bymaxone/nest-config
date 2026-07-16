@@ -129,7 +129,7 @@ Completion Protocol (after you finish):
 
 ### Task 2.2: Report formatter
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: 2.1
@@ -202,7 +202,7 @@ Completion Protocol (after you finish):
 
 ### Task 2.3: Validator: single-pass parse + issue aggregation
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: 2.1
@@ -282,7 +282,7 @@ Completion Protocol (after you finish):
 
 ### Task 2.4: Strict mode: undeclared-variable detection
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P1
 - **Size**: S
 - **Depends on**: 2.3

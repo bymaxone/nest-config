@@ -139,14 +139,15 @@ describe('formatIssueReport value-free guarantee', () => {
      * nowhere in the report, the error message, or the serialized error.
      */
     const sentinel = 'SUPER_SECRET_VALUE_123'
-    const issues: ConfigIssue[] = [
+    const issues = [
       {
         path: 'auth.jwtSecret',
         variable: 'AUTH_JWT_SECRET',
         code: ConfigErrorCode.INVALID,
-        message: 'too short (expected: string, minimum 32 characters)'
+        message: 'too short (expected: string, minimum 32 characters)',
+        value: sentinel
       }
-    ]
+    ] as unknown as ConfigIssue[]
 
     const report = formatIssueReport(issues)
     const error = new BymaxConfigValidationError(issues)

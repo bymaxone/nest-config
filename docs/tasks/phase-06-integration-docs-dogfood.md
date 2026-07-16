@@ -1,6 +1,6 @@
 # Phase 6: integration-docs-dogfood
 
-> **Status**: 📋 ToDo · **Progress**: 0 / 5 tasks · **Last updated**: 2026-07-06
+> **Status**: 🔄 In Progress · **Progress**: 1 / 5 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P6)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §10, §11, §13
 
@@ -33,13 +33,13 @@ Phase 5 is merged; every public surface is frozen. No API changes are allowed he
 
 ## Task index
 
-| ID | Task | Status | Priority | Size | Depends on |
-|---|---|---|---|---|---|
-| 6.1 | Branch + e2e fixture app + success/failure/async boot specs against the packed artifact | 📋 ToDo | P0 | M | none |
-| 6.2 | Full README (quick start, API reference, error catalog, testing guide) | 📋 ToDo | P0 | M | 6.1 |
-| 6.3 | CHANGELOG first entry + budget recalibration | 📋 ToDo | P1 | S | 6.1 |
-| 6.4 | prepublishOnly chain + dogfood verification | 📋 ToDo | P0 | S | 6.2, 6.3 |
-| 6.5 | Phase close: gates, dashboards, PR with Copilot review | 📋 ToDo | P0 | S | 6.4 |
+| ID  | Task                                                                                    | Status  | Priority | Size | Depends on |
+| --- | --------------------------------------------------------------------------------------- | ------- | -------- | ---- | ---------- |
+| 6.1 | Branch + e2e fixture app + success/failure/async boot specs against the packed artifact | ✅ Done | P0       | M    | none       |
+| 6.2 | Full README (quick start, API reference, error catalog, testing guide)                  | 📋 ToDo | P0       | M    | 6.1        |
+| 6.3 | CHANGELOG first entry + budget recalibration                                            | 📋 ToDo | P1       | S    | 6.1        |
+| 6.4 | prepublishOnly chain + dogfood verification                                             | 📋 ToDo | P0       | S    | 6.2, 6.3   |
+| 6.5 | Phase close: gates, dashboards, PR with Copilot review                                  | 📋 ToDo | P0       | S    | 6.4        |
 
 ---
 
@@ -47,7 +47,7 @@ Phase 5 is merged; every public surface is frozen. No API changes are allowed he
 
 ### Task 6.1: Branch + e2e fixture app + boot specs against the packed artifact
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: none
@@ -58,11 +58,11 @@ Create the phase branch and the e2e suite: a realistic fixture application consu
 
 #### Acceptance criteria
 
-- [ ] e2e specs import from `@bymax-one/nest-config` resolved through the built package (packed tarball installed into the e2e fixture, or dist-mapped exports), never `src/` aliases.
-- [ ] Success path: fixture app module (spec §13 shape) boots, feature provider reads typed values.
-- [ ] Failure path: incomplete source rejects bootstrap with the aggregated report; assertion pins issue count and absence of raw values.
-- [ ] Async path: `forRootAsync` composing `process.env`-shaped source with a fixture secrets provider.
-- [ ] e2e wired as a separate jest project/config, still sequential with bounded workers.
+- [x] e2e specs import from `@bymax-one/nest-config` resolved through the built package (packed tarball installed into the e2e fixture, or dist-mapped exports), never `src/` aliases.
+- [x] Success path: fixture app module (spec §13 shape) boots, feature provider reads typed values.
+- [x] Failure path: incomplete source rejects bootstrap with the aggregated report; assertion pins issue count and absence of raw values.
+- [x] Async path: `forRootAsync` composing `process.env`-shaped source with a fixture secrets provider.
+- [x] e2e wired as a separate jest project/config, still sequential with bounded workers.
 
 #### Files to create / modify
 
@@ -70,7 +70,7 @@ Create the phase branch and the e2e suite: a realistic fixture application consu
 
 #### Agent prompt
 
-````
+```
 You are a senior NestJS quality engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11. This phase
@@ -119,7 +119,7 @@ Completion Protocol (after you finish):
 5. Update the P6 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `test(config): add e2e suite against the packed artifact (6.1)`.
-````
+```
 
 ---
 
@@ -147,7 +147,7 @@ Write the complete public README: value proposition, installation, quick start, 
 
 #### Agent prompt
 
-````
+```
 You are a senior open-source technical writer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11: Zod v4
@@ -199,7 +199,7 @@ Completion Protocol (after you finish):
 5. Update the P6 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `docs(config): write complete public README (6.2)`.
-````
+```
 
 ---
 
@@ -226,7 +226,7 @@ Write the `0.1.0` changelog entry (Keep a Changelog format) and recalibrate the 
 
 #### Agent prompt
 
-````
+```
 You are a senior release engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11.
@@ -268,7 +268,7 @@ Completion Protocol (after you finish):
 5. Update the P6 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `chore(config): finalize changelog and calibrate size budgets (6.3)`.
-````
+```
 
 ---
 
@@ -295,7 +295,7 @@ Wire and prove the full pre-publish gate: `prepublishOnly` runs typecheck, lint,
 
 #### Agent prompt
 
-````
+```
 You are a senior release engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11.
@@ -334,7 +334,7 @@ Completion Protocol (after you finish):
 5. Update the P6 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `chore(config): wire complete prepublishOnly gate (6.4)`.
-````
+```
 
 ---
 
@@ -361,7 +361,7 @@ Audit the phase Definition of Done, update all dashboards, open the phase PR, ob
 
 #### Agent prompt
 
-````
+```
 You are a senior release engineer closing a phase on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config. This task closes Phase 6 (integration-docs-dogfood).
@@ -407,10 +407,12 @@ Completion Protocol (after you finish):
 5. Update the P6 row and overall progress in docs/development_plan.md §1 and the folder index
    in docs/tasks/README.md.
 6. Final commit on main after merge: `docs(config): mark phase 6 complete (6.5)`.
-````
+```
 
 ---
 
 ## Completion log
 
 <!-- Append one line per completed task: - <id> ✅ YYYY-MM-DD <summary> -->
+
+- 6.1 ✅ 2026-07-16 e2e fixture app (env schema, feature provider, fixture secrets provider) with success, aggregated-failure, and forRootAsync boot specs, resolved through dist via jest.e2e.config.ts; CI gained the e2e step after build.

@@ -24,7 +24,7 @@
 ## 1. Progress Dashboard
 
 > **Overall progress: 6 / 8 phases (75%)**
-> **Active phase:** none
+> **Active phase:** P6
 > **Blocked phases:** none
 
 ### Phase Table
@@ -37,7 +37,7 @@
 | P3  | dynamic-module-di          | ✅     | 100%     | M    | 2026-07-16   |
 | P4  | typed-accessor             | ✅     | 100%     | S    | 2026-07-16   |
 | P5  | testing-subpath            | ✅     | 100%     | M    | 2026-07-16   |
-| P6  | integration-docs-dogfood   | 📋     | 0%       | M    | 2026-07-06   |
+| P6  | integration-docs-dogfood   | 🔄     | 20%      | M    | 2026-07-16   |
 | P7  | mutation-hardening-release | 📋     | 0%       | L    | 2026-07-06   |
 
 ---

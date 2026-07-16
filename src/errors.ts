@@ -7,6 +7,8 @@
  * @layer Error
  */
 
+import { formatIssueReport } from './report-formatter'
+
 /**
  * Frozen catalog of stable, machine-readable configuration error codes.
  *
@@ -59,19 +61,6 @@ export interface ConfigIssue {
   readonly message: string
 }
 
-const REPORT_HEADER = 'environment validation failed'
-
-/**
- * Summarize the issue count as the report header line.
- *
- * @param count - Number of collected issues.
- * @returns The header text with a correctly pluralized issue count.
- */
-function summarizeIssues(count: number): string {
-  const noun = count === 1 ? 'issue' : 'issues'
-  return `${REPORT_HEADER} (${count} ${noun})`
-}
-
 /**
  * Aggregated, value-free configuration validation error.
  *
@@ -105,7 +94,7 @@ export class BymaxConfigValidationError extends Error {
    * caller nor consumer code can mutate the reported list.
    */
   constructor(issues: ReadonlyArray<ConfigIssue>) {
-    super(summarizeIssues(issues.length))
+    super(formatIssueReport(issues))
     this.name = 'BymaxConfigValidationError'
     this.issues = Object.freeze([...issues])
     // Restore the prototype chain so `instanceof` holds across transpilation

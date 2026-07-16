@@ -1,6 +1,6 @@
 # Phase 2: validation-pipeline
 
-> **Status**: 🔄 In Progress · **Progress**: 1 / 5 tasks · **Last updated**: 2026-07-16
+> **Status**: 🔄 In Progress · **Progress**: 2 / 5 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P2)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §6, §1.5
 
@@ -39,7 +39,7 @@ Phase 1 is merged: `defineEnv`, source mapping, and `deepFreeze` are available. 
 | ID  | Task                                                                | Status  | Priority | Size | Depends on    |
 | --- | ------------------------------------------------------------------- | ------- | -------- | ---- | ------------- |
 | 2.1 | Branch + error codes + `ConfigIssue` + `BymaxConfigValidationError` | ✅ Done | P0       | M    | none          |
-| 2.2 | Report formatter (value-free, aligned, snapshot-pinned)             | 📋 ToDo | P0       | S    | 2.1           |
+| 2.2 | Report formatter (value-free, aligned, snapshot-pinned)             | ✅ Done | P0       | S    | 2.1           |
 | 2.3 | Validator: single-pass parse + issue aggregation                    | 📋 ToDo | P0       | M    | 2.1           |
 | 2.4 | Strict mode: undeclared-variable detection                          | 📋 ToDo | P1       | S    | 2.3           |
 | 2.5 | Phase close: gates, dashboards, PR with Copilot review              | 📋 ToDo | P0       | S    | 2.2, 2.3, 2.4 |
@@ -140,10 +140,10 @@ Implement the multi-line human-readable report attached to `BymaxConfigValidatio
 
 #### Acceptance criteria
 
-- [ ] Formatter produces the exact layout of spec §6.1 (header, aligned issue lines, footer).
-- [ ] Snapshot test pins the format for a representative multi-issue case.
-- [ ] A test feeds sources containing sentinel secret values and asserts none appear anywhere in the output.
-- [ ] 100% coverage on the new file.
+- [x] Formatter produces the exact layout of spec §6.1 (header, aligned issue lines, footer).
+- [x] Snapshot test pins the format for a representative multi-issue case.
+- [x] A test feeds sources containing sentinel secret values and asserts none appear anywhere in the output.
+- [x] 100% coverage on the new file.
 
 #### Files to create / modify
 
@@ -431,3 +431,4 @@ Completion Protocol (after you finish):
 <!-- Append one line per completed task: - <id> ✅ YYYY-MM-DD <summary> -->
 
 - 2.1 ✅ 2026-07-16 Added the frozen error-code catalog, value-free ConfigIssue shape, and BymaxConfigValidationError with immutable issues and stable instanceof.
+- 2.2 ✅ 2026-07-16 Added the pure, value-free report formatter, snapshot-pinned to the spec §6.1 layout, and wired it into the error message.

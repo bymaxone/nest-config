@@ -23,9 +23,14 @@
 
 ## 1. Progress Dashboard
 
-> **Overall progress: 7 / 8 phases (88%)**
+> **Overall progress: 8 / 8 phases (100%)**
 > **Active phase:** none
 > **Blocked phases:** none
+>
+> Note: the live publish of v0.1.0 is a deferred manual go-live (make the
+> repository public, then push the `v0.1.0` tag) performed by the maintainer per
+> maintainer direction; the phase delivers the mutation gate, the public-gated
+> release wiring, and a verified publish dry run.
 
 ### Phase Table
 
@@ -38,7 +43,7 @@
 | P4  | typed-accessor             | ✅     | 100%     | S    | 2026-07-16   |
 | P5  | testing-subpath            | ✅     | 100%     | M    | 2026-07-16   |
 | P6  | integration-docs-dogfood   | ✅     | 100%     | M    | 2026-07-16   |
-| P7  | mutation-hardening-release | 📋     | 0%       | L    | 2026-07-06   |
+| P7  | mutation-hardening-release | ✅     | 100%     | L    | 2026-07-16   |
 
 ---
 

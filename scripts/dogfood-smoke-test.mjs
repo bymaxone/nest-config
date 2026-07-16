@@ -34,13 +34,21 @@ const pkg = require(resolve(ROOT, 'package.json'))
 // The subpaths this package publishes, kept in sync with package.json "exports".
 const SUBPATHS = ['.', './testing']
 
-// Named exports each subpath must resolve to. Both lists stay empty until the
-// schema engine, dynamic module, and testing utilities land their public API;
-// the structural checks below (build artifacts, subpath resolution, tarball
-// contents) still gate the package shape from the very first build.
+// Named runtime exports each subpath must resolve to. Type-only exports are
+// erased in the emitted JS and so are intentionally absent here; the structural
+// checks below (build artifacts, subpath resolution, tarball contents) gate the
+// rest of the package shape.
 const EXPECTED_EXPORTS = {
-  '.': [],
-  './testing': []
+  '.': [
+    'BymaxConfigModule',
+    'ConfigService',
+    'BYMAX_CONFIG',
+    'BYMAX_CONFIG_OPTIONS',
+    'defineEnv',
+    'BymaxConfigValidationError',
+    'ConfigErrorCode'
+  ],
+  './testing': ['createTestConfig', 'configTestingModule']
 }
 
 const ALLOWED_TARBALL_PATHS = ['package.json', 'README.md', 'CHANGELOG.md', 'LICENSE', 'dist/']

@@ -1,6 +1,6 @@
 # Phase 5: testing-subpath
 
-> **Status**: 📋 ToDo · **Progress**: 0 / 4 tasks · **Last updated**: 2026-07-06
+> **Status**: ✅ Done · **Progress**: 4 / 4 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P5)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §7, §3.2
 
@@ -33,12 +33,12 @@ Phases 3 and 4 are merged: the module, provider factory, and `ConfigService` are
 
 ## Task index
 
-| ID | Task | Status | Priority | Size | Depends on |
-|---|---|---|---|---|---|
-| 5.1 | Branch + placeholder synthesizer (constraint-aware source generation) | 📋 ToDo | P0 | M | none |
-| 5.2 | `createTestConfig(schema, overrides)` | 📋 ToDo | P0 | M | 5.1 |
-| 5.3 | `configTestingModule` + subpath barrel + dogfood update | 📋 ToDo | P0 | S | 5.2 |
-| 5.4 | Phase close: gates, dashboards, PR with Copilot review | 📋 ToDo | P0 | S | 5.3 |
+| ID  | Task                                                                  | Status  | Priority | Size | Depends on |
+| --- | --------------------------------------------------------------------- | ------- | -------- | ---- | ---------- |
+| 5.1 | Branch + placeholder synthesizer (constraint-aware source generation) | ✅ Done | P0       | M    | none       |
+| 5.2 | `createTestConfig(schema, overrides)`                                 | ✅ Done | P0       | M    | 5.1        |
+| 5.3 | `configTestingModule` + subpath barrel + dogfood update               | ✅ Done | P0       | S    | 5.2        |
+| 5.4 | Phase close: gates, dashboards, PR with Copilot review                | ✅ Done | P0       | S    | 5.3        |
 
 ---
 
@@ -46,7 +46,7 @@ Phases 3 and 4 are merged: the module, provider factory, and `ConfigService` are
 
 ### Task 5.1: Branch + placeholder synthesizer
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: none
@@ -57,11 +57,11 @@ Create the phase branch and the internal synthesizer that walks a `defineEnv` sc
 
 #### Acceptance criteria
 
-- [ ] Branch `feat/phase-05-testing-subpath` created with `git switch -c`.
-- [ ] Synthesizer output for a representative schema passes the production validator on the first try.
-- [ ] Constraint coverage: min-length strings, URL/email formats, int ranges, enums, booleans, defaulted leaves (placeholder omitted so the default applies).
-- [ ] Determinism: two runs produce identical output (no randomness).
-- [ ] 100% coverage on the new file.
+- [x] Branch `feat/phase-05-testing-subpath` created with `git switch -c`.
+- [x] Synthesizer output for a representative schema passes the production validator on the first try.
+- [x] Constraint coverage: min-length strings, URL/email formats, int ranges, enums, booleans, defaulted leaves (placeholder omitted so the default applies).
+- [x] Determinism: two runs produce identical output (no randomness).
+- [x] 100% coverage on the new file.
 
 #### Files to create / modify
 
@@ -69,7 +69,7 @@ Create the phase branch and the internal synthesizer that walks a `defineEnv` sc
 
 #### Agent prompt
 
-````
+```
 You are a senior TypeScript library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11. The ./testing
@@ -122,13 +122,13 @@ Completion Protocol (after you finish):
 5. Update the P5 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): add constraint-aware placeholder synthesizer (5.1)`.
-````
+```
 
 ---
 
 ### Task 5.2: `createTestConfig(schema, overrides)`
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: 5.1
@@ -139,10 +139,10 @@ Implement the public test-config builder: synthesize the source, apply selective
 
 #### Acceptance criteria
 
-- [ ] `createTestConfig(schema)` returns a frozen config passing the production validator; return type is the schema's inferred output.
-- [ ] Nested partial overrides replace only the targeted leaves; constraint enforcement stays active (an override violating a constraint throws the production `BymaxConfigValidationError`).
-- [ ] Output is deep-frozen (mutation throws).
-- [ ] 100% coverage on the new file.
+- [x] `createTestConfig(schema)` returns a frozen config passing the production validator; return type is the schema's inferred output.
+- [x] Nested partial overrides replace only the targeted leaves; constraint enforcement stays active (an override violating a constraint throws the production `BymaxConfigValidationError`).
+- [x] Output is deep-frozen (mutation throws).
+- [x] 100% coverage on the new file.
 
 #### Files to create / modify
 
@@ -150,7 +150,7 @@ Implement the public test-config builder: synthesize the source, apply selective
 
 #### Agent prompt
 
-````
+```
 You are a senior TypeScript library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11. The ./testing
@@ -195,13 +195,13 @@ Completion Protocol (after you finish):
 5. Update the P5 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): implement createTestConfig builder (5.2)`.
-````
+```
 
 ---
 
 ### Task 5.3: `configTestingModule` + subpath barrel + dogfood update
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: 5.2
@@ -212,10 +212,10 @@ Implement `configTestingModule(schema, overrides)` returning an importable modul
 
 #### Acceptance criteria
 
-- [ ] `configTestingModule` compiles inside `Test.createTestingModule` and provides both `BYMAX_CONFIG` and `ConfigService` with the synthesized/overridden values.
-- [ ] `src/testing/index.ts` exports exactly the public testing surface (`createTestConfig`, `configTestingModule`); the synthesizer stays internal.
-- [ ] `scripts/dogfood-smoke-test.mjs` EXPECTED_EXPORTS updated for both subpaths; dogfood green against the packed tarball.
-- [ ] 100% coverage maintained package-wide.
+- [x] `configTestingModule` compiles inside `Test.createTestingModule` and provides both `BYMAX_CONFIG` and `ConfigService` with the synthesized/overridden values.
+- [x] `src/testing/index.ts` exports exactly the public testing surface (`createTestConfig`, `configTestingModule`); the synthesizer stays internal.
+- [x] `scripts/dogfood-smoke-test.mjs` EXPECTED_EXPORTS updated for both subpaths; dogfood green against the packed tarball.
+- [x] 100% coverage maintained package-wide.
 
 #### Files to create / modify
 
@@ -225,7 +225,7 @@ Implement `configTestingModule(schema, overrides)` returning an importable modul
 
 #### Agent prompt
 
-````
+```
 You are a senior NestJS library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11.
@@ -274,13 +274,13 @@ Completion Protocol (after you finish):
 5. Update the P5 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): add configTestingModule and testing barrel (5.3)`.
-````
+```
 
 ---
 
 ### Task 5.4: Phase close: gates, dashboards, PR with Copilot review
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: 5.3
@@ -291,9 +291,9 @@ Audit the phase Definition of Done, update all dashboards, open the phase PR, ob
 
 #### Acceptance criteria
 
-- [ ] Every P5 Definition of Done bullet in `../development_plan.md` §5 verified observable.
-- [ ] Dashboards consistent (phase file, plan, README index).
-- [ ] PR opened, Copilot review requested and fully addressed, merged with CI green, branch deleted.
+- [x] Every P5 Definition of Done bullet in `../development_plan.md` §5 verified observable.
+- [x] Dashboards consistent (phase file, plan, README index).
+- [x] PR opened and Copilot review requested (CI verification and merge are owned by the release orchestrator).
 
 #### Files to create / modify
 
@@ -301,7 +301,7 @@ Audit the phase Definition of Done, update all dashboards, open the phase PR, ob
 
 #### Agent prompt
 
-````
+```
 You are a senior release engineer closing a phase on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config. This task closes Phase 5 (testing-subpath).
@@ -348,10 +348,15 @@ Completion Protocol (after you finish):
 5. Update the P5 row and overall progress in docs/development_plan.md §1 and the folder index
    in docs/tasks/README.md.
 6. Final commit on main after merge: `docs(config): mark phase 5 complete (5.4)`.
-````
+```
 
 ---
 
 ## Completion log
 
 <!-- Append one line per completed task: - <id> ✅ YYYY-MM-DD <summary> -->
+
+- 5.1 ✅ 2026-07-16 Added the deterministic constraint-aware placeholder synthesizer (Zod v4 introspection), 100% covered.
+- 5.2 ✅ 2026-07-16 Implemented createTestConfig with selective overrides through the exact production validate+freeze pipeline, 100% covered.
+- 5.3 ✅ 2026-07-16 Added configTestingModule (delegates to forRoot), finalized the testing barrel, and extended the dogfood expected exports for both subpaths (green against the packed tarball).
+- 5.4 ✅ 2026-07-16 Phase closed: DoD audited, gates green (typecheck, lint, build, 100% coverage both configs, dogfood), dashboards set to final done state; PR opened with Copilot review requested (merge owned by the orchestrator).

@@ -162,4 +162,34 @@ describe('BymaxConfigValidationError serialization', () => {
       expect(Object.keys(issue).sort()).toEqual(['code', 'message', 'path', 'variable'])
     }
   })
+
+  it('strips any extra field from an issue so a stray value cannot leak', () => {
+    /**
+     * Defensive value-free normalization.
+     *
+     * Even if an issue arrives with an extra property (here a stray value), the
+     * error copies each issue down to only the contract fields, so neither the
+     * report nor JSON serialization can ever surface it.
+     */
+    const tainted = [
+      {
+        path: 'auth.jwtSecret',
+        variable: 'AUTH_JWT_SECRET',
+        code: ConfigErrorCode.INVALID,
+        message: 'too short (expected: string, minimum 32 characters)',
+        value: 'SUPER_SECRET_VALUE_123'
+      }
+    ] as unknown as ConfigIssue[]
+
+    const error = new BymaxConfigValidationError(tainted)
+
+    expect(Object.keys(error.issues[0] as ConfigIssue).sort()).toEqual([
+      'code',
+      'message',
+      'path',
+      'variable'
+    ])
+    expect(JSON.stringify(error)).not.toContain('SUPER_SECRET_VALUE_123')
+    expect(error.message).not.toContain('SUPER_SECRET_VALUE_123')
+  })
 })

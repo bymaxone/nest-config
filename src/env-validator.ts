@@ -237,6 +237,8 @@ function detectUnknownKeys(
   const issues: ConfigIssue[] = []
   for (const key of source.keys()) {
     if (declared.has(key)) continue
+    // A key mapped to undefined represents an absent variable, not a stray one.
+    if (source.get(key) === undefined) continue
     const match = longestMatchingPrefix(prefixes, key)
     if (match === undefined) continue
     issues.push({

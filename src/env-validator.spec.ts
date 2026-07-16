@@ -312,6 +312,22 @@ describe('validateEnv strict mode', () => {
     expect(issues.get('DATABASE_TYPO')?.code).toBe(ConfigErrorCode.UNKNOWN_KEY)
   })
 
+  it('ignores a prefixed key whose value is undefined under strict mode', () => {
+    /**
+     * Absent-value tolerance.
+     *
+     * A key mapped to undefined represents an absent variable, not a stray one,
+     * so strict mode must not report it as an unknown key.
+     */
+    const config = validateEnv(
+      appSchema,
+      { ...validSource, DATABASE_TYPO: undefined },
+      { strict: true }
+    )
+
+    expect(config.database.url).toBe('https://db.example.com')
+  })
+
   it('attributes an unknown key to its most specific namespace when prefixes overlap', () => {
     /**
      * Longest-prefix match.

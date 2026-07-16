@@ -94,9 +94,21 @@ export class BymaxConfigValidationError extends Error {
    * caller nor consumer code can mutate the reported list.
    */
   constructor(issues: ReadonlyArray<ConfigIssue>) {
-    super(formatIssueReport(issues))
+    // Copy each issue into a fresh, frozen object carrying only the contract
+    // fields, so the value-free guarantee holds structurally: even an issue
+    // that arrives with an extra property cannot leak it through the report or
+    // through JSON serialization of the error.
+    const normalized = issues.map((issue) =>
+      Object.freeze({
+        path: issue.path,
+        variable: issue.variable,
+        code: issue.code,
+        message: issue.message
+      })
+    )
+    super(formatIssueReport(normalized))
     this.name = 'BymaxConfigValidationError'
-    this.issues = Object.freeze([...issues])
+    this.issues = Object.freeze(normalized)
     // Restore the prototype chain so `instanceof` holds across transpilation
     // targets and ESM/CJS realm boundaries.
     Object.setPrototypeOf(this, BymaxConfigValidationError.prototype)

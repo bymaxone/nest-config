@@ -1,6 +1,6 @@
 # Phase 0: repository-scaffold
 
-> **Status**: 🔄 In Progress · **Progress**: 3 / 6 tasks · **Last updated**: 2026-07-16
+> **Status**: 🔄 In Progress · **Progress**: 4 / 6 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P0)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §3, §9, §10, §11
 
@@ -37,14 +37,14 @@ At the start of this phase the repository contains only `docs/` and an empty `ma
 
 ## Task index
 
-| ID | Task | Status | Priority | Size | Depends on |
-|---|---|---|---|---|---|
-| 0.1 | Branch + `package.json` + pnpm install | ✅ Done | P0 | S | none |
-| 0.2 | Build config: tsconfig set + `tsup.config.ts` + placeholder barrels | ✅ Done | P0 | S | 0.1 |
-| 0.3 | Quality tooling: ESLint flat config, Prettier, jest configs, Stryker | ✅ Done | P0 | M | 0.2 |
-| 0.4 | Governance and community files: husky, commitlint, lint-staged, LICENSE, SECURITY, CONTRIBUTING, CODE_OF_CONDUCT, CHANGELOG, README skeleton | 📋 ToDo | P0 | M | 0.1 |
-| 0.5 | Scripts and workflows: `check-size.mjs`, `dogfood-smoke-test.mjs`, `ci.yml`, `codeql.yml`, `scorecard.yml`, `release.yml`, dependabot, issue templates | 📋 ToDo | P0 | L | 0.2, 0.3 |
-| 0.6 | Phase close: full-gate verification, dashboards, PR with Copilot review | 📋 ToDo | P0 | S | 0.1, 0.2, 0.3, 0.4, 0.5 |
+| ID  | Task                                                                                                                                                   | Status  | Priority | Size | Depends on              |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | -------- | ---- | ----------------------- |
+| 0.1 | Branch + `package.json` + pnpm install                                                                                                                 | ✅ Done | P0       | S    | none                    |
+| 0.2 | Build config: tsconfig set + `tsup.config.ts` + placeholder barrels                                                                                    | ✅ Done | P0       | S    | 0.1                     |
+| 0.3 | Quality tooling: ESLint flat config, Prettier, jest configs, Stryker                                                                                   | ✅ Done | P0       | M    | 0.2                     |
+| 0.4 | Governance and community files: husky, commitlint, lint-staged, LICENSE, SECURITY, CONTRIBUTING, CODE_OF_CONDUCT, CHANGELOG, README skeleton           | ✅ Done | P0       | M    | 0.1                     |
+| 0.5 | Scripts and workflows: `check-size.mjs`, `dogfood-smoke-test.mjs`, `ci.yml`, `codeql.yml`, `scorecard.yml`, `release.yml`, dependabot, issue templates | 📋 ToDo | P0       | L    | 0.2, 0.3                |
+| 0.6 | Phase close: full-gate verification, dashboards, PR with Copilot review                                                                                | 📋 ToDo | P0       | S    | 0.1, 0.2, 0.3, 0.4, 0.5 |
 
 ---
 
@@ -78,7 +78,7 @@ Create the phase working branch, author `package.json` under the `@bymax-one` sc
 
 #### Agent prompt
 
-````
+```
 You are a senior NestJS library release engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, a public npm package giving NestJS 11 applications a single,
@@ -140,7 +140,7 @@ Completion Protocol (after you finish):
 5. Update the P0 row in docs/development_plan.md §1 (Status, Progress, Last Updated) and the
    folder index in docs/tasks/README.md.
 6. Commit: `feat(config): scaffold package.json and workspace hygiene (0.1)`.
-````
+```
 
 ---
 
@@ -170,7 +170,7 @@ Copy the tsconfig family from `nest-logger`, adapt path aliases to the two subpa
 
 #### Agent prompt
 
-````
+```
 You are a senior NestJS library build engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11 (Zod v4,
@@ -224,7 +224,7 @@ Completion Protocol (after you finish):
 5. Update the P0 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): add build configuration and placeholder barrels (0.2)`.
-````
+```
 
 ---
 
@@ -255,7 +255,7 @@ Port the lint, format, test, and mutation tooling from the sibling: ESLint flat 
 
 #### Agent prompt
 
-````
+```
 You are a senior TypeScript quality engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11 (Zod v4,
@@ -311,13 +311,13 @@ Completion Protocol (after you finish):
 5. Update the P0 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): add lint, test, and mutation tooling (0.3)`.
-````
+```
 
 ---
 
 ### Task 0.4: Governance and community files
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: 0.1
@@ -328,12 +328,12 @@ Add local commit governance (husky hooks, commitlint, lint-staged, `.gitmessage`
 
 #### Acceptance criteria
 
-- [ ] `.husky/pre-commit` runs lint-staged; `.husky/commit-msg` runs commitlint; `prepare` script wires husky.
-- [ ] `commitlint.config.cjs` extends the conventional config; `.gitmessage` lists the package scopes.
-- [ ] `lint-staged` block in `package.json` runs `eslint --fix` + `prettier --write`.
-- [ ] `LICENSE` MIT, `SECURITY.md` with private reporting instructions, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` referencing (not transcribing) Contributor Covenant 2.1, `CHANGELOG.md` with an Unreleased section.
-- [ ] `README.md` skeleton: title, one-paragraph value proposition, badge row (CI, coverage, npm version, license), Installation and Quick start stubs marked as completed in a later phase by content, not by placeholder text.
-- [ ] A deliberately malformed commit message is rejected locally by the commit-msg hook.
+- [x] `.husky/pre-commit` runs lint-staged; `.husky/commit-msg` runs commitlint; `prepare` script wires husky.
+- [x] `commitlint.config.cjs` extends the conventional config; `.gitmessage` lists the package scopes.
+- [x] `lint-staged` block in `package.json` runs `eslint --fix` + `prettier --write`.
+- [x] `LICENSE` MIT, `SECURITY.md` with private reporting instructions, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` referencing (not transcribing) Contributor Covenant 2.1, `CHANGELOG.md` with an Unreleased section.
+- [x] `README.md` skeleton: title, one-paragraph value proposition, badge row (CI, coverage, npm version, license), Installation and Quick start stubs marked as completed in a later phase by content, not by placeholder text.
+- [x] A deliberately malformed commit message is rejected locally by the commit-msg hook.
 
 #### Files to create / modify
 
@@ -343,7 +343,7 @@ Add local commit governance (husky hooks, commitlint, lint-staged, `.gitmessage`
 
 #### Agent prompt
 
-````
+```
 You are a senior open-source maintainer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11 (Zod v4,
@@ -400,7 +400,7 @@ Completion Protocol (after you finish):
 5. Update the P0 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `chore(config): add commit governance and community files (0.4)`.
-````
+```
 
 ---
 
@@ -432,7 +432,7 @@ Add the quality scripts (`check-size.mjs` brotli budget gate, `dogfood-smoke-tes
 
 #### Agent prompt
 
-````
+```
 You are a senior CI/CD engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11. Public npm
@@ -488,7 +488,7 @@ Completion Protocol (after you finish):
 5. Update the P0 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `ci(config): add quality scripts and GitHub workflows (0.5)`.
-````
+```
 
 ---
 
@@ -519,7 +519,7 @@ Audit every Definition of Done item of the phase, update all dashboards, open th
 
 #### Agent prompt
 
-````
+```
 You are a senior release engineer closing a phase on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11. Public npm
@@ -576,13 +576,15 @@ Completion Protocol (after you finish):
 5. Update the P0 row and overall progress in docs/development_plan.md §1 and the folder index
    in docs/tasks/README.md.
 6. Final commit on main after merge: `docs(config): mark phase 0 complete (0.6)`.
-````
+```
 
 ---
 
 ## Completion log
 
 <!-- Append one line per completed task: - <id> ✅ YYYY-MM-DD <summary> -->
+
 - 0.1 ✅ 2026-07-16 package.json (two subpaths, zero deps, required peers), .gitignore, .npmrc, pnpm install clean
 - 0.2 ✅ 2026-07-16 tsconfig set, tsup.config.ts (two entries), placeholder barrels; typecheck and build green
 - 0.3 ✅ 2026-07-16 eslint.config.mjs (extended denied-import list), prettier, both jest configs at 100% threshold, stryker.config.json; lint and test green
+- 0.4 ✅ 2026-07-16 husky pre-commit/commit-msg, commitlint, lint-staged, LICENSE, SECURITY, CONTRIBUTING, CODE_OF_CONDUCT, CHANGELOG, README skeleton; malformed commit rejected locally

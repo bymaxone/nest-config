@@ -123,9 +123,8 @@ function readStringLengths(def: LeafDefinition): { min: number; max: number; exa
   return exact === undefined ? { min, max } : { min, max, exact }
 }
 
-/** The fixed head and tail of a synthesized URL: `https://<host>.lo`. */
-const URL_PREFIX = 'https://'
-const URL_SUFFIX = '.lo'
+/** The scheme of a synthesized URL; `http` keeps the shortest value small. */
+const URL_PREFIX = 'http://'
 
 /** The fixed tail of a synthesized email: `<local>@a.lo`. */
 const EMAIL_SUFFIX = '@a.lo'
@@ -145,12 +144,15 @@ function clampLength(preferred: number, min: number, max: number): number {
 /**
  * Build a syntactically valid URL of the requested character length.
  *
+ * Uses an `http://<filler>` host so the shortest value (`http://a`) is eight
+ * characters, matching the shortest URL the validator accepts.
+ *
  * @param target - The desired total length.
- * @returns A URL shaped `https://<filler>.lo` sized to `target`.
+ * @returns A URL shaped `http://<filler>` sized to `target`.
  */
 function urlOfLength(target: number): string {
-  const hostFill = Math.max(target - (URL_PREFIX.length + URL_SUFFIX.length), 1)
-  return `${URL_PREFIX}${FILLER_CHARACTER.repeat(hostFill)}${URL_SUFFIX}`
+  const hostFill = Math.max(target - URL_PREFIX.length, 1)
+  return `${URL_PREFIX}${FILLER_CHARACTER.repeat(hostFill)}`
 }
 
 /**
@@ -249,10 +251,11 @@ function selectNumber(bounds: {
   const { lower, upper, integer } = bounds
   if (lower !== undefined && upper !== undefined) {
     if (integer) {
-      // Convert exclusive bounds to the nearest inclusive integer so the floored
-      // midpoint cannot land on an excluded edge (e.g. gt(0).max(1) -> [1, 1]).
-      const lo = bounds.lowerExclusive ? lower + 1 : lower
-      const hi = bounds.upperExclusive ? upper - 1 : upper
+      // Derive the admissible integer window from the (possibly fractional)
+      // bounds, respecting exclusivity, so the chosen integer is always inside
+      // the range: gt(0).max(1) -> [1,1]; min(1.1).max(2.2) -> [2,2].
+      const lo = bounds.lowerExclusive ? Math.floor(lower) + 1 : Math.ceil(lower)
+      const hi = bounds.upperExclusive ? Math.ceil(upper) - 1 : Math.floor(upper)
       return Math.floor((lo + hi) / 2)
     }
     // Floats: the midpoint of any interval is strictly inside it, so it

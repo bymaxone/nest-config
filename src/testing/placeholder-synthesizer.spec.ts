@@ -126,7 +126,8 @@ describe('synthesizePlaceholderSource', () => {
         plain: z.coerce.number(),
         gtIntMax: z.coerce.number().int().gt(0).max(1),
         minIntLt: z.coerce.number().int().min(2).lt(10),
-        gtIntLt: z.coerce.number().int().gt(0).lt(4)
+        gtIntLt: z.coerce.number().int().gt(0).lt(4),
+        fracInt: z.coerce.number().int().min(1.1).max(2.2)
       })
     })
     const source = synthesizePlaceholderSource(schema)
@@ -151,6 +152,8 @@ describe('synthesizePlaceholderSource', () => {
     expect(num('NUMS_GT_INT_LT')).toBeGreaterThan(0)
     expect(num('NUMS_GT_INT_LT')).toBeLessThan(4)
     expect(Number.isInteger(num('NUMS_GT_INT_LT'))).toBe(true)
+    // Fractional bounds on an integer leaf: only 2 satisfies min 1.1 and max 2.2.
+    expect(num('NUMS_FRAC_INT')).toBe(2)
   })
 
   it('honors min, max, and exact lengths for url and email formats', () => {
@@ -162,7 +165,8 @@ describe('synthesizePlaceholderSource', () => {
         plain: z.url(),
         capped: z.url().max(20),
         exact: z.url().length(30),
-        long: z.url().min(40)
+        long: z.url().min(40),
+        tiny: z.url().max(10)
       }),
       emails: z.object({
         plain: z.email(),
@@ -188,6 +192,7 @@ describe('synthesizePlaceholderSource', () => {
     check('URLS_CAPPED', z.url(), { max: 20 })
     check('URLS_EXACT', z.url(), { exact: 30 })
     check('URLS_LONG', z.url(), { min: 40 })
+    check('URLS_TINY', z.url(), { max: 10 })
     check('EMAILS_PLAIN', z.email(), {})
     check('EMAILS_CAPPED', z.email(), { max: 15 })
     check('EMAILS_EXACT', z.email(), { exact: 28 })

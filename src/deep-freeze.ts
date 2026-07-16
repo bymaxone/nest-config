@@ -18,7 +18,7 @@ function isFreezable(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Deep-freeze a value, returning it as deeply readonly.
+ * Deep-freeze a value through every nested level at runtime.
  *
  * Freezes the value and every nested object and array reachable through its own
  * enumerable properties. Primitives, null, and already-frozen nodes are returned
@@ -27,7 +27,8 @@ function isFreezable(value: unknown): value is Record<string, unknown> {
  *
  * @typeParam T - The type of the value being frozen.
  * @param value - The value to deep-freeze.
- * @returns The same reference, typed as deeply immutable.
+ * @returns The same reference, deeply frozen at runtime; the compile-time type
+ * is `Readonly<T>`, which is shallow at the type level.
  * @example
  * ```typescript
  * const config = deepFreeze({ server: { port: 3000 } });

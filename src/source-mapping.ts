@@ -68,7 +68,7 @@ function deriveVariable(namespace: string, leafKey: string): string {
  * order.
  *
  * @param schema - A schema produced by `defineEnv`.
- * @returns The ordered, immutable list of leaf-to-variable bindings.
+ * @returns The ordered list of leaf-to-variable bindings, typed `readonly`.
  * @example
  * ```typescript
  * const schema = defineEnv({ database: z.object({ url: z.url() }) });

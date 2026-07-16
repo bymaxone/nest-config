@@ -1,6 +1,6 @@
 # Phase 0: repository-scaffold
 
-> **Status**: 🔄 In Progress · **Progress**: 2 / 6 tasks · **Last updated**: 2026-07-16
+> **Status**: 🔄 In Progress · **Progress**: 3 / 6 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P0)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §3, §9, §10, §11
 
@@ -41,7 +41,7 @@ At the start of this phase the repository contains only `docs/` and an empty `ma
 |---|---|---|---|---|---|
 | 0.1 | Branch + `package.json` + pnpm install | ✅ Done | P0 | S | none |
 | 0.2 | Build config: tsconfig set + `tsup.config.ts` + placeholder barrels | ✅ Done | P0 | S | 0.1 |
-| 0.3 | Quality tooling: ESLint flat config, Prettier, jest configs, Stryker | 📋 ToDo | P0 | M | 0.2 |
+| 0.3 | Quality tooling: ESLint flat config, Prettier, jest configs, Stryker | ✅ Done | P0 | M | 0.2 |
 | 0.4 | Governance and community files: husky, commitlint, lint-staged, LICENSE, SECURITY, CONTRIBUTING, CODE_OF_CONDUCT, CHANGELOG, README skeleton | 📋 ToDo | P0 | M | 0.1 |
 | 0.5 | Scripts and workflows: `check-size.mjs`, `dogfood-smoke-test.mjs`, `ci.yml`, `codeql.yml`, `scorecard.yml`, `release.yml`, dependabot, issue templates | 📋 ToDo | P0 | L | 0.2, 0.3 |
 | 0.6 | Phase close: full-gate verification, dashboards, PR with Copilot review | 📋 ToDo | P0 | S | 0.1, 0.2, 0.3, 0.4, 0.5 |
@@ -230,7 +230,7 @@ Completion Protocol (after you finish):
 
 ### Task 0.3: Quality tooling: ESLint flat config, Prettier, jest configs, Stryker
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: 0.2
@@ -241,11 +241,11 @@ Port the lint, format, test, and mutation tooling from the sibling: ESLint flat 
 
 #### Acceptance criteria
 
-- [ ] `eslint.config.mjs` (flat, v9) adapted from the sibling; `no-restricted-imports` bans `dotenv`, bare `crypto`, `bcrypt`, `argon2`, `uuid`, `nanoid`, `crypto-js`, `axios`, `moment`, `lodash`; `@typescript-eslint/no-explicit-any` is an error.
-- [ ] `.prettierrc` + `.prettierignore` present (lockfile guarded).
-- [ ] Both jest configs (day-to-day and `test:cov:all` release config) enforce `coverageThreshold` 100/100/100/100 and set `maxWorkers: '50%'`; `passWithNoTests` enabled until first specs land.
-- [ ] `stryker.config.json` present with thresholds `high: 99, low: 95, break: 95`, jest runner.
-- [ ] `pnpm lint` passes on the placeholder sources.
+- [x] `eslint.config.mjs` (flat, v9) adapted from the sibling; `no-restricted-imports` bans `dotenv`, bare `crypto`, `bcrypt`, `argon2`, `uuid`, `nanoid`, `crypto-js`, `axios`, `moment`, `lodash`; `@typescript-eslint/no-explicit-any` is an error.
+- [x] `.prettierrc` + `.prettierignore` present (lockfile guarded).
+- [x] Both jest configs (day-to-day and `test:cov:all` release config) enforce `coverageThreshold` 100/100/100/100 and set `maxWorkers: '50%'`; `passWithNoTests` enabled until first specs land.
+- [x] `stryker.config.json` present with thresholds `high: 99, low: 95, break: 95`, jest runner.
+- [x] `pnpm lint` passes on the placeholder sources.
 
 #### Files to create / modify
 
@@ -585,3 +585,4 @@ Completion Protocol (after you finish):
 <!-- Append one line per completed task: - <id> ✅ YYYY-MM-DD <summary> -->
 - 0.1 ✅ 2026-07-16 package.json (two subpaths, zero deps, required peers), .gitignore, .npmrc, pnpm install clean
 - 0.2 ✅ 2026-07-16 tsconfig set, tsup.config.ts (two entries), placeholder barrels; typecheck and build green
+- 0.3 ✅ 2026-07-16 eslint.config.mjs (extended denied-import list), prettier, both jest configs at 100% threshold, stryker.config.json; lint and test green

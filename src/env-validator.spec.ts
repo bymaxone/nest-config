@@ -175,10 +175,10 @@ describe('validateEnv aggregation', () => {
     /**
      * Deterministic collapse.
      *
-     * A leaf can fail more than one Zod check at once (here both the minimum
-     * and the maximum length). The report shows one line per variable, so the
-     * validator keeps a single issue for that leaf rather than one line per
-     * failed check.
+     * A leaf can fail more than one Zod check at once (here both a minimum
+     * length and a required pattern). The report shows one line per variable,
+     * so the validator keeps a single issue for that leaf rather than one line
+     * per failed check.
      */
     const boundedSchema = defineEnv({
       token: z.object({

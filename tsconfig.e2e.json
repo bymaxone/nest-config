@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.jest.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "paths": {
+      "@bymax-one/nest-config": ["./dist/index.d.ts"],
+      "@bymax-one/nest-config/testing": ["./dist/testing/index.d.ts"]
+    }
+  },
+  "include": ["test/e2e/**/*"],
+  "exclude": ["node_modules"]
+}

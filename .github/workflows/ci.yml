@@ -110,3 +110,10 @@ jobs:
         # Zero-dependency brotli-size gate over the built .mjs subpaths.
         # See scripts/check-size.mjs for budgets and rationale.
         run: pnpm size
+
+      - name: E2E tests against the built package
+        # Boots a realistic fixture application through the compiled dist/
+        # artifacts (never src/ aliases). See jest.e2e.config.ts for the
+        # resolution mechanism. Runs after the build step on purpose: it
+        # proves the shipped bundle, not the source tree.
+        run: pnpm test:e2e

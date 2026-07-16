@@ -1,6 +1,6 @@
 # Phase 1: schema-engine
 
-> **Status**: 🔄 In Progress · **Progress**: 1 / 5 tasks · **Last updated**: 2026-07-16
+> **Status**: 🔄 In Progress · **Progress**: 2 / 5 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P1)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §4.1, §4.2, §1.5
 
@@ -38,7 +38,7 @@ At the start of this phase the repository has the full Phase 0 toolchain on `mai
 | ID  | Task                                                                                           | Status  | Priority | Size | Depends on    |
 | --- | ---------------------------------------------------------------------------------------------- | ------- | -------- | ---- | ------------- |
 | 1.1 | Branch + core types (`EnvSchema`, shape constraints, `ConfigIssueCode` placeholder-free types) | ✅ Done | P0       | S    | none          |
-| 1.2 | `defineEnv(shape)` factory + inferred-type helper                                              | 📋 ToDo | P0       | M    | 1.1           |
+| 1.2 | `defineEnv(shape)` factory + inferred-type helper                                              | ✅ Done | P0       | M    | 1.1           |
 | 1.3 | Source-name mapping: path derivation + `meta({ env })` override                                | 📋 ToDo | P0       | M    | 1.2           |
 | 1.4 | `deepFreeze` utility                                                                           | 📋 ToDo | P0       | S    | 1.1           |
 | 1.5 | Phase close: gates, dashboards, PR with Copilot review                                         | 📋 ToDo | P0       | S    | 1.2, 1.3, 1.4 |
@@ -127,7 +127,7 @@ Completion Protocol (after you finish):
 
 ### Task 1.2: `defineEnv(shape)` factory + inferred-type helper
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: 1.1
@@ -138,11 +138,11 @@ Implement `defineEnv`, the thin typed factory over `z.object(...)` that establis
 
 #### Acceptance criteria
 
-- [ ] `src/define-env.ts` exports `defineEnv(shape)` returning the composed Zod schema augmented with the `infer` type helper; runtime value is the schema itself.
-- [ ] Accepts nested Zod v4 namespaces exactly as in spec §4.1; rejects non-object top-level entries at the type level.
-- [ ] `typeof envSchema.infer` equals the Zod-inferred output type (pinned by type tests).
-- [ ] No schema mutation: the caller's shape objects are reused, not cloned or wrapped with extra behavior.
-- [ ] 100% coverage on the new file; specs follow TDD order.
+- [x] `src/define-env.ts` exports `defineEnv(shape)` returning the composed Zod schema augmented with the `infer` type helper; runtime value is the schema itself.
+- [x] Accepts nested Zod v4 namespaces exactly as in spec §4.1; rejects non-object top-level entries at the type level.
+- [x] `typeof envSchema.infer` equals the Zod-inferred output type (pinned by type tests).
+- [x] No schema mutation: the caller's shape objects are reused, not cloned or wrapped with extra behavior.
+- [x] 100% coverage on the new file; specs follow TDD order.
 
 #### Files to create / modify
 
@@ -428,3 +428,4 @@ Completion Protocol (after you finish):
 <!-- Append one line per completed task: - <id> ✅ YYYY-MM-DD <summary> -->
 
 - 1.1 ✅ 2026-07-16 Added foundational schema shape types (EnvShape, EnvNamespace, EnvLeaf, EnvOutput, EnvSchema) with compile-time type tests; removed passWithNoTests from both jest configs.
+- 1.2 ✅ 2026-07-16 Implemented defineEnv factory composing namespaces into one Zod object with the infer phantom; reuses caller schemas unchanged; exported from the server barrel.

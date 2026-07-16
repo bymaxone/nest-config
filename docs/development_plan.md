@@ -34,7 +34,7 @@
 | P0  | repository-scaffold        | ✅     | 100%     | M    | 2026-07-16   |
 | P1  | schema-engine              | ✅     | 100%     | M    | 2026-07-16   |
 | P2  | validation-pipeline        | ✅     | 100%     | M    | 2026-07-16   |
-| P3  | dynamic-module-di          | 🔄     | 20%      | M    | 2026-07-16   |
+| P3  | dynamic-module-di          | 🔄     | 40%      | M    | 2026-07-16   |
 | P4  | typed-accessor             | 📋     | 0%       | S    | 2026-07-06   |
 | P5  | testing-subpath            | 📋     | 0%       | M    | 2026-07-06   |
 | P6  | integration-docs-dogfood   | 📋     | 0%       | M    | 2026-07-06   |

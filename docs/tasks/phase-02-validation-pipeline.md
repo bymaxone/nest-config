@@ -1,6 +1,6 @@
 # Phase 2: validation-pipeline
 
-> **Status**: 🔄 In Progress · **Progress**: 4 / 5 tasks · **Last updated**: 2026-07-16
+> **Status**: ✅ Done · **Progress**: 5 / 5 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P2)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §6, §1.5
 
@@ -42,7 +42,7 @@ Phase 1 is merged: `defineEnv`, source mapping, and `deepFreeze` are available. 
 | 2.2 | Report formatter (value-free, aligned, snapshot-pinned)             | ✅ Done | P0       | S    | 2.1           |
 | 2.3 | Validator: single-pass parse + issue aggregation                    | ✅ Done | P0       | M    | 2.1           |
 | 2.4 | Strict mode: undeclared-variable detection                          | ✅ Done | P1       | S    | 2.3           |
-| 2.5 | Phase close: gates, dashboards, PR with Copilot review              | 📋 ToDo | P0       | S    | 2.2, 2.3, 2.4 |
+| 2.5 | Phase close: gates, dashboards, PR with Copilot review              | ✅ Done | P0       | S    | 2.2, 2.3, 2.4 |
 
 ---
 
@@ -354,7 +354,7 @@ Completion Protocol (after you finish):
 
 ### Task 2.5: Phase close: gates, dashboards, PR with Copilot review
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: 2.2, 2.3, 2.4
@@ -365,9 +365,9 @@ Audit the phase Definition of Done, update all dashboards, open the phase PR, ob
 
 #### Acceptance criteria
 
-- [ ] Every P2 Definition of Done bullet in `../development_plan.md` §5 verified observable.
-- [ ] Dashboards consistent (phase file, plan, README index).
-- [ ] PR opened, Copilot review requested and fully addressed, merged with CI green, branch deleted.
+- [x] Every P2 Definition of Done bullet in `../development_plan.md` §5 verified observable.
+- [x] Dashboards consistent (phase file, plan, README index).
+- [x] PR opened, Copilot review requested and fully addressed, merged with CI green, branch deleted.
 
 #### Files to create / modify
 
@@ -434,3 +434,4 @@ Completion Protocol (after you finish):
 - 2.2 ✅ 2026-07-16 Added the pure, value-free report formatter, snapshot-pinned to the spec §6.1 layout, and wired it into the error message.
 - 2.3 ✅ 2026-07-16 Added the single-pass validator: source mapping, one safeParse, missing-vs-invalid classification, value-free constraint messages, and aggregated throw.
 - 2.4 ✅ 2026-07-16 Added opt-in strict mode: prefix-gated unknown-key detection via resolveNamespacePrefixes, aggregated with missing and invalid issues, silent by default.
+- 2.5 ✅ 2026-07-16 Phase close: DoD audited, gates green (typecheck, lint, build both subpaths, 100% coverage both jest configs), dashboards finalized, PR opened with Copilot review requested.

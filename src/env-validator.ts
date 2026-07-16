@@ -177,10 +177,12 @@ function translateIssues(
 ): ConfigIssue[] {
   const issueByPath = new Map<string, ZodValidationIssue>()
   for (const issue of zodIssues) {
-    const path = issue.path.join('.')
-    // Keep the first issue reported for a leaf. Zod lists a leaf's primary
-    // failure first, and the report shows one line per variable, so the choice
-    // must be deterministic rather than dependent on issue order.
+    // Collapse any deeper path (a nested field inside a complex leaf, e.g.
+    // namespace.leaf.0) to its declared leaf path so the issue still maps to a
+    // binding and is never dropped. Keep the first issue reported for a leaf:
+    // Zod lists a leaf's primary failure first, and the report shows one line
+    // per variable, so the choice must be deterministic, not order-dependent.
+    const path = issue.path.slice(0, 2).join('.')
     if (!issueByPath.has(path)) {
       issueByPath.set(path, issue)
     }
@@ -255,7 +257,9 @@ function detectUnknownKeys(
   // Sort by variable in code-point order (locale-independent) so the aggregated
   // report is stable across platforms regardless of the source key-enumeration
   // order (process.env order can vary across runs).
-  return issues.sort((left, right) => (left.variable < right.variable ? -1 : 1))
+  return issues.sort(
+    (left, right) => Number(left.variable > right.variable) - Number(left.variable < right.variable)
+  )
 }
 
 /**

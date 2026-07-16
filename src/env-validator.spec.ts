@@ -194,6 +194,31 @@ describe('validateEnv aggregation', () => {
     expect(forVariable).toHaveLength(1)
     expect(forVariable[0]?.code).toBe(ConfigErrorCode.INVALID)
   })
+
+  it('reports a nested failure inside a complex leaf under its variable', () => {
+    /**
+     * Deep-path collapse.
+     *
+     * A leaf can be a complex type (here a comma-separated string parsed into a
+     * list of URLs). A failure on a nested element surfaces at a deeper Zod
+     * path (endpoints.1), which must still be reported under the leaf's
+     * variable rather than silently dropped.
+     */
+    const complexSchema = defineEnv({
+      service: z.object({
+        endpoints: z
+          .string()
+          .transform((value) => value.split(','))
+          .pipe(z.array(z.url()))
+      })
+    })
+    const error = captureError(complexSchema, {
+      SERVICE_ENDPOINTS: 'https://ok.example,not-a-url'
+    })
+    const issues = issuesByVariable(error)
+
+    expect(issues.get('SERVICE_ENDPOINTS')?.code).toBe(ConfigErrorCode.INVALID)
+  })
 })
 
 describe('validateEnv constraint descriptions', () => {

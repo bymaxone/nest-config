@@ -170,6 +170,30 @@ describe('validateEnv aggregation', () => {
     expect(variables).toEqual(['AUTH_JWT_SECRET', 'DATABASE_URL', 'LEGACY_AUTH_KEY'])
     expect(error.issues.every((issue) => issue.code === ConfigErrorCode.MISSING)).toBe(true)
   })
+
+  it('emits a single issue for a leaf that fails several constraints at once', () => {
+    /**
+     * Deterministic collapse.
+     *
+     * A leaf can fail more than one Zod check at once (here both the minimum
+     * and the maximum length). The report shows one line per variable, so the
+     * validator keeps a single issue for that leaf rather than one line per
+     * failed check.
+     */
+    const boundedSchema = defineEnv({
+      token: z.object({
+        value: z
+          .string()
+          .min(10)
+          .regex(/^secret_/)
+      })
+    })
+    const error = captureError(boundedSchema, { TOKEN_VALUE: 'ab' })
+    const forVariable = error.issues.filter((issue) => issue.variable === 'TOKEN_VALUE')
+
+    expect(forVariable).toHaveLength(1)
+    expect(forVariable[0]?.code).toBe(ConfigErrorCode.INVALID)
+  })
 })
 
 describe('validateEnv constraint descriptions', () => {
@@ -286,6 +310,29 @@ describe('validateEnv strict mode', () => {
     expect(issues.get('DATABASE_URL')?.code).toBe(ConfigErrorCode.MISSING)
     expect(issues.get('AUTH_JWT_SECRET')?.code).toBe(ConfigErrorCode.INVALID)
     expect(issues.get('DATABASE_TYPO')?.code).toBe(ConfigErrorCode.UNKNOWN_KEY)
+  })
+
+  it('attributes an unknown key to its most specific namespace when prefixes overlap', () => {
+    /**
+     * Longest-prefix match.
+     *
+     * Overlapping namespace prefixes (APP_ from `app`, APP_CONFIG_ from
+     * `appConfig`) must attribute APP_CONFIG_TYPO to `appConfig`, the most
+     * specific namespace, not to whichever namespace was declared first.
+     */
+    const overlapSchema = defineEnv({
+      app: z.object({ name: z.string().min(1) }),
+      appConfig: z.object({ retries: z.coerce.number().int().default(3) })
+    })
+    const error = captureError(
+      overlapSchema,
+      { APP_NAME: 'svc', APP_CONFIG_TYPO: 'oops' },
+      { strict: true }
+    )
+    const issues = issuesByVariable(error)
+
+    expect(issues.get('APP_CONFIG_TYPO')?.code).toBe(ConfigErrorCode.UNKNOWN_KEY)
+    expect(issues.get('APP_CONFIG_TYPO')?.path).toBe('appConfig')
   })
 })
 

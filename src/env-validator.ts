@@ -177,7 +177,13 @@ function translateIssues(
 ): ConfigIssue[] {
   const issueByPath = new Map<string, ZodValidationIssue>()
   for (const issue of zodIssues) {
-    issueByPath.set(issue.path.join('.'), issue)
+    const path = issue.path.join('.')
+    // Keep the first issue reported for a leaf. Zod lists a leaf's primary
+    // failure first, and the report shows one line per variable, so the choice
+    // must be deterministic rather than dependent on issue order.
+    if (!issueByPath.has(path)) {
+      issueByPath.set(path, issue)
+    }
   }
   const result: ConfigIssue[] = []
   for (const binding of bindings) {
@@ -186,6 +192,28 @@ function translateIssues(
     result.push(toConfigIssue(binding, issue, source))
   }
   return result
+}
+
+/**
+ * Find the most specific declared prefix a variable name starts with.
+ *
+ * Overlapping namespaces can share a leading prefix (for example `APP_` from
+ * `app` and `APP_CONFIG_` from `appConfig`). Preferring the longest match
+ * attributes a variable to its most specific namespace instead of whichever
+ * namespace the schema happened to declare first.
+ *
+ * @param prefixes - The declared namespace prefixes.
+ * @param key - The source variable name to classify.
+ * @returns The longest matching prefix, or undefined when none match.
+ */
+function longestMatchingPrefix(
+  prefixes: readonly NamespacePrefix[],
+  key: string
+): NamespacePrefix | undefined {
+  return prefixes
+    .filter((entry) => key.startsWith(entry.prefix))
+    .sort((left, right) => right.prefix.length - left.prefix.length)
+    .at(0)
 }
 
 /**
@@ -209,7 +237,7 @@ function detectUnknownKeys(
   const issues: ConfigIssue[] = []
   for (const key of source.keys()) {
     if (declared.has(key)) continue
-    const match = prefixes.find((entry) => key.startsWith(entry.prefix))
+    const match = longestMatchingPrefix(prefixes, key)
     if (match === undefined) continue
     issues.push({
       path: match.namespace,

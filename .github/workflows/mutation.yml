@@ -1,0 +1,61 @@
+name: Mutation
+
+# Mutation testing is the deep release gate: it verifies the suite actually
+# detects behavioral regressions, not just that lines execute. A full Stryker
+# run takes several minutes and is memory-heavy, so it is deliberately kept out
+# of the per-PR CI (which already enforces 100% line and branch coverage) and
+# runs here instead: on demand from the Actions tab and on a weekly cron so the
+# score stays fresh even when no code lands.
+#
+# The job is gated on repository visibility. While the repository is private it
+# never runs; once the maintainer flips the repository public it activates
+# automatically, matching the same gating used by the CodeQL and Scorecard
+# workflows so every heavier gate turns on together at go-live.
+on:
+  workflow_dispatch:
+  schedule:
+    # Mondays 05:00 UTC, between the Scorecard (04:00) and CodeQL (06:00) crons.
+    - cron: '0 5 * * 1'
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: mutation testing only reads the repository.
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    name: Stryker mutation run (break 95)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # Activates only once the repository is public, consistent with the CodeQL
+    # and Scorecard workflows. Kept wired while private so it starts running the
+    # moment the repository visibility changes, with no further edit required.
+    if: ${{ github.event.repository.private == false }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.8.1
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run mutation tests
+        # Exits non-zero when the score drops below the configured break
+        # threshold (95), turning a weakened suite into a red gate.
+        run: pnpm mutation

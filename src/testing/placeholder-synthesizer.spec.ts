@@ -320,4 +320,60 @@ describe('synthesizePlaceholderSource', () => {
     const source = synthesizePlaceholderSource(schema)
     expect(source.LEDGER_TOTAL).toBe('a')
   })
+
+  it('keeps the canonical URL when a min or max bound sits exactly at its length', () => {
+    // Scenario: the canonical placeholder URL is 25 characters. A url leaf whose
+    // minimum or maximum equals 25 must still use the readable canonical value
+    // (the bound is inclusive), not resize to a filler host.
+    const schema = defineEnv({
+      urls: z.object({ atMin: z.url().min(25), atMax: z.url().max(25) })
+    })
+    const source = synthesizePlaceholderSource(schema)
+    expect(source.URLS_AT_MIN).toBe('https://placeholder.local')
+    expect(source.URLS_AT_MAX).toBe('https://placeholder.local')
+  })
+
+  it('keeps the canonical email when its length exactly meets a bound', () => {
+    // Scenario: the canonical placeholder email `a@placeholder.local` is 19
+    // characters. A plain email, and one whose min or max equals 19, must all
+    // resolve to that exact canonical address because the bounds are inclusive.
+    const schema = defineEnv({
+      mails: z.object({
+        plain: z.email(),
+        atMin: z.email().min(19),
+        atMax: z.email().max(19)
+      })
+    })
+    const source = synthesizePlaceholderSource(schema)
+    expect(source.MAILS_PLAIN).toBe('a@placeholder.local')
+    expect(source.MAILS_AT_MIN).toBe('a@placeholder.local')
+    expect(source.MAILS_AT_MAX).toBe('a@placeholder.local')
+  })
+
+  it('picks the single in-range integer of a two-sided exclusive range', () => {
+    // Scenario: gt(0).lt(2) on an integer admits exactly 1. The chosen value
+    // must be that lone integer, so an off-by-one in the exclusive upper edge
+    // (which would yield 2) is rejected by the production validator.
+    const schema = defineEnv({ nums: z.object({ only: z.coerce.number().int().gt(0).lt(2) }) })
+    const source = synthesizePlaceholderSource(schema)
+    expect(source.NUMS_ONLY).toBe('1')
+    expect(() => validateEnv(schema, source)).not.toThrow()
+  })
+
+  it('emits exactly the coercible boolean token for boolean leaves', () => {
+    // Scenario: a boolean leaf resolves to the fixed `true` token, not the
+    // generic filler, so the boolean branch of the walk is exercised distinctly.
+    const source = synthesizePlaceholderSource(representativeSchema)
+    expect(source.FEATURES_VERBOSE).toBe('true')
+  })
+
+  it('lets an exact length win over a redundant minimum on the same string', () => {
+    // Scenario: a string declaring both length(5) and min(3) must honor the
+    // exact length, producing five filler characters (the minimum is subsumed),
+    // and the result must satisfy the production validator.
+    const schema = defineEnv({ token: z.object({ value: z.string().length(5).min(3) }) })
+    const source = synthesizePlaceholderSource(schema)
+    expect(source.TOKEN_VALUE).toBe('aaaaa')
+    expect(() => validateEnv(schema, source)).not.toThrow()
+  })
 })

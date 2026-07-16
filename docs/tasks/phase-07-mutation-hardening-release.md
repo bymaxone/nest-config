@@ -1,6 +1,6 @@
 # Phase 7: mutation-hardening-release
 
-> **Status**: 📋 ToDo · **Progress**: 0 / 5 tasks · **Last updated**: 2026-07-06
+> **Status**: ✅ Done · **Progress**: 5 / 5 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P7)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §9.3, §10
 
@@ -33,13 +33,13 @@ Phase 6 is merged. No new features and no API changes are allowed; if one is nee
 
 ## Task index
 
-| ID | Task | Status | Priority | Size | Depends on |
-|---|---|---|---|---|---|
-| 7.1 | Branch + mutation plan + Stryker baseline run | 📋 ToDo | P0 | M | none |
-| 7.2 | Survivor hardening pass | 📋 ToDo | P0 | L | 7.1 |
-| 7.3 | Equivalents documentation + final run at score >= 95 | 📋 ToDo | P0 | S | 7.2 |
-| 7.4 | Release readiness: repository public, publish dry run, tag and provenance release | 📋 ToDo | P0 | M | 7.3 |
-| 7.5 | Phase close: post-publish smoke, dashboards, PR with Copilot review | 📋 ToDo | P0 | S | 7.4 |
+| ID  | Task                                                                                  | Status  | Priority | Size | Depends on |
+| --- | ------------------------------------------------------------------------------------- | ------- | -------- | ---- | ---------- |
+| 7.1 | Branch + mutation plan + Stryker baseline run                                         | ✅ Done | P0       | M    | none       |
+| 7.2 | Survivor hardening pass                                                               | ✅ Done | P0       | L    | 7.1        |
+| 7.3 | Equivalents documentation + final run at score >= 95                                  | ✅ Done | P0       | S    | 7.2        |
+| 7.4 | Release readiness: publish dry run and public-gated release (actual publish deferred) | ✅ Done | P0       | M    | 7.3        |
+| 7.5 | Phase close: dashboards and PR with Copilot review (tag/publish deferred)             | ✅ Done | P0       | S    | 7.4        |
 
 ---
 
@@ -47,7 +47,7 @@ Phase 6 is merged. No new features and no API changes are allowed; if one is nee
 
 ### Task 7.1: Branch + mutation plan + Stryker baseline run
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: none
@@ -70,7 +70,7 @@ Create the phase branch, author `docs/mutation_testing_plan.md` (targets, thresh
 
 #### Agent prompt
 
-````
+```
 You are a senior test-quality engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11.
@@ -117,13 +117,13 @@ Completion Protocol (after you finish):
 5. Update the P7 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `test(config): add mutation plan and baseline (7.1)`.
-````
+```
 
 ---
 
 ### Task 7.2: Survivor hardening pass
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: L
 - **Depends on**: 7.1
@@ -145,7 +145,7 @@ One concentrated hardening session: for every surviving mutant, either add or sh
 
 #### Agent prompt
 
-````
+```
 You are a senior test-quality engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11.
@@ -190,13 +190,13 @@ Completion Protocol (after you finish):
 5. Update the P7 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `test(config): harden suites against surviving mutants (7.2)`.
-````
+```
 
 ---
 
 ### Task 7.3: Equivalents documentation + final run
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: 7.2
@@ -217,7 +217,7 @@ Document every genuine equivalent mutant with its technical reason in `docs/muta
 
 #### Agent prompt
 
-````
+```
 You are a senior test-quality engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11.
@@ -257,13 +257,13 @@ Completion Protocol (after you finish):
 5. Update the P7 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `docs(config): record mutation results and equivalents (7.3)`.
-````
+```
 
 ---
 
 ### Task 7.4: Release readiness: repository public, publish dry run, tag and provenance release
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: 7.3
@@ -285,7 +285,7 @@ Make the repository public (precondition for effective provenance, CodeQL, and S
 
 #### Agent prompt
 
-````
+```
 You are a senior release engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11. First public
@@ -334,13 +334,13 @@ Completion Protocol (after you finish):
 5. Update the P7 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commits as described in the deliverables (changelog date via the phase PR; tag from main).
-````
+```
 
 ---
 
 ### Task 7.5: Phase close: post-publish smoke, dashboards, PR with Copilot review
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: 7.4
@@ -361,7 +361,7 @@ Open and drive the phase PR (mutation docs, changelog date) through Copilot revi
 
 #### Agent prompt
 
-````
+```
 You are a senior release engineer closing the final phase on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config. This task closes Phase 7 (mutation-hardening-release) and
@@ -412,10 +412,16 @@ Completion Protocol (after you finish):
 5. Update the P7 row and overall progress (8/8, 100%) in docs/development_plan.md §1 and the
    folder index in docs/tasks/README.md.
 6. Final commit on main: `docs(config): mark phase 7 and release complete (7.5)`.
-````
+```
 
 ---
 
 ## Completion log
 
 <!-- Append one line per completed task: - <id> ✅ YYYY-MM-DD <summary> -->
+
+- 7.1 ✅ 2026-07-16 baseline score 89.11%; mutation plan, concurrency cap, and public-gated mutation CI added
+- 7.2 ✅ 2026-07-16 hardened suites; 17 survivors killed, interim score 95.72%, coverage 100%
+- 7.3 ✅ 2026-07-16 final score 95.72% (break 95 PASS); 11 equivalents documented, no inline disables
+- 7.4 ✅ 2026-07-16 publish dry run verified (dist + LICENSE + README.md + CHANGELOG.md); release job gated on public; go-live documented. Actual publish is a deferred manual go-live (make repo public, then push tag v0.1.0) per maintainer direction
+- 7.5 ✅ 2026-07-16 dashboards closed and phase PR opened; tag/publish/post-publish smoke deferred to the maintainer go-live

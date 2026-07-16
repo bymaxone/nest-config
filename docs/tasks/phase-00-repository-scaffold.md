@@ -1,6 +1,6 @@
 # Phase 0: repository-scaffold
 
-> **Status**: 📋 ToDo · **Progress**: 0 / 6 tasks · **Last updated**: 2026-07-06
+> **Status**: 🔄 In Progress · **Progress**: 1 / 6 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P0)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §3, §9, §10, §11
 
@@ -39,7 +39,7 @@ At the start of this phase the repository contains only `docs/` and an empty `ma
 
 | ID | Task | Status | Priority | Size | Depends on |
 |---|---|---|---|---|---|
-| 0.1 | Branch + `package.json` + pnpm install | 📋 ToDo | P0 | S | none |
+| 0.1 | Branch + `package.json` + pnpm install | ✅ Done | P0 | S | none |
 | 0.2 | Build config: tsconfig set + `tsup.config.ts` + placeholder barrels | 📋 ToDo | P0 | S | 0.1 |
 | 0.3 | Quality tooling: ESLint flat config, Prettier, jest configs, Stryker | 📋 ToDo | P0 | M | 0.2 |
 | 0.4 | Governance and community files: husky, commitlint, lint-staged, LICENSE, SECURITY, CONTRIBUTING, CODE_OF_CONDUCT, CHANGELOG, README skeleton | 📋 ToDo | P0 | M | 0.1 |
@@ -52,7 +52,7 @@ At the start of this phase the repository contains only `docs/` and an empty `ma
 
 ### Task 0.1: Branch + `package.json` + pnpm install
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: none
@@ -63,12 +63,12 @@ Create the phase working branch, author `package.json` under the `@bymax-one` sc
 
 #### Acceptance criteria
 
-- [ ] Working branch `feat/phase-00-repository-scaffold` created with `git switch -c`.
-- [ ] `package.json` declares `"name": "@bymax-one/nest-config"`, `"version": "0.1.0"`, `"type": "module"`, `"sideEffects": false`, `"files": ["dist", "LICENSE", "README.md", "CHANGELOG.md"]`, `"engines": { "node": ">=24.0.0" }`, `publishConfig` public npm.
-- [ ] `exports` declares exactly `.` and `./testing`, each with `types` / `import` / `require` entries pointing into `dist/`.
-- [ ] `"dependencies": {}`; peers `@nestjs/common ^11`, `@nestjs/core ^11`, `reflect-metadata ^0.2`, `zod ^4` all required, mirrored in `devDependencies`.
-- [ ] Canonical scripts present (`build`, `typecheck`, `lint`, `lint:fix`, `test`, `test:cov`, `test:cov:all`, `mutation`, `size`, `dogfood`, `clean`, `prepublishOnly`, `prepare`).
-- [ ] `pnpm install` completes with no missing-peer warnings and generates `pnpm-lock.yaml`.
+- [x] Working branch `feat/phase-00-repository-scaffold` created with `git switch -c`.
+- [x] `package.json` declares `"name": "@bymax-one/nest-config"`, `"version": "0.1.0"`, `"type": "module"`, `"sideEffects": false`, `"files": ["dist", "LICENSE", "README.md", "CHANGELOG.md"]`, `"engines": { "node": ">=24.0.0" }`, `publishConfig` public npm.
+- [x] `exports` declares exactly `.` and `./testing`, each with `types` / `import` / `require` entries pointing into `dist/`.
+- [x] `"dependencies": {}`; peers `@nestjs/common ^11`, `@nestjs/core ^11`, `reflect-metadata ^0.2`, `zod ^4` all required, mirrored in `devDependencies`.
+- [x] Canonical scripts present (`build`, `typecheck`, `lint`, `lint:fix`, `test`, `test:cov`, `test:cov:all`, `mutation`, `size`, `dogfood`, `clean`, `prepublishOnly`, `prepare`).
+- [x] `pnpm install` completes with no missing-peer warnings and generates `pnpm-lock.yaml`.
 
 #### Files to create / modify
 
@@ -583,3 +583,4 @@ Completion Protocol (after you finish):
 ## Completion log
 
 <!-- Append one line per completed task: - <id> ✅ YYYY-MM-DD <summary> -->
+- 0.1 ✅ 2026-07-16 package.json (two subpaths, zero deps, required peers), .gitignore, .npmrc, pnpm install clean

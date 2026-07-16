@@ -1,6 +1,6 @@
 # Phase 6: integration-docs-dogfood
 
-> **Status**: 🔄 In Progress · **Progress**: 1 / 5 tasks · **Last updated**: 2026-07-16
+> **Status**: 🔄 In Progress · **Progress**: 2 / 5 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P6)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §10, §11, §13
 
@@ -36,7 +36,7 @@ Phase 5 is merged; every public surface is frozen. No API changes are allowed he
 | ID  | Task                                                                                    | Status  | Priority | Size | Depends on |
 | --- | --------------------------------------------------------------------------------------- | ------- | -------- | ---- | ---------- |
 | 6.1 | Branch + e2e fixture app + success/failure/async boot specs against the packed artifact | ✅ Done | P0       | M    | none       |
-| 6.2 | Full README (quick start, API reference, error catalog, testing guide)                  | 📋 ToDo | P0       | M    | 6.1        |
+| 6.2 | Full README (quick start, API reference, error catalog, testing guide)                  | ✅ Done | P0       | M    | 6.1        |
 | 6.3 | CHANGELOG first entry + budget recalibration                                            | 📋 ToDo | P1       | S    | 6.1        |
 | 6.4 | prepublishOnly chain + dogfood verification                                             | 📋 ToDo | P0       | S    | 6.2, 6.3   |
 | 6.5 | Phase close: gates, dashboards, PR with Copilot review                                  | 📋 ToDo | P0       | S    | 6.4        |
@@ -125,7 +125,7 @@ Completion Protocol (after you finish):
 
 ### Task 6.2: Full README
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: 6.1
@@ -136,10 +136,10 @@ Write the complete public README: value proposition, installation, quick start, 
 
 #### Acceptance criteria
 
-- [ ] README documents every exported symbol of both subpaths and every error code of spec §6.3.
-- [ ] Quick start reproduces the spec §13 integration; snippets copied from the e2e fixture (compile-verified sources referenced in an HTML comment near each block).
-- [ ] Sections: badges, features, installation (peer requirements table), quick start, API reference, error catalog, testing guide, design principles (validate once, value-free errors, frozen config), limitations, license.
-- [ ] English, professional, public-grade; no internal references; no em dashes.
+- [x] README documents every exported symbol of both subpaths and every error code of spec §6.3.
+- [x] Quick start reproduces the spec §13 integration; snippets copied from the e2e fixture (compile-verified sources referenced in an HTML comment near each block).
+- [x] Sections: badges, features, installation (peer requirements table), quick start, API reference, error catalog, testing guide, design principles (validate once, value-free errors, frozen config), limitations, license.
+- [x] English, professional, public-grade; no internal references; no em dashes.
 
 #### Files to create / modify
 
@@ -416,3 +416,4 @@ Completion Protocol (after you finish):
 <!-- Append one line per completed task: - <id> ✅ YYYY-MM-DD <summary> -->
 
 - 6.1 ✅ 2026-07-16 e2e fixture app (env schema, feature provider, fixture secrets provider) with success, aggregated-failure, and forRootAsync boot specs, resolved through dist via jest.e2e.config.ts; CI gained the e2e step after build.
+- 6.2 ✅ 2026-07-16 Complete public README: badges, features, installation with peer table, quick start (snippets lifted from test/e2e/fixtures), full API reference covering every exported symbol of both subpaths, error catalog, testing guide, design principles, known limitations.

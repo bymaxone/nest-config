@@ -19,9 +19,9 @@ Tasks live **one file per phase** in this folder (`phase-NN-<slug>.md`). Each ph
 | 3     | [`phase-03-dynamic-module-di.md`](./phase-03-dynamic-module-di.md)                   | 5 / 5       | ✅ Done        |
 | 4     | [`phase-04-typed-accessor.md`](./phase-04-typed-accessor.md)                         | 4 / 4       | ✅ Done        |
 | 5     | [`phase-05-testing-subpath.md`](./phase-05-testing-subpath.md)                       | 4 / 4       | ✅ Done        |
-| 6     | [`phase-06-integration-docs-dogfood.md`](./phase-06-integration-docs-dogfood.md)     | 4 / 5       | 🔄 In Progress |
+| 6     | [`phase-06-integration-docs-dogfood.md`](./phase-06-integration-docs-dogfood.md)     | 5 / 5       | ✅ Done        |
 | 7     | [`phase-07-mutation-hardening-release.md`](./phase-07-mutation-hardening-release.md) | 0 / 5       | 📋 ToDo        |
-|       | **Total**                                                                            | **33 / 39** | 🔄 In Progress |
+|       | **Total**                                                                            | **34 / 39** | 🔄 In Progress |
 
 ---
 

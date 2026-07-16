@@ -11,7 +11,7 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
-## [0.1.0] - TBD
+## [0.1.0] - 2026-07-16
 
 Initial public release: a typed, validated environment-configuration entry
 point for NestJS 11 applications, built on Zod v4.

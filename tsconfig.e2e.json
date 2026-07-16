@@ -3,8 +3,12 @@
   "compilerOptions": {
     "rootDir": ".",
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "paths": {
+      "@bymax-one/nest-config": ["./dist/index.d.ts"],
+      "@bymax-one/nest-config/testing": ["./dist/testing/index.d.ts"]
+    }
   },
-  "include": ["src/**/*", "test/e2e/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["test/e2e/**/*"],
+  "exclude": ["node_modules"]
 }

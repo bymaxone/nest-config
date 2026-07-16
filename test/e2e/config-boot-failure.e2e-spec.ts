@@ -54,7 +54,7 @@ describe('config boot (failure path, built artifact)', () => {
     expect(caught).toBeInstanceOf(BymaxConfigValidationError)
     const validationError = caught as BymaxConfigValidationError
     expect(validationError.code).toBe(ConfigErrorCode.VALIDATION)
-    expect(validationError.issues.length).toBeGreaterThanOrEqual(3)
+    expect(validationError.issues).toHaveLength(4)
     expect(validationError.message).not.toContain('not-a-number')
     expect(validationError.message).not.toContain('not-a-level')
   })

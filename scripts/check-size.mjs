@@ -27,6 +27,12 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // when the artifact shrinks.
 //
 // Calibration history (newest first):
+//   - 2026-07-16: final calibration against the frozen public surface (Phase 6,
+//     integration-docs-dogfood). Measured brotli baseline: root 4.06 KiB
+//     (4160 bytes), testing 5.24 KiB (5364 bytes). Budgets set to roughly 1.3x
+//     the measured baseline (root 5.25 KiB, testing 7 KiB), inside the 1.2x to
+//     1.5x tripwire band: enough headroom for JSDoc growth without masking
+//     real bloat.
 //   - 2026-07-16: testing subpath budget raised 2 -> 8 KiB when it gained its
 //     real content (constraint-aware synthesizer, createTestConfig,
 //     configTestingModule); it measures ~5.01 KiB brotli, so 8 KiB keeps a
@@ -36,8 +42,8 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 //     placeholder `export {}` barrels. Both subpaths recalibrate once the
 //     real public API lands and the built artifact stabilizes.
 const BUDGETS = [
-  { name: 'root (schema, module, service)', path: 'dist/index.mjs', brotli: 6 * 1024 },
-  { name: 'testing (test doubles)', path: 'dist/testing/index.mjs', brotli: 8 * 1024 }
+  { name: 'root (schema, module, service)', path: 'dist/index.mjs', brotli: 5.25 * 1024 },
+  { name: 'testing (test doubles)', path: 'dist/testing/index.mjs', brotli: 7 * 1024 }
 ]
 
 const fmt = (n) => `${(n / 1024).toFixed(2)} kB`

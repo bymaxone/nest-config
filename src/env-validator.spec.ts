@@ -86,6 +86,27 @@ describe('validateEnv success path', () => {
     expect(config.server.port).toBe(8080)
     expect(typeof config.server.port).toBe('number')
   })
+
+  it('places each leaf under its own namespace when leaf names collide', () => {
+    /**
+     * Namespace isolation.
+     *
+     * Two namespaces can declare a leaf of the same name (`tag`). Each source
+     * value must land under its own namespace, so the per-namespace grouping
+     * that frames the parse candidate cannot be dropped or widened to place a
+     * value under the wrong namespace: `alpha.tag` and `beta.tag` keep their
+     * distinct values rather than one overwriting the other.
+     */
+    const schema = defineEnv({
+      alpha: z.object({ tag: z.string().min(1) }),
+      beta: z.object({ tag: z.string().min(1) })
+    })
+
+    const config = validateEnv(schema, { ALPHA_TAG: 'alpha-value', BETA_TAG: 'beta-value' })
+
+    expect(config.alpha.tag).toBe('alpha-value')
+    expect(config.beta.tag).toBe('beta-value')
+  })
 })
 
 describe('validateEnv issue classification', () => {
@@ -193,6 +214,11 @@ describe('validateEnv aggregation', () => {
 
     expect(forVariable).toHaveLength(1)
     expect(forVariable[0]?.code).toBe(ConfigErrorCode.INVALID)
+    // Zod lists a leaf's checks in declaration order, so the minimum-length
+    // failure is reported before the pattern failure. The collapse keeps the
+    // first issue for the leaf, so the surfaced message is the minimum-length
+    // one, not whichever check happened to be reported last.
+    expect(forVariable[0]?.message).toBe('too short (expected: string, minimum 10 characters)')
   })
 
   it('reports a nested failure inside a complex leaf under its variable', () => {

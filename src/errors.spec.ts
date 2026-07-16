@@ -87,6 +87,11 @@ describe('BymaxConfigValidationError construction', () => {
     expect(() => {
       ;(error as { name: string }).name = 'Tampered'
     }).toThrow(TypeError)
+    // Non-configurable as well as non-writable: deleting the property must throw
+    // in strict mode, so `name` can never be removed to dodge classification.
+    expect(() => {
+      delete (error as { name?: string }).name
+    }).toThrow(TypeError)
     expect(error.name).toBe('BymaxConfigValidationError')
   })
 
@@ -105,6 +110,14 @@ describe('BymaxConfigValidationError construction', () => {
     }).toThrow(TypeError)
     expect(() => {
       ;(error as { issues: unknown }).issues = []
+    }).toThrow(TypeError)
+    // Non-configurable too: neither contract property can be deleted or
+    // redefined, so the locked contract cannot be reopened after construction.
+    expect(() => {
+      delete (error as { code?: string }).code
+    }).toThrow(TypeError)
+    expect(() => {
+      delete (error as { issues?: unknown }).issues
     }).toThrow(TypeError)
     expect(error.code).toBe('BYMAX_CONFIG_VALIDATION')
     expect(error.issues).toHaveLength(sampleIssues.length)

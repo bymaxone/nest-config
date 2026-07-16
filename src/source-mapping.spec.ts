@@ -65,6 +65,23 @@ describe('resolveSourceNames derivation', () => {
       { path: 'oauth2.clientId', variable: 'OAUTH2_CLIENT_ID' }
     ])
   })
+
+  it('splits the trailing capital of an acronym that precedes a word', () => {
+    /**
+     * Acronym-to-word boundary.
+     *
+     * When an uppercase run is immediately followed by a capitalized word
+     * (`oldAPIKey`), only the final capital of the run starts the next word, so
+     * the name resolves to `OLD_API_KEY` rather than merging or dropping the
+     * boundary. Pins the exact separator the derivation inserts between an
+     * acronym and the following word.
+     */
+    const schema = defineEnv({ service: z.object({ oldAPIKey: z.string() }) })
+
+    expect(resolveSourceNames(schema)).toEqual([
+      { path: 'service.oldAPIKey', variable: 'SERVICE_OLD_API_KEY' }
+    ])
+  })
 })
 
 describe('resolveSourceNames override precedence', () => {

@@ -1,6 +1,6 @@
 # Phase 1: schema-engine
 
-> **Status**: 🔄 In Progress · **Progress**: 2 / 5 tasks · **Last updated**: 2026-07-16
+> **Status**: 🔄 In Progress · **Progress**: 3 / 5 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P1)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §4.1, §4.2, §1.5
 
@@ -39,7 +39,7 @@ At the start of this phase the repository has the full Phase 0 toolchain on `mai
 | --- | ---------------------------------------------------------------------------------------------- | ------- | -------- | ---- | ------------- |
 | 1.1 | Branch + core types (`EnvSchema`, shape constraints, `ConfigIssueCode` placeholder-free types) | ✅ Done | P0       | S    | none          |
 | 1.2 | `defineEnv(shape)` factory + inferred-type helper                                              | ✅ Done | P0       | M    | 1.1           |
-| 1.3 | Source-name mapping: path derivation + `meta({ env })` override                                | 📋 ToDo | P0       | M    | 1.2           |
+| 1.3 | Source-name mapping: path derivation + `meta({ env })` override                                | ✅ Done | P0       | M    | 1.2           |
 | 1.4 | `deepFreeze` utility                                                                           | 📋 ToDo | P0       | S    | 1.1           |
 | 1.5 | Phase close: gates, dashboards, PR with Copilot review                                         | 📋 ToDo | P0       | S    | 1.2, 1.3, 1.4 |
 
@@ -204,7 +204,7 @@ Completion Protocol (after you finish):
 
 ### Task 1.3: Source-name mapping
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: 1.2
@@ -215,11 +215,11 @@ Implement the deterministic mapping between nested config paths and flat environ
 
 #### Acceptance criteria
 
-- [ ] A dedicated module (e.g. `src/source-mapping.ts`) exposes resolution of every leaf's source variable name from a `defineEnv` schema.
-- [ ] Derivation handles camelCase leaves (`jwtSecret` -> `JWT_SECRET` within its namespace) and is covered for single-word, camelCase, and numeric-suffix names.
-- [ ] `meta({ env: '...' })` override wins over derivation; precedence covered by tests.
-- [ ] The full leaf-to-variable table for a representative schema is pinned by a snapshot test (contract stability).
-- [ ] 100% coverage on the new files.
+- [x] A dedicated module (e.g. `src/source-mapping.ts`) exposes resolution of every leaf's source variable name from a `defineEnv` schema.
+- [x] Derivation handles camelCase leaves (`jwtSecret` -> `JWT_SECRET` within its namespace) and is covered for single-word, camelCase, and numeric-suffix names.
+- [x] `meta({ env: '...' })` override wins over derivation; precedence covered by tests.
+- [x] The full leaf-to-variable table for a representative schema is pinned by a snapshot test (contract stability).
+- [x] 100% coverage on the new files.
 
 #### Files to create / modify
 
@@ -429,3 +429,4 @@ Completion Protocol (after you finish):
 
 - 1.1 ✅ 2026-07-16 Added foundational schema shape types (EnvShape, EnvNamespace, EnvLeaf, EnvOutput, EnvSchema) with compile-time type tests; removed passWithNoTests from both jest configs.
 - 1.2 ✅ 2026-07-16 Implemented defineEnv factory composing namespaces into one Zod object with the infer phantom; reuses caller schemas unchanged; exported from the server barrel.
+- 1.3 ✅ 2026-07-16 Implemented internal deterministic source-name mapping (SCREAMING_SNAKE derivation, meta({ env }) override precedence) with derivation, override, and inline-snapshot contract tests.

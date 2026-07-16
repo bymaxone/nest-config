@@ -7,7 +7,7 @@
  * @layer Utility
  */
 
-import type { EnvSchema } from './types'
+import type { EnvSchema, EnvShape } from './types'
 
 /**
  * The resolved binding between one config leaf and its source variable name.
@@ -67,6 +67,7 @@ function deriveVariable(namespace: string, leafKey: string): string {
  * is total: every declared leaf maps to exactly one variable, in declaration
  * order.
  *
+ * @typeParam TShape - The two-level shape the schema was composed from.
  * @param schema - A schema produced by `defineEnv`.
  * @returns The ordered list of leaf-to-variable bindings, typed `readonly`.
  * @example
@@ -76,7 +77,9 @@ function deriveVariable(namespace: string, leafKey: string): string {
  * // => [{ path: 'database.url', variable: 'DATABASE_URL' }]
  * ```
  */
-export function resolveSourceNames(schema: EnvSchema): readonly SourceBinding[] {
+export function resolveSourceNames<TShape extends EnvShape = EnvShape>(
+  schema: EnvSchema<TShape>
+): readonly SourceBinding[] {
   return Object.entries(schema.shape).flatMap(([namespace, namespaceSchema]) =>
     Object.entries(namespaceSchema.shape).map(([leafKey, leafSchema]) => ({
       path: `${namespace}.${leafKey}`,

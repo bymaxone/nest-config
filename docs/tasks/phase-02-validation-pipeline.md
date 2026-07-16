@@ -1,6 +1,6 @@
 # Phase 2: validation-pipeline
 
-> **Status**: 🔄 In Progress · **Progress**: 2 / 5 tasks · **Last updated**: 2026-07-16
+> **Status**: 🔄 In Progress · **Progress**: 3 / 5 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P2)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §6, §1.5
 
@@ -40,7 +40,7 @@ Phase 1 is merged: `defineEnv`, source mapping, and `deepFreeze` are available. 
 | --- | ------------------------------------------------------------------- | ------- | -------- | ---- | ------------- |
 | 2.1 | Branch + error codes + `ConfigIssue` + `BymaxConfigValidationError` | ✅ Done | P0       | M    | none          |
 | 2.2 | Report formatter (value-free, aligned, snapshot-pinned)             | ✅ Done | P0       | S    | 2.1           |
-| 2.3 | Validator: single-pass parse + issue aggregation                    | 📋 ToDo | P0       | M    | 2.1           |
+| 2.3 | Validator: single-pass parse + issue aggregation                    | ✅ Done | P0       | M    | 2.1           |
 | 2.4 | Strict mode: undeclared-variable detection                          | 📋 ToDo | P1       | S    | 2.3           |
 | 2.5 | Phase close: gates, dashboards, PR with Copilot review              | 📋 ToDo | P0       | S    | 2.2, 2.3, 2.4 |
 
@@ -213,12 +213,12 @@ Implement the validator that maps the flat source record onto the nested schema 
 
 #### Acceptance criteria
 
-- [ ] `src/env-validator.ts` exposes the validate function: `(schema, source) -> parsed output` or throws with the aggregated issues.
-- [ ] Missing required variables map to `BYMAX_CONFIG_MISSING`; present-but-invalid map to `BYMAX_CONFIG_INVALID`; issue `variable` is the resolved source name (post-`meta` override).
-- [ ] Multiple simultaneous violations are all reported in one throw (test with 3+ issues across namespaces).
-- [ ] Defaults apply when variables are absent; coerced leaves parse from strings.
-- [ ] Value-leak guard test at the validator level (sentinel values never in error output).
-- [ ] 100% coverage on the new file.
+- [x] `src/env-validator.ts` exposes the validate function: `(schema, source) -> parsed output` or throws with the aggregated issues.
+- [x] Missing required variables map to `BYMAX_CONFIG_MISSING`; present-but-invalid map to `BYMAX_CONFIG_INVALID`; issue `variable` is the resolved source name (post-`meta` override).
+- [x] Multiple simultaneous violations are all reported in one throw (test with 3+ issues across namespaces).
+- [x] Defaults apply when variables are absent; coerced leaves parse from strings.
+- [x] Value-leak guard test at the validator level (sentinel values never in error output).
+- [x] 100% coverage on the new file.
 
 #### Files to create / modify
 
@@ -432,3 +432,4 @@ Completion Protocol (after you finish):
 
 - 2.1 ✅ 2026-07-16 Added the frozen error-code catalog, value-free ConfigIssue shape, and BymaxConfigValidationError with immutable issues and stable instanceof.
 - 2.2 ✅ 2026-07-16 Added the pure, value-free report formatter, snapshot-pinned to the spec §6.1 layout, and wired it into the error message.
+- 2.3 ✅ 2026-07-16 Added the single-pass validator: source mapping, one safeParse, missing-vs-invalid classification, value-free constraint messages, and aggregated throw.

@@ -1,6 +1,6 @@
 # Phase 3: dynamic-module-di
 
-> **Status**: 📋 ToDo · **Progress**: 0 / 5 tasks · **Last updated**: 2026-07-06
+> **Status**: ✅ Done · **Progress**: 5 / 5 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P3)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §2, §4.3, §4.4
 
@@ -34,13 +34,13 @@ Phases 1 and 2 are merged: schema engine and validator are available. Phase 4 (t
 
 ## Task index
 
-| ID | Task | Status | Priority | Size | Depends on |
-|---|---|---|---|---|---|
-| 3.1 | Branch + DI tokens + module options types | 📋 ToDo | P0 | S | none |
-| 3.2 | Module definition: `ConfigurableModuleBuilder` + `setExtras(isGlobal)` | 📋 ToDo | P0 | M | 3.1 |
-| 3.3 | Provider factory: validate, freeze, hook, register `BYMAX_CONFIG` | 📋 ToDo | P0 | M | 3.2 |
-| 3.4 | Bootstrap fixtures: fail-fast and success e2e-style module tests | 📋 ToDo | P0 | M | 3.3 |
-| 3.5 | Phase close: gates, dashboards, PR with Copilot review | 📋 ToDo | P0 | S | 3.4 |
+| ID  | Task                                                                   | Status  | Priority | Size | Depends on |
+| --- | ---------------------------------------------------------------------- | ------- | -------- | ---- | ---------- |
+| 3.1 | Branch + DI tokens + module options types                              | ✅ Done | P0       | S    | none       |
+| 3.2 | Module definition: `ConfigurableModuleBuilder` + `setExtras(isGlobal)` | ✅ Done | P0       | M    | 3.1        |
+| 3.3 | Provider factory: validate, freeze, hook, register `BYMAX_CONFIG`      | ✅ Done | P0       | M    | 3.2        |
+| 3.4 | Bootstrap fixtures: fail-fast and success e2e-style module tests       | ✅ Done | P0       | M    | 3.3        |
+| 3.5 | Phase close: gates, dashboards, PR with Copilot review                 | ✅ Done | P0       | S    | 3.4        |
 
 ---
 
@@ -48,7 +48,7 @@ Phases 1 and 2 are merged: schema engine and validator are available. Phase 4 (t
 
 ### Task 3.1: Branch + DI tokens + module options types
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: none
@@ -59,10 +59,10 @@ Create the phase branch, the Symbol token definitions, and the `BymaxConfigModul
 
 #### Acceptance criteria
 
-- [ ] Branch `feat/phase-03-dynamic-module-di` created with `git switch -c`.
-- [ ] `src/config.tokens.ts` exports `BYMAX_CONFIG_OPTIONS` and `BYMAX_CONFIG` as `Symbol`s (unique, described).
-- [ ] Options interface matches spec §4.3: `schema` (required), `source?`, `onValidationError?`, `strict?`, fully JSDoc'd.
-- [ ] 100% coverage on the new files.
+- [x] Branch `feat/phase-03-dynamic-module-di` created with `git switch -c`.
+- [x] `src/config.tokens.ts` exports `BYMAX_CONFIG_OPTIONS` and `BYMAX_CONFIG` as `Symbol`s (unique, described).
+- [x] Options interface matches spec §4.3: `schema` (required), `source?`, `onValidationError?`, `strict?`, fully JSDoc'd.
+- [x] 100% coverage on the new files.
 
 #### Files to create / modify
 
@@ -72,7 +72,7 @@ Create the phase branch, the Symbol token definitions, and the `BymaxConfigModul
 
 #### Agent prompt
 
-````
+```
 You are a senior NestJS library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11: Zod v4
@@ -119,13 +119,13 @@ Completion Protocol (after you finish):
 5. Update the P3 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): add DI tokens and module options (3.1)`.
-````
+```
 
 ---
 
 ### Task 3.2: Module definition: `ConfigurableModuleBuilder` + `setExtras(isGlobal)`
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: 3.1
@@ -136,11 +136,11 @@ Author the module definition on `ConfigurableModuleBuilder`: options class token
 
 #### Acceptance criteria
 
-- [ ] `src/config.module-definition.ts` builds the ConfigurableModuleClass with `setClassMethodName('forRoot')` and the `isGlobal` extra defaulting to `true`, mapped via `setExtras` (no `@Global()` anywhere).
-- [ ] `src/config.module.ts` declares `BymaxConfigModule` extending the builder class; `forRoot` and `forRootAsync` compile with the options type from 3.1.
-- [ ] `forRootAsync` supports `useFactory` + explicit `inject`.
-- [ ] Module registration tests: `forRoot` produces a global `DynamicModule` by default and a non-global one with `isGlobal: false`.
-- [ ] 100% coverage on the new files.
+- [x] `src/config.module-definition.ts` builds the ConfigurableModuleClass with `setClassMethodName('forRoot')` and the `isGlobal` extra defaulting to `true`, mapped via `setExtras` (no `@Global()` anywhere).
+- [x] `src/config.module.ts` declares `BymaxConfigModule` extending the builder class; `forRoot` and `forRootAsync` compile with the options type from 3.1.
+- [x] `forRootAsync` supports `useFactory` + explicit `inject`.
+- [x] Module registration tests: `forRoot` produces a global `DynamicModule` by default and a non-global one with `isGlobal: false`.
+- [x] 100% coverage on the new files.
 
 #### Files to create / modify
 
@@ -149,7 +149,7 @@ Author the module definition on `ConfigurableModuleBuilder`: options class token
 
 #### Agent prompt
 
-````
+```
 You are a senior NestJS library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11. Dynamic module
@@ -198,13 +198,13 @@ Completion Protocol (after you finish):
 5. Update the P3 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): add configurable module definition (3.2)`.
-````
+```
 
 ---
 
 ### Task 3.3: Provider factory: validate, freeze, hook, register `BYMAX_CONFIG`
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: 3.2
@@ -215,12 +215,12 @@ Implement the heart of the module: the `BYMAX_CONFIG` provider factory that reso
 
 #### Acceptance criteria
 
-- [ ] Provider factory injects `BYMAX_CONFIG_OPTIONS` explicitly and produces the frozen validated config under `BYMAX_CONFIG`; module exports it.
-- [ ] `source` defaults to `process.env`; a custom source is used verbatim (no env fallback merge).
-- [ ] On failure: hook called once with `ReadonlyArray<ConfigIssue>`, then `BymaxConfigValidationError` propagates; hook throwing does not replace or swallow the original error path (tested).
-- [ ] On success: registered object is deep-frozen (mutation throws) and identical through repeated injection.
-- [ ] `strict` flows from options into the validator.
-- [ ] 100% coverage on the changed files.
+- [x] Provider factory injects `BYMAX_CONFIG_OPTIONS` explicitly and produces the frozen validated config under `BYMAX_CONFIG`; module exports it.
+- [x] `source` defaults to `process.env`; a custom source is used verbatim (no env fallback merge).
+- [x] On failure: hook called once with `ReadonlyArray<ConfigIssue>`, then `BymaxConfigValidationError` propagates; hook throwing does not replace or swallow the original error path (tested).
+- [x] On success: registered object is deep-frozen (mutation throws) and identical through repeated injection.
+- [x] `strict` flows from options into the validator.
+- [x] 100% coverage on the changed files.
 
 #### Files to create / modify
 
@@ -228,7 +228,7 @@ Implement the heart of the module: the `BYMAX_CONFIG` provider factory that reso
 
 #### Agent prompt
 
-````
+```
 You are a senior NestJS library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11. Fail-fast:
@@ -279,13 +279,13 @@ Completion Protocol (after you finish):
 5. Update the P3 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): implement fail-fast config provider factory (3.3)`.
-````
+```
 
 ---
 
 ### Task 3.4: Bootstrap fixtures: fail-fast and success module tests
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: 3.3
@@ -296,11 +296,11 @@ Prove the bootstrap semantics through real Nest testing-module fixtures: an appl
 
 #### Acceptance criteria
 
-- [ ] Fixture app module using `forRoot` compiles and exposes `BYMAX_CONFIG` in a feature provider via explicit `@Inject`.
-- [ ] Invalid source: `Test.createTestingModule(...).compile()` rejects with `BymaxConfigValidationError` (fail-fast before any consumer instantiation).
-- [ ] `forRootAsync` with `useFactory` + `inject` resolves options from another provider.
-- [ ] `isGlobal: true` default verified: a nested feature module injects the config without importing the config module.
-- [ ] 100% coverage maintained package-wide.
+- [x] Fixture app module using `forRoot` compiles and exposes `BYMAX_CONFIG` in a feature provider via explicit `@Inject`.
+- [x] Invalid source: `Test.createTestingModule(...).compile()` rejects with `BymaxConfigValidationError` (fail-fast before any consumer instantiation).
+- [x] `forRootAsync` with `useFactory` + `inject` resolves options from another provider.
+- [x] `isGlobal: true` default verified: a nested feature module injects the config without importing the config module.
+- [x] 100% coverage maintained package-wide.
 
 #### Files to create / modify
 
@@ -308,7 +308,7 @@ Prove the bootstrap semantics through real Nest testing-module fixtures: an appl
 
 #### Agent prompt
 
-````
+```
 You are a senior NestJS library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11. This task
@@ -352,13 +352,13 @@ Completion Protocol (after you finish):
 5. Update the P3 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `test(config): add bootstrap fixture integration specs (3.4)`.
-````
+```
 
 ---
 
 ### Task 3.5: Phase close: gates, dashboards, PR with Copilot review
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: 3.4
@@ -369,9 +369,9 @@ Audit the phase Definition of Done, update all dashboards, open the phase PR, ob
 
 #### Acceptance criteria
 
-- [ ] Every P3 Definition of Done bullet in `../development_plan.md` §5 verified observable.
-- [ ] Dashboards consistent (phase file, plan, README index).
-- [ ] PR opened, Copilot review requested and fully addressed, merged with CI green, branch deleted.
+- [x] Every P3 Definition of Done bullet in `../development_plan.md` §5 verified observable.
+- [x] Dashboards consistent (phase file, plan, README index).
+- [x] PR opened, Copilot review requested and fully addressed, merged with CI green, branch deleted.
 
 #### Files to create / modify
 
@@ -379,7 +379,7 @@ Audit the phase Definition of Done, update all dashboards, open the phase PR, ob
 
 #### Agent prompt
 
-````
+```
 You are a senior release engineer closing a phase on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config. This task closes Phase 3 (dynamic-module-di).
@@ -424,10 +424,16 @@ Completion Protocol (after you finish):
 5. Update the P3 row and overall progress in docs/development_plan.md §1 and the folder index
    in docs/tasks/README.md.
 6. Final commit on main after merge: `docs(config): mark phase 3 complete (3.5)`.
-````
+```
 
 ---
 
 ## Completion log
 
 <!-- Append one line per completed task: - <id> ✅ YYYY-MM-DD <summary> -->
+
+- 3.1 ✅ 2026-07-16 Symbol DI tokens (BYMAX_CONFIG_OPTIONS, BYMAX_CONFIG) and the BymaxConfigModuleOptions contract, exported from the barrel with 100% coverage.
+- 3.2 ✅ 2026-07-16 ConfigurableModuleBuilder definition (options token bridged to BYMAX_CONFIG_OPTIONS, forRoot/forRootAsync, isGlobal extra mapped via setExtras) and the BymaxConfigModule class; registration-shape tests at 100% coverage.
+- 3.3 ✅ 2026-07-16 Fail-fast BYMAX_CONFIG provider factory: default/verbatim source, strict forwarding, deep-frozen output, and the observability hook invoked once before the throw yet unable to suppress it (throwing-hook and non-validation-error paths tested); wired into and exported from BymaxConfigModule at 100% coverage.
+- 3.4 ✅ 2026-07-16 Real TestingModule integration specs: forRoot success graph, fail-fast compile() rejection with no consumer built, forRootAsync useFactory+inject, and global default vs isGlobal:false reach; package-wide coverage stays 100%.
+- 3.5 ✅ 2026-07-16 Phase gates green (typecheck, lint, build both subpaths, 100% coverage in both Jest configs) and code-review + security-review clean; PR #7 opened with Copilot review requested (merge owned by the orchestrator).

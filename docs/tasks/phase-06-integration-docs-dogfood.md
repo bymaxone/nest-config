@@ -1,6 +1,6 @@
 # Phase 6: integration-docs-dogfood
 
-> **Status**: 🔄 In Progress · **Progress**: 3 / 5 tasks · **Last updated**: 2026-07-16
+> **Status**: 🔄 In Progress · **Progress**: 4 / 5 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P6)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §10, §11, §13
 
@@ -38,7 +38,7 @@ Phase 5 is merged; every public surface is frozen. No API changes are allowed he
 | 6.1 | Branch + e2e fixture app + success/failure/async boot specs against the packed artifact | ✅ Done | P0       | M    | none       |
 | 6.2 | Full README (quick start, API reference, error catalog, testing guide)                  | ✅ Done | P0       | M    | 6.1        |
 | 6.3 | CHANGELOG first entry + budget recalibration                                            | ✅ Done | P1       | S    | 6.1        |
-| 6.4 | prepublishOnly chain + dogfood verification                                             | 📋 ToDo | P0       | S    | 6.2, 6.3   |
+| 6.4 | prepublishOnly chain + dogfood verification                                             | ✅ Done | P0       | S    | 6.2, 6.3   |
 | 6.5 | Phase close: gates, dashboards, PR with Copilot review                                  | 📋 ToDo | P0       | S    | 6.4        |
 
 ---
@@ -274,7 +274,7 @@ Completion Protocol (after you finish):
 
 ### Task 6.4: prepublishOnly chain + dogfood verification
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: 6.2, 6.3
@@ -285,9 +285,9 @@ Wire and prove the full pre-publish gate: `prepublishOnly` runs typecheck, lint,
 
 #### Acceptance criteria
 
-- [ ] `prepublishOnly` script chains typecheck, lint, `test:cov:all`, build, `size`, `dogfood` (order documented).
-- [ ] `pnpm prepublishOnly` completes green from a clean tree.
-- [ ] Dogfood validates both subpaths, ESM and CJS, expected exports complete.
+- [x] `prepublishOnly` script chains typecheck, lint, `test:cov:all`, build, `size`, `dogfood` (order documented).
+- [x] `pnpm prepublishOnly` completes green from a clean tree.
+- [x] Dogfood validates both subpaths, ESM and CJS, expected exports complete.
 
 #### Files to create / modify
 
@@ -418,3 +418,4 @@ Completion Protocol (after you finish):
 - 6.1 ✅ 2026-07-16 e2e fixture app (env schema, feature provider, fixture secrets provider) with success, aggregated-failure, and forRootAsync boot specs, resolved through dist via jest.e2e.config.ts; CI gained the e2e step after build.
 - 6.2 ✅ 2026-07-16 Complete public README: badges, features, installation with peer table, quick start (snippets lifted from test/e2e/fixtures), full API reference covering every exported symbol of both subpaths, error catalog, testing guide, design principles, known limitations.
 - 6.3 ✅ 2026-07-16 CHANGELOG 0.1.0 entry listing the full shipped public surface; check-size.mjs budgets recalibrated to ~1.3x the measured brotli baseline (root 4.06 KiB -> 5.25 KiB, testing 5.24 KiB -> 7 KiB).
+- 6.4 ✅ 2026-07-16 prepublishOnly now chains typecheck, lint, test:cov:all, build, size, dogfood; pnpm prepublishOnly green from a clean tree (126 unit tests, 100% coverage, both subpaths PASS on size and dogfood ESM/CJS resolution).

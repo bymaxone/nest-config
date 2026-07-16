@@ -123,33 +123,87 @@ function readStringLengths(def: LeafDefinition): { min: number; max: number; exa
   return exact === undefined ? { min, max } : { min, max, exact }
 }
 
+/** The fixed head and tail of a synthesized URL: `https://<host>.lo`. */
+const URL_PREFIX = 'https://'
+const URL_SUFFIX = '.lo'
+
+/** The fixed tail of a synthesized email: `<local>@a.lo`. */
+const EMAIL_SUFFIX = '@a.lo'
+
 /**
- * Build a valid placeholder URL of at least the required length.
+ * Clamp a preferred length into the declared `[min, max]` window.
  *
- * Pads the URL path with filler when the base placeholder is shorter than the
- * declared minimum, keeping the result a syntactically valid URL.
- *
- * @param required - The minimum length the value must reach.
- * @returns A valid placeholder URL at least `required` characters long.
+ * @param preferred - The length to use when it already fits the bounds.
+ * @param min - The declared minimum length.
+ * @param max - The declared maximum length.
+ * @returns The preferred length pulled inside the bounds.
  */
-function synthesizeUrl(required: number): string {
-  if (PLACEHOLDER_URL.length >= required) return PLACEHOLDER_URL
-  const padding = FILLER_CHARACTER.repeat(Math.max(required - PLACEHOLDER_URL.length - 1, 1))
-  return `${PLACEHOLDER_URL}/${padding}`
+function clampLength(preferred: number, min: number, max: number): number {
+  return Math.min(Math.max(preferred, min), max)
 }
 
 /**
- * Build a valid placeholder email of at least the required length.
+ * Build a syntactically valid URL of the requested character length.
  *
- * Grows the local part with filler so the address reaches the declared minimum
- * while remaining a syntactically valid email.
- *
- * @param required - The minimum length the value must reach.
- * @returns A valid placeholder email at least `required` characters long.
+ * @param target - The desired total length.
+ * @returns A URL shaped `https://<filler>.lo` sized to `target`.
  */
-function synthesizeEmail(required: number): string {
-  const localLength = Math.max(required - PLACEHOLDER_EMAIL_DOMAIN.length, 1)
-  return `${FILLER_CHARACTER.repeat(localLength)}${PLACEHOLDER_EMAIL_DOMAIN}`
+function urlOfLength(target: number): string {
+  const hostFill = Math.max(target - (URL_PREFIX.length + URL_SUFFIX.length), 1)
+  return `${URL_PREFIX}${FILLER_CHARACTER.repeat(hostFill)}${URL_SUFFIX}`
+}
+
+/**
+ * Build a syntactically valid email of the requested character length.
+ *
+ * @param target - The desired total length.
+ * @returns An address shaped `<filler>@a.lo` sized to `target`.
+ */
+function emailOfLength(target: number): string {
+  const localFill = Math.max(target - EMAIL_SUFFIX.length, 1)
+  return `${FILLER_CHARACTER.repeat(localFill)}${EMAIL_SUFFIX}`
+}
+
+/**
+ * Build a valid placeholder URL that honors the declared length bounds.
+ *
+ * Keeps the readable canonical placeholder when it already fits `[min, max]`;
+ * otherwise resizes to the exact length, or to the bound-clamped length, while
+ * staying a syntactically valid URL.
+ *
+ * @param lengths - The declared min, max, and optional exact lengths.
+ * @returns A valid placeholder URL within the declared bounds.
+ */
+function synthesizeUrl(lengths: { min: number; max: number; exact?: number }): string {
+  if (
+    lengths.exact === undefined &&
+    PLACEHOLDER_URL.length >= lengths.min &&
+    PLACEHOLDER_URL.length <= lengths.max
+  ) {
+    return PLACEHOLDER_URL
+  }
+  return urlOfLength(lengths.exact ?? clampLength(PLACEHOLDER_URL.length, lengths.min, lengths.max))
+}
+
+/**
+ * Build a valid placeholder email that honors the declared length bounds.
+ *
+ * Keeps the readable canonical address when it fits `[min, max]`; otherwise
+ * resizes to the exact or bound-clamped length while staying a valid email.
+ *
+ * @param lengths - The declared min, max, and optional exact lengths.
+ * @returns A valid placeholder email within the declared bounds.
+ */
+function synthesizeEmail(lengths: { min: number; max: number; exact?: number }): string {
+  const canonical = `${FILLER_CHARACTER}${PLACEHOLDER_EMAIL_DOMAIN}`
+  if (
+    lengths.exact === undefined &&
+    canonical.length >= lengths.min &&
+    canonical.length <= lengths.max
+  ) {
+    return canonical
+  }
+  return emailOfLength(lengths.exact ?? clampLength(canonical.length, lengths.min, lengths.max))
 }
 
 /**
@@ -173,9 +227,8 @@ function synthesizePlainString(lengths: { min: number; max: number; exact?: numb
  */
 function synthesizeString(def: LeafDefinition): string {
   const lengths = readStringLengths(def)
-  const required = lengths.exact ?? lengths.min
-  if (def.format === 'url') return synthesizeUrl(required)
-  if (def.format === 'email') return synthesizeEmail(required)
+  if (def.format === 'url') return synthesizeUrl(lengths)
+  if (def.format === 'email') return synthesizeEmail(lengths)
   return synthesizePlainString(lengths)
 }
 

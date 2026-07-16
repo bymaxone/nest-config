@@ -142,6 +142,47 @@ describe('synthesizePlaceholderSource', () => {
     expect(num('NUMS_PLAIN')).toBe(1)
   })
 
+  it('honors min, max, and exact lengths for url and email formats', () => {
+    // Scenario: formatted-string placeholders stay valid AND within every
+    // declared length bound - canonical when it fits, resized when a max or
+    // exact length demands it, and grown when a min exceeds the canonical.
+    const schema = defineEnv({
+      urls: z.object({
+        plain: z.url(),
+        capped: z.url().max(20),
+        exact: z.url().length(30),
+        long: z.url().min(40)
+      }),
+      emails: z.object({
+        plain: z.email(),
+        capped: z.email().max(15),
+        exact: z.email().length(28),
+        long: z.email().min(40)
+      })
+    })
+    const source = synthesizePlaceholderSource(schema)
+    const check = (
+      key: string,
+      format: z.ZodType,
+      bounds: { min?: number; max?: number; exact?: number }
+    ): void => {
+      const value = required(source, key)
+      expect(format.safeParse(value).success).toBe(true)
+      if (bounds.min !== undefined) expect(value.length).toBeGreaterThanOrEqual(bounds.min)
+      if (bounds.max !== undefined) expect(value.length).toBeLessThanOrEqual(bounds.max)
+      if (bounds.exact !== undefined) expect(value.length).toBe(bounds.exact)
+    }
+
+    check('URLS_PLAIN', z.url(), {})
+    check('URLS_CAPPED', z.url(), { max: 20 })
+    check('URLS_EXACT', z.url(), { exact: 30 })
+    check('URLS_LONG', z.url(), { min: 40 })
+    check('EMAILS_PLAIN', z.email(), {})
+    check('EMAILS_CAPPED', z.email(), { max: 15 })
+    check('EMAILS_EXACT', z.email(), { exact: 28 })
+    check('EMAILS_LONG', z.email(), { min: 40 })
+  })
+
   it('emits a coercible placeholder for boolean leaves', () => {
     // Scenario: a boolean leaf becomes a value the coercion accepts.
     const source = synthesizePlaceholderSource(representativeSchema)

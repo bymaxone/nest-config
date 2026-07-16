@@ -18,7 +18,7 @@ Tasks live **one file per phase** in this folder (`phase-NN-<slug>.md`). Each ph
 | 2     | [`phase-02-validation-pipeline.md`](./phase-02-validation-pipeline.md)               | 5 / 5       | ✅ Done        |
 | 3     | [`phase-03-dynamic-module-di.md`](./phase-03-dynamic-module-di.md)                   | 5 / 5       | ✅ Done        |
 | 4     | [`phase-04-typed-accessor.md`](./phase-04-typed-accessor.md)                         | 4 / 4       | ✅ Done        |
-| 5     | [`phase-05-testing-subpath.md`](./phase-05-testing-subpath.md)                       | 2 / 4       | 🔄 In Progress |
+| 5     | [`phase-05-testing-subpath.md`](./phase-05-testing-subpath.md)                       | 3 / 4       | 🔄 In Progress |
 | 6     | [`phase-06-integration-docs-dogfood.md`](./phase-06-integration-docs-dogfood.md)     | 0 / 5       | 📋 ToDo        |
 | 7     | [`phase-07-mutation-hardening-release.md`](./phase-07-mutation-hardening-release.md) | 0 / 5       | 📋 ToDo        |
 |       | **Total**                                                                            | **25 / 39** | 🔄 In Progress |

@@ -82,6 +82,25 @@ function applyOverrides<TShape extends EnvShape>(
 }
 
 /**
+ * Build the flat test source for a schema by synthesizing and overlaying.
+ *
+ * Shared by {@link createTestConfig} and the testing module so both feed the
+ * production registration path a source built the exact same way. Internal to
+ * the subpath; it is not re-exported from the testing barrel.
+ *
+ * @typeParam TShape - The two-level schema shape.
+ * @param schema - A schema produced by `defineEnv`.
+ * @param overrides - Optional selective nested partial overrides.
+ * @returns The synthesized source with overrides applied.
+ */
+export function buildTestSource<TShape extends EnvShape>(
+  schema: EnvSchema<TShape>,
+  overrides?: ConfigOverrides<TShape>
+): Record<string, string> {
+  return applyOverrides(schema, synthesizePlaceholderSource(schema), overrides)
+}
+
+/**
  * Build a validated, frozen test configuration from a schema and overrides.
  *
  * Synthesizes a complete constraint-compliant source, applies the selective
@@ -107,6 +126,5 @@ export function createTestConfig<TShape extends EnvShape>(
   schema: EnvSchema<TShape>,
   overrides?: ConfigOverrides<TShape>
 ): Readonly<EnvOutput<TShape>> {
-  const source = applyOverrides(schema, synthesizePlaceholderSource(schema), overrides)
-  return createValidatedConfig({ schema, source })
+  return createValidatedConfig({ schema, source: buildTestSource(schema, overrides) })
 }

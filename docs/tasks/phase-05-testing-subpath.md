@@ -1,6 +1,6 @@
 # Phase 5: testing-subpath
 
-> **Status**: 🔄 In Progress · **Progress**: 2 / 4 tasks · **Last updated**: 2026-07-16
+> **Status**: 🔄 In Progress · **Progress**: 3 / 4 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P5)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §7, §3.2
 
@@ -37,7 +37,7 @@ Phases 3 and 4 are merged: the module, provider factory, and `ConfigService` are
 | --- | --------------------------------------------------------------------- | ------- | -------- | ---- | ---------- |
 | 5.1 | Branch + placeholder synthesizer (constraint-aware source generation) | ✅ Done | P0       | M    | none       |
 | 5.2 | `createTestConfig(schema, overrides)`                                 | ✅ Done | P0       | M    | 5.1        |
-| 5.3 | `configTestingModule` + subpath barrel + dogfood update               | 📋 ToDo | P0       | S    | 5.2        |
+| 5.3 | `configTestingModule` + subpath barrel + dogfood update               | ✅ Done | P0       | S    | 5.2        |
 | 5.4 | Phase close: gates, dashboards, PR with Copilot review                | 📋 ToDo | P0       | S    | 5.3        |
 
 ---
@@ -201,7 +201,7 @@ Completion Protocol (after you finish):
 
 ### Task 5.3: `configTestingModule` + subpath barrel + dogfood update
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: 5.2
@@ -212,10 +212,10 @@ Implement `configTestingModule(schema, overrides)` returning an importable modul
 
 #### Acceptance criteria
 
-- [ ] `configTestingModule` compiles inside `Test.createTestingModule` and provides both `BYMAX_CONFIG` and `ConfigService` with the synthesized/overridden values.
-- [ ] `src/testing/index.ts` exports exactly the public testing surface (`createTestConfig`, `configTestingModule`); the synthesizer stays internal.
-- [ ] `scripts/dogfood-smoke-test.mjs` EXPECTED_EXPORTS updated for both subpaths; dogfood green against the packed tarball.
-- [ ] 100% coverage maintained package-wide.
+- [x] `configTestingModule` compiles inside `Test.createTestingModule` and provides both `BYMAX_CONFIG` and `ConfigService` with the synthesized/overridden values.
+- [x] `src/testing/index.ts` exports exactly the public testing surface (`createTestConfig`, `configTestingModule`); the synthesizer stays internal.
+- [x] `scripts/dogfood-smoke-test.mjs` EXPECTED_EXPORTS updated for both subpaths; dogfood green against the packed tarball.
+- [x] 100% coverage maintained package-wide.
 
 #### Files to create / modify
 
@@ -358,3 +358,4 @@ Completion Protocol (after you finish):
 
 - 5.1 ✅ 2026-07-16 Added the deterministic constraint-aware placeholder synthesizer (Zod v4 introspection), 100% covered.
 - 5.2 ✅ 2026-07-16 Implemented createTestConfig with selective overrides through the exact production validate+freeze pipeline, 100% covered.
+- 5.3 ✅ 2026-07-16 Added configTestingModule (delegates to forRoot), finalized the testing barrel, and extended the dogfood expected exports for both subpaths (green against the packed tarball).

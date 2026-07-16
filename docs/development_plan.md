@@ -36,7 +36,7 @@
 | P2  | validation-pipeline        | ✅     | 100%     | M    | 2026-07-16   |
 | P3  | dynamic-module-di          | ✅     | 100%     | M    | 2026-07-16   |
 | P4  | typed-accessor             | ✅     | 100%     | S    | 2026-07-16   |
-| P5  | testing-subpath            | 🔄     | 50%      | M    | 2026-07-16   |
+| P5  | testing-subpath            | 🔄     | 75%      | M    | 2026-07-16   |
 | P6  | integration-docs-dogfood   | 📋     | 0%       | M    | 2026-07-06   |
 | P7  | mutation-hardening-release | 📋     | 0%       | L    | 2026-07-06   |
 

@@ -75,6 +75,21 @@ describe('BymaxConfigValidationError construction', () => {
     expect(error.message).toContain('environment validation failed')
   })
 
+  it('exposes a stable name that cannot be reassigned at runtime', () => {
+    /**
+     * Name immutability.
+     *
+     * The name is a non-writable, non-configurable property so consumer code
+     * and telemetry classification can rely on it never changing.
+     */
+    const error = new BymaxConfigValidationError(sampleIssues)
+
+    expect(() => {
+      ;(error as { name: string }).name = 'Tampered'
+    }).toThrow(TypeError)
+    expect(error.name).toBe('BymaxConfigValidationError')
+  })
+
   it('pluralizes the header from the issue count, singular for one issue', () => {
     /**
      * Header pluralization boundary.

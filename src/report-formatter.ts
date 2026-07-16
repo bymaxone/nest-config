@@ -43,7 +43,12 @@ function pluralizeIssues(count: number): string {
  * @returns The column width, in characters, including the trailing gutter.
  */
 function computeColumnWidth(issues: ReadonlyArray<ReportableIssue>): number {
-  const longest = Math.max(MIN_VARIABLE_COLUMN, ...issues.map((issue) => issue.variable.length))
+  // A per-element loop (not Math.max(...spread)) avoids a RangeError when the
+  // issue list is very large, so a validation failure never becomes a crash.
+  let longest = MIN_VARIABLE_COLUMN
+  for (const issue of issues) {
+    longest = Math.max(longest, issue.variable.length)
+  }
   return longest + VARIABLE_GUTTER
 }
 

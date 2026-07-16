@@ -113,8 +113,8 @@ export class BymaxConfigValidationError extends Error {
     Object.defineProperty(this, 'name', {
       value: 'BymaxConfigValidationError',
       enumerable: false,
-      writable: true,
-      configurable: true
+      writable: false,
+      configurable: false
     })
     this.issues = Object.freeze(normalized)
     // Restore the prototype chain so `instanceof` holds across transpilation

@@ -1,6 +1,6 @@
 # Phase 3: dynamic-module-di
 
-> **Status**: 🔄 In Progress · **Progress**: 3 / 5 tasks · **Last updated**: 2026-07-16
+> **Status**: 🔄 In Progress · **Progress**: 4 / 5 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P3)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §2, §4.3, §4.4
 
@@ -39,7 +39,7 @@ Phases 1 and 2 are merged: schema engine and validator are available. Phase 4 (t
 | 3.1 | Branch + DI tokens + module options types                              | ✅ Done | P0       | S    | none       |
 | 3.2 | Module definition: `ConfigurableModuleBuilder` + `setExtras(isGlobal)` | ✅ Done | P0       | M    | 3.1        |
 | 3.3 | Provider factory: validate, freeze, hook, register `BYMAX_CONFIG`      | ✅ Done | P0       | M    | 3.2        |
-| 3.4 | Bootstrap fixtures: fail-fast and success e2e-style module tests       | 📋 ToDo | P0       | M    | 3.3        |
+| 3.4 | Bootstrap fixtures: fail-fast and success e2e-style module tests       | ✅ Done | P0       | M    | 3.3        |
 | 3.5 | Phase close: gates, dashboards, PR with Copilot review                 | 📋 ToDo | P0       | S    | 3.4        |
 
 ---
@@ -285,7 +285,7 @@ Completion Protocol (after you finish):
 
 ### Task 3.4: Bootstrap fixtures: fail-fast and success module tests
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: 3.3
@@ -296,11 +296,11 @@ Prove the bootstrap semantics through real Nest testing-module fixtures: an appl
 
 #### Acceptance criteria
 
-- [ ] Fixture app module using `forRoot` compiles and exposes `BYMAX_CONFIG` in a feature provider via explicit `@Inject`.
-- [ ] Invalid source: `Test.createTestingModule(...).compile()` rejects with `BymaxConfigValidationError` (fail-fast before any consumer instantiation).
-- [ ] `forRootAsync` with `useFactory` + `inject` resolves options from another provider.
-- [ ] `isGlobal: true` default verified: a nested feature module injects the config without importing the config module.
-- [ ] 100% coverage maintained package-wide.
+- [x] Fixture app module using `forRoot` compiles and exposes `BYMAX_CONFIG` in a feature provider via explicit `@Inject`.
+- [x] Invalid source: `Test.createTestingModule(...).compile()` rejects with `BymaxConfigValidationError` (fail-fast before any consumer instantiation).
+- [x] `forRootAsync` with `useFactory` + `inject` resolves options from another provider.
+- [x] `isGlobal: true` default verified: a nested feature module injects the config without importing the config module.
+- [x] 100% coverage maintained package-wide.
 
 #### Files to create / modify
 
@@ -435,3 +435,4 @@ Completion Protocol (after you finish):
 - 3.1 ✅ 2026-07-16 Symbol DI tokens (BYMAX_CONFIG_OPTIONS, BYMAX_CONFIG) and the BymaxConfigModuleOptions contract, exported from the barrel with 100% coverage.
 - 3.2 ✅ 2026-07-16 ConfigurableModuleBuilder definition (options token bridged to BYMAX_CONFIG_OPTIONS, forRoot/forRootAsync, isGlobal extra mapped via setExtras) and the BymaxConfigModule class; registration-shape tests at 100% coverage.
 - 3.3 ✅ 2026-07-16 Fail-fast BYMAX_CONFIG provider factory: default/verbatim source, strict forwarding, deep-frozen output, and the observability hook invoked once before the throw yet unable to suppress it (throwing-hook and non-validation-error paths tested); wired into and exported from BymaxConfigModule at 100% coverage.
+- 3.4 ✅ 2026-07-16 Real TestingModule integration specs: forRoot success graph, fail-fast compile() rejection with no consumer built, forRootAsync useFactory+inject, and global default vs isGlobal:false reach; package-wide coverage stays 100%.

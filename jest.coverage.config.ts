@@ -56,9 +56,6 @@ const config: Config = {
   testTimeout: 30_000,
   clearMocks: true,
   restoreMocks: true,
-  // Scaffold-phase default: no *.spec.ts files exist yet. Flip this to false
-  // once the first spec lands so a suite with zero tests fails the build again.
-  passWithNoTests: true,
   maxWorkers: '50%'
 }
 

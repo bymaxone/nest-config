@@ -1,6 +1,6 @@
 # Phase 1: schema-engine
 
-> **Status**: 📋 ToDo · **Progress**: 0 / 5 tasks · **Last updated**: 2026-07-06
+> **Status**: ✅ Done · **Progress**: 5 / 5 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P1)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §4.1, §4.2, §1.5
 
@@ -35,13 +35,13 @@ At the start of this phase the repository has the full Phase 0 toolchain on `mai
 
 ## Task index
 
-| ID | Task | Status | Priority | Size | Depends on |
-|---|---|---|---|---|---|
-| 1.1 | Branch + core types (`EnvSchema`, shape constraints, `ConfigIssueCode` placeholder-free types) | 📋 ToDo | P0 | S | none |
-| 1.2 | `defineEnv(shape)` factory + inferred-type helper | 📋 ToDo | P0 | M | 1.1 |
-| 1.3 | Source-name mapping: path derivation + `meta({ env })` override | 📋 ToDo | P0 | M | 1.2 |
-| 1.4 | `deepFreeze` utility | 📋 ToDo | P0 | S | 1.1 |
-| 1.5 | Phase close: gates, dashboards, PR with Copilot review | 📋 ToDo | P0 | S | 1.2, 1.3, 1.4 |
+| ID  | Task                                                                                           | Status  | Priority | Size | Depends on    |
+| --- | ---------------------------------------------------------------------------------------------- | ------- | -------- | ---- | ------------- |
+| 1.1 | Branch + core types (`EnvSchema`, shape constraints, `ConfigIssueCode` placeholder-free types) | ✅ Done | P0       | S    | none          |
+| 1.2 | `defineEnv(shape)` factory + inferred-type helper                                              | ✅ Done | P0       | M    | 1.1           |
+| 1.3 | Source-name mapping: path derivation + `meta({ env })` override                                | ✅ Done | P0       | M    | 1.2           |
+| 1.4 | `deepFreeze` utility                                                                           | ✅ Done | P0       | S    | 1.1           |
+| 1.5 | Phase close: gates, dashboards, PR with Copilot review                                         | ✅ Done | P0       | S    | 1.2, 1.3, 1.4 |
 
 ---
 
@@ -49,7 +49,7 @@ At the start of this phase the repository has the full Phase 0 toolchain on `mai
 
 ### Task 1.1: Branch + core types
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: none
@@ -60,10 +60,10 @@ Create the phase branch and the foundational type definitions used across the pa
 
 #### Acceptance criteria
 
-- [ ] Branch `feat/phase-01-schema-engine` created with `git switch -c`.
-- [ ] `src/types.ts` defines the schema shape types with JSDoc; no `any` anywhere.
-- [ ] Type-level assertions (via `expectTypeOf` or equivalent dedicated type tests) pin the accepted and rejected shapes.
-- [ ] `pnpm typecheck`, `pnpm lint`, `pnpm test:cov` green; coverage 100% on files added.
+- [x] Branch `feat/phase-01-schema-engine` created with `git switch -c`.
+- [x] `src/types.ts` defines the schema shape types with JSDoc; no `any` anywhere.
+- [x] Type-level assertions (via `expectTypeOf` or equivalent dedicated type tests) pin the accepted and rejected shapes.
+- [x] `pnpm typecheck`, `pnpm lint`, `pnpm test:cov` green; coverage 100% on files added.
 
 #### Files to create / modify
 
@@ -71,7 +71,7 @@ Create the phase branch and the foundational type definitions used across the pa
 
 #### Agent prompt
 
-````
+```
 You are a senior TypeScript library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11: Zod v4 schema
@@ -121,13 +121,13 @@ Completion Protocol (after you finish):
 5. Update the P1 row in docs/development_plan.md §1 (Status 🔄, Progress, Last Updated) and the
    folder index in docs/tasks/README.md.
 6. Commit: `feat(config): add schema shape types (1.1)`.
-````
+```
 
 ---
 
 ### Task 1.2: `defineEnv(shape)` factory + inferred-type helper
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: 1.1
@@ -138,11 +138,11 @@ Implement `defineEnv`, the thin typed factory over `z.object(...)` that establis
 
 #### Acceptance criteria
 
-- [ ] `src/define-env.ts` exports `defineEnv(shape)` returning the composed Zod schema augmented with the `infer` type helper; runtime value is the schema itself.
-- [ ] Accepts nested Zod v4 namespaces exactly as in spec §4.1; rejects non-object top-level entries at the type level.
-- [ ] `typeof envSchema.infer` equals the Zod-inferred output type (pinned by type tests).
-- [ ] No schema mutation: the caller's shape objects are reused, not cloned or wrapped with extra behavior.
-- [ ] 100% coverage on the new file; specs follow TDD order.
+- [x] `src/define-env.ts` exports `defineEnv(shape)` returning the composed Zod schema augmented with the `infer` type helper; runtime value is the schema itself.
+- [x] Accepts nested Zod v4 namespaces exactly as in spec §4.1; rejects non-object top-level entries at the type level.
+- [x] `typeof envSchema.infer` equals the Zod-inferred output type (pinned by type tests).
+- [x] No schema mutation: the caller's shape objects are reused, not cloned or wrapped with extra behavior.
+- [x] 100% coverage on the new file; specs follow TDD order.
 
 #### Files to create / modify
 
@@ -151,7 +151,7 @@ Implement `defineEnv`, the thin typed factory over `z.object(...)` that establis
 
 #### Agent prompt
 
-````
+```
 You are a senior TypeScript library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11 (Zod v4,
@@ -198,13 +198,13 @@ Completion Protocol (after you finish):
 5. Update the P1 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): implement defineEnv factory (1.2)`.
-````
+```
 
 ---
 
 ### Task 1.3: Source-name mapping
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: 1.2
@@ -215,11 +215,11 @@ Implement the deterministic mapping between nested config paths and flat environ
 
 #### Acceptance criteria
 
-- [ ] A dedicated module (e.g. `src/source-mapping.ts`) exposes resolution of every leaf's source variable name from a `defineEnv` schema.
-- [ ] Derivation handles camelCase leaves (`jwtSecret` -> `JWT_SECRET` within its namespace) and is covered for single-word, camelCase, and numeric-suffix names.
-- [ ] `meta({ env: '...' })` override wins over derivation; precedence covered by tests.
-- [ ] The full leaf-to-variable table for a representative schema is pinned by a snapshot test (contract stability).
-- [ ] 100% coverage on the new files.
+- [x] A dedicated module (e.g. `src/source-mapping.ts`) exposes resolution of every leaf's source variable name from a `defineEnv` schema.
+- [x] Derivation handles camelCase leaves (`jwtSecret` -> `JWT_SECRET` within its namespace) and is covered for single-word, camelCase, and numeric-suffix names.
+- [x] `meta({ env: '...' })` override wins over derivation; precedence covered by tests.
+- [x] The full leaf-to-variable table for a representative schema is pinned by a snapshot test (contract stability).
+- [x] 100% coverage on the new files.
 
 #### Files to create / modify
 
@@ -228,7 +228,7 @@ Implement the deterministic mapping between nested config paths and flat environ
 
 #### Agent prompt
 
-````
+```
 You are a senior TypeScript library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11 (Zod v4,
@@ -276,13 +276,13 @@ Completion Protocol (after you finish):
 5. Update the P1 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): implement deterministic source-name mapping (1.3)`.
-````
+```
 
 ---
 
 ### Task 1.4: `deepFreeze` utility
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: 1.1
@@ -293,9 +293,9 @@ Implement the recursive freeze utility that makes the validated config immutable
 
 #### Acceptance criteria
 
-- [ ] `src/deep-freeze.ts` exports a generic `deepFreeze<T>(value: T): Readonly<T>` handling nested objects, arrays, and already-frozen values without infinite recursion.
-- [ ] Tests prove: nested object frozen, array element frozen, mutation throws in strict-mode test, primitives and null pass through, idempotent on re-freeze.
-- [ ] 100% coverage on the new file.
+- [x] `src/deep-freeze.ts` exports a generic `deepFreeze<T>(value: T): Readonly<T>` handling nested objects, arrays, and already-frozen values without infinite recursion.
+- [x] Tests prove: nested object frozen, array element frozen, mutation throws in strict-mode test, primitives and null pass through, idempotent on re-freeze.
+- [x] 100% coverage on the new file.
 
 #### Files to create / modify
 
@@ -303,7 +303,7 @@ Implement the recursive freeze utility that makes the validated config immutable
 
 #### Agent prompt
 
-````
+```
 You are a senior TypeScript library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11. The validated
@@ -346,13 +346,13 @@ Completion Protocol (after you finish):
 5. Update the P1 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): implement deepFreeze utility (1.4)`.
-````
+```
 
 ---
 
 ### Task 1.5: Phase close: gates, dashboards, PR with Copilot review
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: 1.2, 1.3, 1.4
@@ -363,9 +363,9 @@ Audit the phase Definition of Done, update all dashboards, open the phase PR, ob
 
 #### Acceptance criteria
 
-- [ ] Every P1 Definition of Done bullet in `../development_plan.md` §5 verified observable.
-- [ ] Dashboards consistent across the phase file, `docs/development_plan.md`, and `docs/tasks/README.md`.
-- [ ] PR opened, Copilot review requested and fully addressed, merged with CI green, branch deleted.
+- [x] Every P1 Definition of Done bullet in `../development_plan.md` §5 verified observable.
+- [x] Dashboards consistent across the phase file, `docs/development_plan.md`, and `docs/tasks/README.md`.
+- [x] PR opened, Copilot review requested and fully addressed, merged with CI green, branch deleted.
 
 #### Files to create / modify
 
@@ -373,7 +373,7 @@ Audit the phase Definition of Done, update all dashboards, open the phase PR, ob
 
 #### Agent prompt
 
-````
+```
 You are a senior release engineer closing a phase on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config. This task closes Phase 1 (schema-engine).
@@ -419,10 +419,16 @@ Completion Protocol (after you finish):
 5. Update the P1 row and overall progress in docs/development_plan.md §1 and the folder index
    in docs/tasks/README.md.
 6. Final commit on main after merge: `docs(config): mark phase 1 complete (1.5)`.
-````
+```
 
 ---
 
 ## Completion log
 
 <!-- Append one line per completed task: - <id> ✅ YYYY-MM-DD <summary> -->
+
+- 1.1 ✅ 2026-07-16 Added foundational schema shape types (EnvShape, EnvNamespace, EnvLeaf, EnvOutput, EnvSchema) with compile-time type tests; removed passWithNoTests from both jest configs.
+- 1.2 ✅ 2026-07-16 Implemented defineEnv factory composing namespaces into one Zod object with the infer phantom; reuses caller schemas unchanged; exported from the server barrel.
+- 1.3 ✅ 2026-07-16 Implemented internal deterministic source-name mapping (SCREAMING_SNAKE derivation, meta({ env }) override precedence) with derivation, override, and inline-snapshot contract tests.
+- 1.4 ✅ 2026-07-16 Implemented cycle-safe, idempotent deepFreeze utility (nested objects and arrays, strict-mode mutation rejection, primitive and null pass-through) at 100% branch coverage.
+- 1.5 ✅ 2026-07-16 Audited P1 Definition of Done; phase gates green (typecheck, lint, build both subpaths, 100% coverage); set all dashboards to final done state; opened phase PR with Copilot review requested.

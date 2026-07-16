@@ -3,4 +3,5 @@
  * @layer Module
  */
 
-export {}
+export { defineEnv } from './define-env'
+export type { EnvLeaf, EnvNamespace, EnvOutput, EnvSchema, EnvShape } from './types'

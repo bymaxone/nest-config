@@ -34,61 +34,59 @@ const DEFAULT_STRING_LENGTH = 1
 /** Fixed, coercible placeholder for boolean leaves. */
 const PLACEHOLDER_BOOLEAN = 'true'
 
-/** One check attached to a leaf, exposing its definition under `_zod.def`. */
-interface CheckWrapper {
-  readonly _zod: { readonly def: { readonly check: string } }
+/**
+ * Typed view over a single Zod v4 check definition.
+ *
+ * The runtime check object only carries the fields relevant to its `check`
+ * discriminant (a `min_length` check has `minimum`, a `greater_than` check has
+ * `value` and `inclusive`). This view types them all as present; each is read
+ * only under the matching `check` branch, so the assertion is sound.
+ */
+interface CheckDefinition {
+  readonly check: string
+  readonly minimum: number
+  readonly maximum: number
+  readonly length: number
+  readonly value: number
+  readonly inclusive: boolean
 }
 
-/** The subset of a leaf definition the synthesizer reads. */
-interface LeafDef {
+/** One check attached to a leaf, exposing its definition under `_zod.def`. */
+interface CheckWrapper {
+  readonly _zod: { readonly def: CheckDefinition }
+}
+
+/**
+ * Typed view over the Zod v4 leaf definition the synthesizer reads.
+ *
+ * `innerType` and `entries` exist only on wrapper and enum leaves respectively
+ * and are read only under those branches; `format` and `checks` are genuinely
+ * optional (a plain string declares neither).
+ */
+interface LeafDefinition {
   readonly type: string
   readonly format?: string
   readonly checks?: readonly CheckWrapper[]
+  readonly innerType: EnvLeaf
+  readonly entries: Readonly<Record<string, string | number>>
 }
 
 /** A leaf schema surfaced through its Zod v4 internals. */
 interface LeafInternals {
-  readonly _zod: { readonly def: LeafDef }
-}
-
-/** A wrapper leaf definition (default, optional, nullable) around an inner leaf. */
-interface WrapperDef {
-  readonly innerType: EnvLeaf
-}
-
-/** An enum leaf definition exposing its declared members. */
-interface EnumDef {
-  readonly entries: Readonly<Record<string, string | number>>
-}
-
-/** A minimum-length string check. */
-interface MinLengthCheck {
-  readonly minimum: number
-}
-
-/** A maximum-length string check. */
-interface MaxLengthCheck {
-  readonly maximum: number
-}
-
-/** An exact-length string check. */
-interface ExactLengthCheck {
-  readonly length: number
-}
-
-/** A numeric bound check (`greater_than` / `less_than`). */
-interface BoundCheck {
-  readonly value: number
-  readonly inclusive: boolean
+  readonly _zod: { readonly def: LeafDefinition }
 }
 
 /**
  * Read a leaf's Zod v4 definition object.
  *
+ * Zod stores a schema's definition under the `_zod.def` internal, which is not
+ * part of the public TypeScript surface; this is the single, documented boundary
+ * where that runtime shape is asserted so the rest of the module stays typed.
+ *
  * @param leaf - Any leaf schema produced within a `defineEnv` namespace.
  * @returns The internal definition describing the leaf's type and constraints.
  */
-function readDef(leaf: EnvLeaf): LeafDef {
+function readDef(leaf: EnvLeaf): LeafDefinition {
   return (leaf as unknown as LeafInternals)._zod.def
 }
 
@@ -102,7 +100,7 @@ function readDef(leaf: EnvLeaf): LeafDef {
  * @param def - The leaf definition to read.
  * @returns The declared checks, or an empty list when none are present.
  */
-function checksOf(def: LeafDef): readonly CheckWrapper[] {
+function checksOf(def: LeafDefinition): readonly CheckWrapper[] {
   return def.checks ?? []
 }
 
@@ -112,15 +110,15 @@ function checksOf(def: LeafDef): readonly CheckWrapper[] {
  * @param def - The string leaf definition.
  * @returns The minimum, maximum, and exact length when each is declared.
  */
-function readStringLengths(def: LeafDef): { min: number; max: number; exact?: number } {
+function readStringLengths(def: LeafDefinition): { min: number; max: number; exact?: number } {
   let min = 0
   let max = Number.POSITIVE_INFINITY
   let exact: number | undefined
   for (const wrapper of checksOf(def)) {
     const check = wrapper._zod.def
-    if (check.check === 'min_length') min = (check as unknown as MinLengthCheck).minimum
-    if (check.check === 'max_length') max = (check as unknown as MaxLengthCheck).maximum
-    if (check.check === 'length_equals') exact = (check as unknown as ExactLengthCheck).length
+    if (check.check === 'min_length') min = check.minimum
+    if (check.check === 'max_length') max = check.maximum
+    if (check.check === 'length_equals') exact = check.length
   }
   return exact === undefined ? { min, max } : { min, max, exact }
 }
@@ -173,7 +171,7 @@ function synthesizePlainString(lengths: { min: number; max: number; exact?: numb
  * @param def - The string leaf definition.
  * @returns A constraint-compliant placeholder string.
  */
-function synthesizeString(def: LeafDef): string {
+function synthesizeString(def: LeafDefinition): string {
   const lengths = readStringLengths(def)
   const required = lengths.exact ?? lengths.min
   if (def.format === 'url') return synthesizeUrl(required)
@@ -204,20 +202,14 @@ function selectNumber(lower: number | undefined, upper: number | undefined): num
  * @param def - The number leaf definition.
  * @returns The string form of a constraint-compliant number.
  */
-function synthesizeNumber(def: LeafDef): string {
+function synthesizeNumber(def: LeafDefinition): string {
   let lower: number | undefined
   let upper: number | undefined
   let integer = false
   for (const wrapper of checksOf(def)) {
     const check = wrapper._zod.def
-    if (check.check === 'greater_than') {
-      const bound = check as unknown as BoundCheck
-      lower = bound.inclusive ? bound.value : bound.value + 1
-    }
-    if (check.check === 'less_than') {
-      const bound = check as unknown as BoundCheck
-      upper = bound.inclusive ? bound.value : bound.value - 1
-    }
+    if (check.check === 'greater_than') lower = check.inclusive ? check.value : check.value + 1
+    if (check.check === 'less_than') upper = check.inclusive ? check.value : check.value - 1
     if (check.check === 'number_format') integer = true
   }
   const value = selectNumber(lower, upper)
@@ -230,7 +222,7 @@ function synthesizeNumber(def: LeafDef): string {
  * @param def - The enum leaf definition.
  * @returns The string form of the first declared enum member.
  */
-function synthesizeEnum(def: EnumDef): string {
+function synthesizeEnum(def: LeafDefinition): string {
   const [first] = Object.values(def.entries)
   return String(first)
 }
@@ -253,7 +245,7 @@ function synthesizeLeaf(leaf: EnvLeaf): string | undefined {
     case 'optional':
       return undefined
     case 'nullable':
-      return synthesizeLeaf((def as unknown as WrapperDef).innerType)
+      return synthesizeLeaf(def.innerType)
     case 'string':
       return synthesizeString(def)
     case 'number':
@@ -261,7 +253,7 @@ function synthesizeLeaf(leaf: EnvLeaf): string | undefined {
     case 'boolean':
       return PLACEHOLDER_BOOLEAN
     case 'enum':
-      return synthesizeEnum(def as unknown as EnumDef)
+      return synthesizeEnum(def)
     default:
       return FILLER_CHARACTER
   }

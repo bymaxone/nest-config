@@ -37,7 +37,7 @@ export default [
   // TypeScript production files (Node-only library; no DOM, no JSX)
   {
     files: ['src/**/*.ts'],
-    ignores: ['**/*.spec.ts'],
+    ignores: ['**/*.spec.ts', '**/*.test.ts'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {

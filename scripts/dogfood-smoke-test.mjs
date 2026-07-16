@@ -206,7 +206,7 @@ await checkNamedExports()
 try {
   checkConsumerInstall()
 } catch (err) {
-  fail(`Consumer scaffolding failed: ${String(err.message)}`)
+  fail(`Consumer scaffolding failed: ${err instanceof Error ? err.message : String(err)}`)
 } finally {
   cleanup()
 }

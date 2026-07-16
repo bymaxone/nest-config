@@ -1,6 +1,6 @@
 # Phase 4: typed-accessor
 
-> **Status**: 🔄 In Progress · **Progress**: 1 / 4 tasks · **Last updated**: 2026-07-16
+> **Status**: 🔄 In Progress · **Progress**: 2 / 4 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P4)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §5, §12.1
 
@@ -36,7 +36,7 @@ Phase 1 is merged. This phase runs in parallel with Phases 2 and 3 (disjoint fil
 | ID  | Task                                                       | Status  | Priority | Size | Depends on |
 | --- | ---------------------------------------------------------- | ------- | -------- | ---- | ---------- |
 | 4.1 | Branch + `Path` / `PathValue` type utilities + type tests  | ✅ Done | P0       | M    | none       |
-| 4.2 | `ConfigService`: `get`, `getAll`, `has`                    | 📋 ToDo | P0       | M    | 4.1        |
+| 4.2 | `ConfigService`: `get`, `getAll`, `has`                    | ✅ Done | P0       | M    | 4.1        |
 | 4.3 | Service registration in the module + global injection test | 📋 ToDo | P0       | S    | 4.2        |
 | 4.4 | Phase close: gates, dashboards, PR with Copilot review     | 📋 ToDo | P0       | S    | 4.3        |
 
@@ -122,7 +122,7 @@ Completion Protocol (after you finish):
 
 ### Task 4.2: `ConfigService`: `get`, `getAll`, `has`
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: M
 - **Depends on**: 4.1
@@ -133,10 +133,10 @@ Implement the injectable `ConfigService<T>` wrapping the frozen config object: `
 
 #### Acceptance criteria
 
-- [ ] `src/config.service.ts` implements the API table of spec §5 exactly; constructor injects the config object with explicit `@Inject(BYMAX_CONFIG)`.
-- [ ] `get('database.url')` type-checks as `string`, `get('server.port')` as `number` (type tests); runtime resolution covered for all leaves of a representative schema.
-- [ ] `getAll()` returns the same frozen reference; `has` is `true` for defined leaves and `false` when the resolved value is `undefined` (optional leaf without default).
-- [ ] 100% coverage on the new file.
+- [x] `src/config.service.ts` implements the API table of spec §5 exactly; constructor injects the config object with explicit `@Inject(BYMAX_CONFIG)`.
+- [x] `get('database.url')` type-checks as `string`, `get('server.port')` as `number` (type tests); runtime resolution covered for all leaves of a representative schema.
+- [x] `getAll()` returns the same frozen reference; `has` is `true` for defined leaves and `false` when the resolved value is `undefined` (optional leaf without default).
+- [x] 100% coverage on the new file.
 
 #### Files to create / modify
 
@@ -343,3 +343,4 @@ Completion Protocol (after you finish):
 <!-- Append one line per completed task: - <id> ✅ YYYY-MM-DD <summary> -->
 
 - 4.1 ✅ 2026-07-16 Added two-level `Path`/`PathValue` dot-path utilities to `types.ts` with compile-time type tests pinning accepted paths, their value types, and rejected paths.
+- 4.2 ✅ 2026-07-16 Implemented injectable `ConfigService<T>` (`get`/`getAll`/`has`) over the frozen `BYMAX_CONFIG` with explicit `@Inject`, 100% coverage, and inferred-return type tests.

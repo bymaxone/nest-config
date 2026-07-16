@@ -322,14 +322,14 @@ describe('validateEnv strict mode', () => {
      */
     const error = captureError(
       appSchema,
-      { ...validSource, DATABASE_ZEBRA: 'z', DATABASE_ALPHA: 'a' },
+      { ...validSource, DATABASE_ZEBRA: 'z', DATABASE_ALPHA: 'a', DATABASE_MIDDLE: 'm' },
       { strict: true }
     )
     const unknownVariables = error.issues
       .filter((issue) => issue.code === ConfigErrorCode.UNKNOWN_KEY)
       .map((issue) => issue.variable)
 
-    expect(unknownVariables).toEqual(['DATABASE_ALPHA', 'DATABASE_ZEBRA'])
+    expect(unknownVariables).toEqual(['DATABASE_ALPHA', 'DATABASE_MIDDLE', 'DATABASE_ZEBRA'])
   })
 
   it('ignores a prefixed key whose value is undefined under strict mode', () => {

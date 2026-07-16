@@ -104,7 +104,7 @@ export function resolveSourceNames<TShape extends EnvShape = EnvShape>(
  * Each derived leaf variable starts with its namespace's SCREAMING_SNAKE_CASE
  * prefix (`database` yields `DATABASE_`). Strict validation uses these prefixes
  * to recognize variables that look like config for a namespace but match no
- * declared leaf, without ever scanning unrelated process variables.
+ * declared leaf, so unrelated process variables are never reported as issues.
  *
  * @typeParam TShape - The two-level shape the schema was composed from.
  * @param schema - A schema produced by `defineEnv`.

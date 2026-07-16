@@ -252,9 +252,10 @@ function detectUnknownKeys(
       message: UNKNOWN_KEY_MESSAGE
     })
   }
-  // Sort by variable so the aggregated report is stable regardless of the
-  // source's key-enumeration order (process.env order can vary across runs).
-  return issues.sort((left, right) => left.variable.localeCompare(right.variable))
+  // Sort by variable in code-point order (locale-independent) so the aggregated
+  // report is stable across platforms regardless of the source key-enumeration
+  // order (process.env order can vary across runs).
+  return issues.sort((left, right) => (left.variable < right.variable ? -1 : 1))
 }
 
 /**

@@ -27,12 +27,17 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // when the artifact shrinks.
 //
 // Calibration history (newest first):
+//   - 2026-07-16: testing subpath budget raised 2 -> 8 KiB when it gained its
+//     real content (constraint-aware synthesizer, createTestConfig,
+//     configTestingModule); it measures ~5.01 KiB brotli, so 8 KiB keeps a
+//     tripwire margin of roughly 1.6x. Final calibration of both subpaths
+//     lands once the full public surface and documentation stabilize.
 //   - 2026-07-16: provisional budgets set at scaffold time against the
 //     placeholder `export {}` barrels. Both subpaths recalibrate once the
 //     real public API lands and the built artifact stabilizes.
 const BUDGETS = [
   { name: 'root (schema, module, service)', path: 'dist/index.mjs', brotli: 6 * 1024 },
-  { name: 'testing (test doubles)', path: 'dist/testing/index.mjs', brotli: 2 * 1024 }
+  { name: 'testing (test doubles)', path: 'dist/testing/index.mjs', brotli: 8 * 1024 }
 ]
 
 const fmt = (n) => `${(n / 1024).toFixed(2)} kB`

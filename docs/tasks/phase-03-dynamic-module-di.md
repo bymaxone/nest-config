@@ -1,6 +1,6 @@
 # Phase 3: dynamic-module-di
 
-> **Status**: 📋 ToDo · **Progress**: 0 / 5 tasks · **Last updated**: 2026-07-06
+> **Status**: 🔄 In Progress · **Progress**: 1 / 5 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P3)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §2, §4.3, §4.4
 
@@ -34,13 +34,13 @@ Phases 1 and 2 are merged: schema engine and validator are available. Phase 4 (t
 
 ## Task index
 
-| ID | Task | Status | Priority | Size | Depends on |
-|---|---|---|---|---|---|
-| 3.1 | Branch + DI tokens + module options types | 📋 ToDo | P0 | S | none |
-| 3.2 | Module definition: `ConfigurableModuleBuilder` + `setExtras(isGlobal)` | 📋 ToDo | P0 | M | 3.1 |
-| 3.3 | Provider factory: validate, freeze, hook, register `BYMAX_CONFIG` | 📋 ToDo | P0 | M | 3.2 |
-| 3.4 | Bootstrap fixtures: fail-fast and success e2e-style module tests | 📋 ToDo | P0 | M | 3.3 |
-| 3.5 | Phase close: gates, dashboards, PR with Copilot review | 📋 ToDo | P0 | S | 3.4 |
+| ID  | Task                                                                   | Status  | Priority | Size | Depends on |
+| --- | ---------------------------------------------------------------------- | ------- | -------- | ---- | ---------- |
+| 3.1 | Branch + DI tokens + module options types                              | ✅ Done | P0       | S    | none       |
+| 3.2 | Module definition: `ConfigurableModuleBuilder` + `setExtras(isGlobal)` | 📋 ToDo | P0       | M    | 3.1        |
+| 3.3 | Provider factory: validate, freeze, hook, register `BYMAX_CONFIG`      | 📋 ToDo | P0       | M    | 3.2        |
+| 3.4 | Bootstrap fixtures: fail-fast and success e2e-style module tests       | 📋 ToDo | P0       | M    | 3.3        |
+| 3.5 | Phase close: gates, dashboards, PR with Copilot review                 | 📋 ToDo | P0       | S    | 3.4        |
 
 ---
 
@@ -48,7 +48,7 @@ Phases 1 and 2 are merged: schema engine and validator are available. Phase 4 (t
 
 ### Task 3.1: Branch + DI tokens + module options types
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: none
@@ -59,10 +59,10 @@ Create the phase branch, the Symbol token definitions, and the `BymaxConfigModul
 
 #### Acceptance criteria
 
-- [ ] Branch `feat/phase-03-dynamic-module-di` created with `git switch -c`.
-- [ ] `src/config.tokens.ts` exports `BYMAX_CONFIG_OPTIONS` and `BYMAX_CONFIG` as `Symbol`s (unique, described).
-- [ ] Options interface matches spec §4.3: `schema` (required), `source?`, `onValidationError?`, `strict?`, fully JSDoc'd.
-- [ ] 100% coverage on the new files.
+- [x] Branch `feat/phase-03-dynamic-module-di` created with `git switch -c`.
+- [x] `src/config.tokens.ts` exports `BYMAX_CONFIG_OPTIONS` and `BYMAX_CONFIG` as `Symbol`s (unique, described).
+- [x] Options interface matches spec §4.3: `schema` (required), `source?`, `onValidationError?`, `strict?`, fully JSDoc'd.
+- [x] 100% coverage on the new files.
 
 #### Files to create / modify
 
@@ -72,7 +72,7 @@ Create the phase branch, the Symbol token definitions, and the `BymaxConfigModul
 
 #### Agent prompt
 
-````
+```
 You are a senior NestJS library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11: Zod v4
@@ -119,7 +119,7 @@ Completion Protocol (after you finish):
 5. Update the P3 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): add DI tokens and module options (3.1)`.
-````
+```
 
 ---
 
@@ -149,7 +149,7 @@ Author the module definition on `ConfigurableModuleBuilder`: options class token
 
 #### Agent prompt
 
-````
+```
 You are a senior NestJS library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11. Dynamic module
@@ -198,7 +198,7 @@ Completion Protocol (after you finish):
 5. Update the P3 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): add configurable module definition (3.2)`.
-````
+```
 
 ---
 
@@ -228,7 +228,7 @@ Implement the heart of the module: the `BYMAX_CONFIG` provider factory that reso
 
 #### Agent prompt
 
-````
+```
 You are a senior NestJS library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11. Fail-fast:
@@ -279,7 +279,7 @@ Completion Protocol (after you finish):
 5. Update the P3 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `feat(config): implement fail-fast config provider factory (3.3)`.
-````
+```
 
 ---
 
@@ -308,7 +308,7 @@ Prove the bootstrap semantics through real Nest testing-module fixtures: an appl
 
 #### Agent prompt
 
-````
+```
 You are a senior NestJS library engineer working on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config, typed environment configuration for NestJS 11. This task
@@ -352,7 +352,7 @@ Completion Protocol (after you finish):
 5. Update the P3 row in docs/development_plan.md §1 and the folder index in
    docs/tasks/README.md.
 6. Commit: `test(config): add bootstrap fixture integration specs (3.4)`.
-````
+```
 
 ---
 
@@ -379,7 +379,7 @@ Audit the phase Definition of Done, update all dashboards, open the phase PR, ob
 
 #### Agent prompt
 
-````
+```
 You are a senior release engineer closing a phase on @bymax-one/nest-config.
 
 PROJECT: @bymax-one/nest-config. This task closes Phase 3 (dynamic-module-di).
@@ -424,10 +424,12 @@ Completion Protocol (after you finish):
 5. Update the P3 row and overall progress in docs/development_plan.md §1 and the folder index
    in docs/tasks/README.md.
 6. Final commit on main after merge: `docs(config): mark phase 3 complete (3.5)`.
-````
+```
 
 ---
 
 ## Completion log
 
 <!-- Append one line per completed task: - <id> ✅ YYYY-MM-DD <summary> -->
+
+- 3.1 ✅ 2026-07-16 Symbol DI tokens (BYMAX_CONFIG_OPTIONS, BYMAX_CONFIG) and the BymaxConfigModuleOptions contract, exported from the barrel with 100% coverage.

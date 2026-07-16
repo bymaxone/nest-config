@@ -3,6 +3,8 @@
  * @layer Module
  */
 
+export { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
+export type { BymaxConfigModuleOptions } from './config.options'
 export { defineEnv } from './define-env'
 export { BymaxConfigValidationError, ConfigErrorCode } from './errors'
 export type { ConfigIssue, ConfigIssueCode, ConfigValidationCode } from './errors'

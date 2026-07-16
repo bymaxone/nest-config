@@ -1,6 +1,6 @@
 # Phase 0: repository-scaffold
 
-> **Status**: 🔄 In Progress · **Progress**: 1 / 6 tasks · **Last updated**: 2026-07-16
+> **Status**: 🔄 In Progress · **Progress**: 2 / 6 tasks · **Last updated**: 2026-07-16
 > **Source roadmap**: [`../development_plan.md`](../development_plan.md) §5 (P0)
 > **Source spec**: [`../technical_specification.md`](../technical_specification.md) §3, §9, §10, §11
 
@@ -40,7 +40,7 @@ At the start of this phase the repository contains only `docs/` and an empty `ma
 | ID | Task | Status | Priority | Size | Depends on |
 |---|---|---|---|---|---|
 | 0.1 | Branch + `package.json` + pnpm install | ✅ Done | P0 | S | none |
-| 0.2 | Build config: tsconfig set + `tsup.config.ts` + placeholder barrels | 📋 ToDo | P0 | S | 0.1 |
+| 0.2 | Build config: tsconfig set + `tsup.config.ts` + placeholder barrels | ✅ Done | P0 | S | 0.1 |
 | 0.3 | Quality tooling: ESLint flat config, Prettier, jest configs, Stryker | 📋 ToDo | P0 | M | 0.2 |
 | 0.4 | Governance and community files: husky, commitlint, lint-staged, LICENSE, SECURITY, CONTRIBUTING, CODE_OF_CONDUCT, CHANGELOG, README skeleton | 📋 ToDo | P0 | M | 0.1 |
 | 0.5 | Scripts and workflows: `check-size.mjs`, `dogfood-smoke-test.mjs`, `ci.yml`, `codeql.yml`, `scorecard.yml`, `release.yml`, dependabot, issue templates | 📋 ToDo | P0 | L | 0.2, 0.3 |
@@ -146,7 +146,7 @@ Completion Protocol (after you finish):
 
 ### Task 0.2: Build config: tsconfig set + `tsup.config.ts` + placeholder barrels
 
-- **Status**: 📋 ToDo
+- **Status**: ✅ Done
 - **Priority**: P0
 - **Size**: S
 - **Depends on**: 0.1
@@ -157,11 +157,11 @@ Copy the tsconfig family from `nest-logger`, adapt path aliases to the two subpa
 
 #### Acceptance criteria
 
-- [ ] tsconfig set present (base + build + jest variants matching the sibling layout), strict flags on (`noImplicitAny`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, target ES2022).
-- [ ] Path aliases declare exactly `@bymax-one/nest-config` -> `./src/index.ts` and `@bymax-one/nest-config/testing` -> `./src/testing/index.ts`.
-- [ ] `tsup.config.ts` has two entries (`src/index.ts`, `src/testing/index.ts`), formats ESM + CJS, `dts: true`, `minify: false`, `target: node24`, externals `/^@nestjs\//`, `reflect-metadata`, `zod`.
-- [ ] `src/index.ts` and `src/testing/index.ts` exist as `export {}` placeholders with `@fileoverview` headers.
-- [ ] `pnpm typecheck` and `pnpm build` pass; `dist/` contains `.mjs`, `.cjs`, and declarations for both entries.
+- [x] tsconfig set present (base + build + jest variants matching the sibling layout), strict flags on (`noImplicitAny`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, target ES2022).
+- [x] Path aliases declare exactly `@bymax-one/nest-config` -> `./src/index.ts` and `@bymax-one/nest-config/testing` -> `./src/testing/index.ts`.
+- [x] `tsup.config.ts` has two entries (`src/index.ts`, `src/testing/index.ts`), formats ESM + CJS, `dts: true`, `minify: false`, `target: node24`, externals `/^@nestjs\//`, `reflect-metadata`, `zod`.
+- [x] `src/index.ts` and `src/testing/index.ts` exist as `export {}` placeholders with `@fileoverview` headers.
+- [x] `pnpm typecheck` and `pnpm build` pass; `dist/` contains `.mjs`, `.cjs`, and declarations for both entries.
 
 #### Files to create / modify
 
@@ -584,3 +584,4 @@ Completion Protocol (after you finish):
 
 <!-- Append one line per completed task: - <id> ✅ YYYY-MM-DD <summary> -->
 - 0.1 ✅ 2026-07-16 package.json (two subpaths, zero deps, required peers), .gitignore, .npmrc, pnpm install clean
+- 0.2 ✅ 2026-07-16 tsconfig set, tsup.config.ts (two entries), placeholder barrels; typecheck and build green

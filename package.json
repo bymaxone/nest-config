@@ -43,7 +43,7 @@
     "mutation": "stryker run",
     "mutation:incremental": "stryker run --incremental",
     "mutation:dry-run": "stryker run --dryRunOnly",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.build.json",
     "size": "node scripts/check-size.mjs",
     "dogfood": "node scripts/dogfood-smoke-test.mjs",
     "clean": "rm -rf dist coverage",

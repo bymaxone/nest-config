@@ -11,8 +11,9 @@
 
 import type { DynamicModule } from '@nestjs/common'
 
-import { BymaxConfigModule } from '../config.module'
-import type { EnvSchema, EnvShape } from '../types'
+import { BymaxConfigModule } from '@bymax-one/nest-config/internal'
+import type { EnvSchema, EnvShape } from '@bymax-one/nest-config/internal'
+
 import { buildTestSource } from './create-test-config'
 import type { ConfigOverrides } from './create-test-config'
 

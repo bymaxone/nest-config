@@ -23,6 +23,7 @@
     "skipLibCheck": true,
     "paths": {
       "@bymax-one/nest-config": ["./src/index.ts"],
+      "@bymax-one/nest-config/internal": ["./src/internal/index.ts"],
       "@bymax-one/nest-config/testing": ["./src/testing/index.ts"]
     }
   },

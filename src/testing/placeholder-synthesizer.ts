@@ -13,8 +13,8 @@
  * @layer Utility
  */
 
-import { resolveSourceNames } from '../source-mapping'
-import type { EnvLeaf, EnvSchema, EnvShape } from '../types'
+import { resolveSourceNames } from '@bymax-one/nest-config/internal'
+import type { EnvLeaf, EnvSchema, EnvShape } from '@bymax-one/nest-config/internal'
 
 /** A single filler character, repeated to build clearly-placeholder strings. */
 const FILLER_CHARACTER = 'a'

@@ -26,6 +26,7 @@ const config: Config = {
   // would make `instanceof` checks return false across subpath boundaries.
   moduleNameMapper: {
     '^@bymax-one/nest-config$': '<rootDir>/src/index.ts',
+    '^@bymax-one/nest-config/internal$': '<rootDir>/src/internal/index.ts',
     '^@bymax-one/nest-config/testing$': '<rootDir>/src/testing/index.ts'
   },
   transform: {

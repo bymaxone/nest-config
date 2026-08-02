@@ -10,9 +10,10 @@
  * @layer Utility
  */
 
-import { createValidatedConfig } from '../config.providers'
-import { resolveSourceNames } from '../source-mapping'
-import type { EnvOutput, EnvSchema, EnvShape } from '../types'
+import { createValidatedConfig } from '@bymax-one/nest-config/internal'
+import { resolveSourceNames } from '@bymax-one/nest-config/internal'
+import type { EnvOutput, EnvSchema, EnvShape } from '@bymax-one/nest-config/internal'
+
 import { synthesizePlaceholderSource } from './placeholder-synthesizer'
 
 /**

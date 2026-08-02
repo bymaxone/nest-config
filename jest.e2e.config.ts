@@ -20,6 +20,7 @@ const config: Config = {
   moduleFileExtensions: ['ts', 'js', 'json'],
   moduleNameMapper: {
     '^@bymax-one/nest-config$': '<rootDir>/../../dist/index.cjs',
+    '^@bymax-one/nest-config/internal$': '<rootDir>/../../dist/internal/index.cjs',
     '^@bymax-one/nest-config/testing$': '<rootDir>/../../dist/testing/index.cjs'
   },
   transform: {

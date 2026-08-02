@@ -1,8 +1,12 @@
+# CI — thin caller of the org-wide reusable pipeline (bymaxone/.github).
+#
+# The generic library jobs (install, lint, typecheck, unit+coverage, mutation) run
+# via node-lib-ci.yml. This library's extra verification (build output integrity
+# across both subpaths, bundle-size budget) and its e2e suite against the built
+# package stay here. Mutation runs only on a push to main / manual dispatch,
+# never on PRs.
 name: CI
 
-# Runs on every push to `main` and on every PR targeting `main`. The
-# `workflow_dispatch` trigger is kept so the same job can be re-run manually
-# from the Actions tab when needed.
 on:
   workflow_dispatch:
   push:
@@ -10,110 +14,81 @@ on:
   pull_request:
     branches: [main]
 
-# Cancel in-progress runs for the same ref when a new commit is pushed.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# Least privilege: CI only reads the repository. No write scopes are granted so a
-# compromised dependency in a workflow step cannot mutate the repo or its releases.
 permissions:
   contents: read
 
 jobs:
+  ci:
+    uses: bymaxone/.github/.github/workflows/node-lib-ci.yml@v1
+    with:
+      run-format-check: false # no format:check script; prettier runs via lint/pre-commit
+      run-build: false # build + integrity + size verified in the `verify` job below
+      unit-command: pnpm test:cov:all
+      run-mutation: true
+      mutation-source-globs: '^(src/)'
+
+  # Library-specific verification: full build, output integrity across every
+  # declared subpath, and the brotli bundle-size budget.
   verify:
-    name: Verify (typecheck, lint, test, build, size)
+    name: Verify build + size
+    needs: ci
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [24.x]
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      # Blocks PRs that introduce dependencies with known vulnerabilities or
-      # license violations. PR-only, since on push to main there is no base ref
-      # to diff against. Requires the repo's Dependency Graph to be enabled
-      # (Settings, Code security, Dependency graph), which in turn requires
-      # either a public repository or GitHub Advanced Security. This repository
-      # stays private until it is ready to publish, so the step is non-blocking
-      # until then: it activates as a real gate once the repository is public.
-      - name: Dependency review
-        if: github.event_name == 'pull_request'
-        # dependency-review-action needs the GitHub dependency graph, which on a
-        # private repository requires GitHub Advanced Security. While private the
-        # step is advisory (non-blocking); once the repo is public it becomes a
-        # real gate that fails on high-severity advisories.
-        continue-on-error: ${{ github.event.repository.private }}
-        uses: actions/dependency-review-action@v5
-        with:
-          fail-on-severity: high
-          comment-summary-in-pr: on-failure
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 10.8.1
-          run_install: false
-
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Unit tests with coverage (100% enforced)
-        run: pnpm test:cov:all
-
-      - name: Upload coverage artifact
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage-node-${{ matrix.node-version }}
-          path: coverage/
-          retention-days: 14
-
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: bymaxone/.github/.github/actions/setup-node-pnpm@v1
       - name: Build all subpaths
         run: pnpm build
-
       - name: Verify build output integrity
-        # Confirms every declared subpath produced both ESM and CJS bundles
-        # plus type declarations. A missing artifact here indicates a tsup
+        # Confirms every declared subpath produced both ESM and CJS bundles plus
+        # type declarations. A missing artifact here indicates a tsup
         # misconfiguration that would ship a broken package to npm.
         run: |
-          for ext in mjs cjs d.ts d.cts; do
-            if [ ! -f "dist/index.$ext" ]; then
-              echo "Missing dist/index.$ext"
-              exit 1
-            fi
-            if [ ! -f "dist/testing/index.$ext" ]; then
-              echo "Missing dist/testing/index.$ext"
-              exit 1
-            fi
+          for subpath in index internal/index testing/index; do
+            for ext in mjs cjs d.ts d.cts; do
+              if [ ! -f "dist/$subpath.$ext" ]; then
+                echo "Missing dist/$subpath.$ext"
+                exit 1
+              fi
+            done
           done
-          echo "Both subpaths produced ESM + CJS + .d.ts + .d.cts"
-
+          echo "Every entry point produced ESM + CJS + .d.ts + .d.cts"
+      - name: Verify published type resolution
+        # A source-level typecheck compiles `src`, so it cannot catch a broken
+        # `exports` map: a consumer resolving through the packed tarball may still
+        # land on declarations for the wrong module format. `attw` packs the
+        # tarball and resolves every entry point the way each resolution mode does.
+        run: pnpm check:exports
+      - name: Consumer runtime
+        # The only gate that boots NestJS against the packed tarball, in ESM and
+        # in CommonJS. Entry points are separate bundles, so a module both reach
+        # by a relative path is copied into each, and a copied class is a
+        # different injection token — invisible to every source-based gate.
+        run: pnpm check:runtime
       - name: Bundle size budget
-        # Zero-dependency brotli-size gate over the built .mjs subpaths.
-        # See scripts/check-size.mjs for budgets and rationale.
         run: pnpm size
 
-      - name: E2E tests against the built package
-        # Boots a realistic fixture application through the compiled dist/
-        # artifacts (never src/ aliases). See jest.e2e.config.ts for the
-        # resolution mechanism. Runs after the build step on purpose: it
-        # proves the shipped bundle, not the source tree.
+  e2e:
+    name: E2E (built package)
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: bymaxone/.github/.github/actions/setup-node-pnpm@v1
+      - name: Build all subpaths
+        # The e2e suite resolves through dist/, never src/ aliases, so it proves
+        # the shipped bundle rather than the source tree.
+        run: pnpm build
+      - name: End-to-end tests against the built package
         run: pnpm test:e2e
+
+  security:
+    if: github.event_name == 'pull_request' && github.event.repository.visibility == 'public'
+    uses: bymaxone/.github/.github/workflows/security.yml@v1
+    with:
+      fail-on-severity: high

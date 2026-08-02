@@ -52,14 +52,14 @@ Every backend repeats the same bootstrap chore: read the environment, coerce str
 
 ### 1.4 Distribution Model
 
-| Aspect               | Detail                                        |
-| -------------------- | --------------------------------------------- |
-| Registry             | Public npm (`@bymax-one/nest-config`)         |
-| License              | MIT                                           |
-| Runtime              | Node.js 24+                                   |
-| Framework            | NestJS 11+                                    |
-| Subpaths             | `.` (server) + `./testing` (test utilities)   |
-| Main peer dependency | `zod ^4`                                      |
+| Aspect               | Detail                                      |
+| -------------------- | ------------------------------------------- |
+| Registry             | Public npm (`@bymax-one/nest-config`)       |
+| License              | MIT                                         |
+| Runtime              | Node.js 24+                                 |
+| Framework            | NestJS 11+                                  |
+| Subpaths             | `.` (server) + `./testing` (test utilities) |
+| Main peer dependency | `zod ^4`                                    |
 
 ### 1.5 Design Principles
 
@@ -129,10 +129,10 @@ This package is the only member of the family that touches the environment, and 
 
 All tokens are `Symbol`s, never strings, and every constructor parameter and factory `inject` entry uses an explicit `@Inject(...)` (implicit class-type resolution is not relied upon in the published bundle).
 
-| Token                  | Provides                                | Scope     |
-| ---------------------- | --------------------------------------- | --------- |
-| `BYMAX_CONFIG_OPTIONS` | Resolved `BymaxConfigModuleOptions`     | Singleton |
-| `BYMAX_CONFIG`         | The deep-frozen, validated config object| Singleton |
+| Token                  | Provides                                 | Scope     |
+| ---------------------- | ---------------------------------------- | --------- |
+| `BYMAX_CONFIG_OPTIONS` | Resolved `BymaxConfigModuleOptions`      | Singleton |
+| `BYMAX_CONFIG`         | The deep-frozen, validated config object | Singleton |
 
 `ConfigService` itself is exported by class and is the recommended consumption surface; injecting `BYMAX_CONFIG` directly is supported for factory-style wiring of other dynamic modules.
 
@@ -179,10 +179,10 @@ All tokens are `Symbol`s, never strings, and every constructor parameter and fac
 
 ### 3.2 Subpath Exports
 
-| Subpath      | Content                                                       | Environment |
-| ------------ | ------------------------------------------------------------- | ----------- |
-| `.`          | Module, service, `defineEnv`, tokens, errors, types           | Node server |
-| `./testing`  | `createTestConfig`, `configTestingModule`                     | Test only   |
+| Subpath     | Content                                             | Environment |
+| ----------- | --------------------------------------------------- | ----------- |
+| `.`         | Module, service, `defineEnv`, tokens, errors, types | Node server |
+| `./testing` | `createTestConfig`, `configTestingModule`           | Test only   |
 
 Both subpaths ship ESM + CJS + type declarations. Deep imports into `dist` internals are not part of the public API and are not supported.
 
@@ -195,27 +195,27 @@ Both subpaths ship ESM + CJS + type declarations. Deep imports into `dist` inter
 `defineEnv` is a thin, typed factory over `z.object(...)` that establishes the two-level convention of the package: top-level keys are namespaces, leaves are environment-derived values.
 
 ```typescript
-import { defineEnv } from '@bymax-one/nest-config';
-import { z } from 'zod';
+import { defineEnv } from '@bymax-one/nest-config'
+import { z } from 'zod'
 
 export const envSchema = defineEnv({
   server: z.object({
     port: z.coerce.number().int().min(1).max(65535).default(3000),
-    env: z.enum(['development', 'test', 'production']).default('development'),
+    env: z.enum(['development', 'test', 'production']).default('development')
   }),
   database: z.object({
-    url: z.url(),
+    url: z.url()
   }),
   redis: z.object({
-    url: z.url(),
+    url: z.url()
   }),
   auth: z.object({
     jwtSecret: z.string().min(32),
-    accessTtlSeconds: z.coerce.number().int().positive().default(900),
-  }),
-});
+    accessTtlSeconds: z.coerce.number().int().positive().default(900)
+  })
+})
 
-export type AppConfig = typeof envSchema.infer;
+export type AppConfig = typeof envSchema.infer
 ```
 
 Contract:
@@ -240,23 +240,23 @@ database: z.object({
 ```typescript
 export interface BymaxConfigModuleOptions<TSchema extends EnvSchema = EnvSchema> {
   /** Schema produced by defineEnv. Required. */
-  schema: TSchema;
+  schema: TSchema
 
   /** Raw source record. Defaults to process.env. Injectable for tests and tooling. */
-  source?: Record<string, string | undefined>;
+  source?: Record<string, string | undefined>
 
   /**
    * Observability hook invoked with the structured issue list before the
    * validation error is thrown. Cannot suppress the failure.
    */
-  onValidationError?: (issues: ReadonlyArray<ConfigIssue>) => void;
+  onValidationError?: (issues: ReadonlyArray<ConfigIssue>) => void
 
   /**
    * When true, source variables that match the schema's namespace prefixes
    * but no declared leaf produce BYMAX_CONFIG_UNKNOWN_KEY issues.
    * Defaults to false.
    */
-  strict?: boolean;
+  strict?: boolean
 }
 ```
 
@@ -264,16 +264,16 @@ export interface BymaxConfigModuleOptions<TSchema extends EnvSchema = EnvSchema>
 
 ```typescript
 // Synchronous, the common case: the schema is a static import.
-BymaxConfigModule.forRoot({ schema: envSchema });
+BymaxConfigModule.forRoot({ schema: envSchema })
 
 // Asynchronous, for sources resolved through other providers.
 BymaxConfigModule.forRootAsync({
   useFactory: (secrets: SecretsSnapshot) => ({
     schema: envSchema,
-    source: { ...process.env, ...secrets.asEnvRecord() },
+    source: { ...process.env, ...secrets.asEnvRecord() }
   }),
-  inject: [SECRETS_SNAPSHOT],
-});
+  inject: [SECRETS_SNAPSHOT]
+})
 ```
 
 `isGlobal` defaults to `true` and can be disabled through the standard extras when an application intentionally scopes configuration to a submodule.
@@ -287,27 +287,25 @@ BymaxConfigModule.forRootAsync({
 ```typescript
 @Injectable()
 export class InvoiceService {
-  public constructor(
-    @Inject(ConfigService) private readonly config: ConfigService<AppConfig>,
-  ) {}
+  public constructor(@Inject(ConfigService) private readonly config: ConfigService<AppConfig>) {}
 
   public buildConnection(): Connection {
     // Inferred as string, no cast.
-    const url = this.config.get('database.url');
+    const url = this.config.get('database.url')
     // Inferred as number.
-    const port = this.config.get('server.port');
-    return connect(url, port);
+    const port = this.config.get('server.port')
+    return connect(url, port)
   }
 }
 ```
 
 API surface:
 
-| Method                | Signature                                             | Notes                                        |
-| --------------------- | ----------------------------------------------------- | -------------------------------------------- |
-| `get(path)`           | `<P extends Path<T>>(path: P) => PathValue<T, P>`     | Dot-path access, type inferred from schema   |
-| `getAll()`            | `() => Readonly<T>`                                   | The deep-frozen root object                  |
-| `has(path)`           | `(path: Path<T>) => boolean`                          | True when the resolved value is not undefined|
+| Method      | Signature                                         | Notes                                         |
+| ----------- | ------------------------------------------------- | --------------------------------------------- |
+| `get(path)` | `<P extends Path<T>>(path: P) => PathValue<T, P>` | Dot-path access, type inferred from schema    |
+| `getAll()`  | `() => Readonly<T>`                               | The deep-frozen root object                   |
+| `has(path)` | `(path: Path<T>) => boolean`                      | True when the resolved value is not undefined |
 
 `Path<T>` and `PathValue<T, P>` are internal template-literal type utilities limited to the two-level namespace convention (namespace and leaf), which keeps compiler cost flat even for large schemas. Invalid paths are compile-time errors, not runtime lookups.
 
@@ -341,30 +339,30 @@ Formatting rules:
 
 ```typescript
 export class BymaxConfigValidationError extends Error {
-  public readonly code = 'BYMAX_CONFIG_VALIDATION';
-  public readonly issues: ReadonlyArray<ConfigIssue>;
+  public readonly code = 'BYMAX_CONFIG_VALIDATION'
+  public readonly issues: ReadonlyArray<ConfigIssue>
 }
 
 export interface ConfigIssue {
   /** Nested config path, e.g. "database.url". */
-  readonly path: string;
+  readonly path: string
   /** Resolved environment variable name, e.g. "DATABASE_URL". */
-  readonly variable: string;
+  readonly variable: string
   /** Stable machine-readable code. */
-  readonly code: ConfigIssueCode;
+  readonly code: ConfigIssueCode
   /** Human-readable constraint description, value-free. */
-  readonly message: string;
+  readonly message: string
 }
 ```
 
 ### 6.3 Error Code Catalog
 
-| Code                        | Meaning                                                        |
-| --------------------------- | -------------------------------------------------------------- |
-| `BYMAX_CONFIG_VALIDATION`   | One or more schema violations (top-level error code)           |
-| `BYMAX_CONFIG_MISSING`      | Required variable absent from the source (issue code)          |
-| `BYMAX_CONFIG_INVALID`      | Present but failed its constraint (issue code)                 |
-| `BYMAX_CONFIG_UNKNOWN_KEY`  | Strict mode: source variable matches no declared leaf          |
+| Code                       | Meaning                                               |
+| -------------------------- | ----------------------------------------------------- |
+| `BYMAX_CONFIG_VALIDATION`  | One or more schema violations (top-level error code)  |
+| `BYMAX_CONFIG_MISSING`     | Required variable absent from the source (issue code) |
+| `BYMAX_CONFIG_INVALID`     | Present but failed its constraint (issue code)        |
+| `BYMAX_CONFIG_UNKNOWN_KEY` | Strict mode: source variable matches no declared leaf |
 
 ---
 
@@ -373,18 +371,18 @@ export interface ConfigIssue {
 `@bymax-one/nest-config/testing` removes every excuse for touching `process.env` in tests.
 
 ```typescript
-import { createTestConfig, configTestingModule } from '@bymax-one/nest-config/testing';
+import { createTestConfig, configTestingModule } from '@bymax-one/nest-config/testing'
 
 // A valid, typed, frozen config with selective overrides.
 const config = createTestConfig(envSchema, {
-  database: { url: 'postgres://localhost:5432/test' },
-});
+  database: { url: 'postgres://localhost:5432/test' }
+})
 
 // A ready-to-import testing module for Nest TestingModule graphs.
 const moduleRef = await Test.createTestingModule({
   imports: [configTestingModule(envSchema, { server: { port: 0 } })],
-  providers: [InvoiceService],
-}).compile();
+  providers: [InvoiceService]
+}).compile()
 ```
 
 Contract:
@@ -397,13 +395,13 @@ Contract:
 
 ## 8. What is NOT in the package
 
-| Excluded                             | Rationale                                                                    |
-| ------------------------------------ | ----------------------------------------------------------------------------- |
-| `.env` file loading                  | Process environment population is the platform's job: Node's native `--env-file`, container orchestrators, or CI secrets. Bundling a loader (dotenv) would add a dependency and a second source-of-truth. |
-| Remote / dynamic configuration       | Feature-flag services and remote config imply polling, caching, and partial updates, a different problem with different failure modes. |
-| Secrets-manager integrations         | Vault, AWS Secrets Manager, and similar belong in deployment tooling or a dedicated provider that materializes values into the source record before validation (supported via `source`). |
-| Hot reload of configuration          | Config is immutable per process by design; changed environment means a new deployment. |
-| Feature flags                        | Flags are runtime product state, not process configuration.                    |
+| Excluded                       | Rationale                                                                                                                                                                                                 |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.env` file loading            | Process environment population is the platform's job: Node's native `--env-file`, container orchestrators, or CI secrets. Bundling a loader (dotenv) would add a dependency and a second source-of-truth. |
+| Remote / dynamic configuration | Feature-flag services and remote config imply polling, caching, and partial updates, a different problem with different failure modes.                                                                    |
+| Secrets-manager integrations   | Vault, AWS Secrets Manager, and similar belong in deployment tooling or a dedicated provider that materializes values into the source record before validation (supported via `source`).                  |
+| Hot reload of configuration    | Config is immutable per process by design; changed environment means a new deployment.                                                                                                                    |
+| Feature flags                  | Flags are runtime product state, not process configuration.                                                                                                                                               |
 
 ---
 
@@ -421,8 +419,8 @@ Contract:
   "files": ["dist"],
   "dependencies": {},
   "peerDependencies": {
-    "@nestjs/common": "^11.0.0",
-    "@nestjs/core": "^11.0.0",
+    "@nestjs/common": "^11.0.16",
+    "@nestjs/core": "^11.1.18",
     "reflect-metadata": "^0.2.0",
     "zod": "^4.0.0"
   }
@@ -445,15 +443,15 @@ Public npm, `--provenance`, released from CI via OIDC (no long-lived npm tokens)
 
 ## 10. Quality Gates
 
-| Gate                  | Tool / Threshold                                                        |
-| --------------------- | ----------------------------------------------------------------------- |
-| Type safety           | TypeScript strict; `noImplicitAny`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`; zero `any` |
-| Lint                  | ESLint flat config; restricted imports ban `dotenv`, bare `crypto`, and other non-`node:` builtins |
-| Unit coverage         | Jest, **100%** line / branch / function / statement, enforced via `coverageThreshold` in both jest configs |
-| Test discipline       | Every `it()` carries a comment stating the scenario and the rule it protects |
-| Mutation testing      | Stryker as a pre-release gate: thresholds `high: 99, low: 95, break: 95` |
-| Bundle size           | `scripts/check-size.mjs`, budgets in KiB (brotli), calibrated to the real artifact as a bloat tripwire |
-| Package integrity     | `scripts/dogfood-smoke-test.mjs`: resolves and imports every subpath in both ESM and CJS from a packed tarball before any release |
+| Gate              | Tool / Threshold                                                                                                                  |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Type safety       | TypeScript strict; `noImplicitAny`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`; zero `any`                          |
+| Lint              | ESLint flat config; restricted imports ban `dotenv`, bare `crypto`, and other non-`node:` builtins                                |
+| Unit coverage     | Jest, **100%** line / branch / function / statement, enforced via `coverageThreshold` in both jest configs                        |
+| Test discipline   | Every `it()` carries a comment stating the scenario and the rule it protects                                                      |
+| Mutation testing  | Stryker as a pre-release gate: thresholds `high: 99, low: 95, break: 95`                                                          |
+| Bundle size       | `scripts/check-size.mjs`, budgets in KiB (brotli), calibrated to the real artifact as a bloat tripwire                            |
+| Package integrity | `scripts/dogfood-smoke-test.mjs`: resolves and imports every subpath in both ESM and CJS from a packed tarball before any release |
 
 A release is blocked unless every gate is green.
 
@@ -483,31 +481,31 @@ The repository ships the full `@bymax-one` open-source baseline:
 
 ```typescript
 // src/config/env.schema.ts
-import { defineEnv } from '@bymax-one/nest-config';
-import { z } from 'zod';
+import { defineEnv } from '@bymax-one/nest-config'
+import { z } from 'zod'
 
 export const envSchema = defineEnv({
   server: z.object({
     port: z.coerce.number().int().default(3000),
-    env: z.enum(['development', 'test', 'production']).default('development'),
+    env: z.enum(['development', 'test', 'production']).default('development')
   }),
   database: z.object({ url: z.url() }),
   redis: z.object({ url: z.url() }),
   log: z.object({
-    level: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
-  }),
-});
+    level: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info')
+  })
+})
 
-export type AppConfig = typeof envSchema.infer;
+export type AppConfig = typeof envSchema.infer
 ```
 
 ```typescript
 // src/app.module.ts
-import { Module } from '@nestjs/common';
-import { BymaxConfigModule, ConfigService } from '@bymax-one/nest-config';
-import { BymaxLoggerModule } from '@bymax-one/nest-logger';
-import { BymaxCacheModule } from '@bymax-one/nest-cache';
-import { envSchema, type AppConfig } from './config/env.schema';
+import { Module } from '@nestjs/common'
+import { BymaxConfigModule, ConfigService } from '@bymax-one/nest-config'
+import { BymaxLoggerModule } from '@bymax-one/nest-logger'
+import { BymaxCacheModule } from '@bymax-one/nest-cache'
+import { envSchema, type AppConfig } from './config/env.schema'
 
 @Module({
   imports: [
@@ -518,19 +516,19 @@ import { envSchema, type AppConfig } from './config/env.schema';
     BymaxLoggerModule.forRootAsync({
       useFactory: (config: ConfigService<AppConfig>) => ({
         level: config.get('log.level'),
-        pretty: config.get('server.env') !== 'production',
+        pretty: config.get('server.env') !== 'production'
       }),
-      inject: [ConfigService],
+      inject: [ConfigService]
     }),
 
     BymaxCacheModule.forRootAsync({
       useFactory: (config: ConfigService<AppConfig>) => ({
         url: config.get('redis.url'),
-        namespace: 'my-service',
+        namespace: 'my-service'
       }),
-      inject: [ConfigService],
-    }),
-  ],
+      inject: [ConfigService]
+    })
+  ]
 })
 export class AppModule {}
 ```

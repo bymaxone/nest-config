@@ -12,6 +12,7 @@ const config: Config = {
   // uses package specifiers, an easy source of drift.
   moduleNameMapper: {
     '^@bymax-one/nest-config$': '<rootDir>/index.ts',
+    '^@bymax-one/nest-config/internal$': '<rootDir>/internal/index.ts',
     '^@bymax-one/nest-config/testing$': '<rootDir>/testing/index.ts'
   },
   transform: {

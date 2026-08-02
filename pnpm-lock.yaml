@@ -11,6 +11,7 @@ overrides:
   esbuild: ^0.28.1
   fast-uri: ^3.1.4
   protobufjs: ^7.6.5
+  qs: ^6.15.2
 
 importers:
 
@@ -3236,10 +3237,6 @@ packages:
 
   pure-rand@7.0.1:
     resolution: {integrity: sha512-oTUZM/NAZS8p7ANR3SHh30kXB+zK2r2BPcEn/awJIbOvq82WoMN4p62AWWp3Hhw50G0xMsw1mhIBLqHw64EcNQ==}
-
-  qs@6.15.1:
-    resolution: {integrity: sha512-6YHEFRL9mfgcAvql/XhwTvf5jKcOiiupt2FiJxHkiX1z4j7WL8J/jRHYLluORvc1XxB5rV20KoeK00gVJamspg==}
-    engines: {node: '>=0.6'}
 
   qs@6.15.3:
     resolution: {integrity: sha512-O9gl3zCl5h5blw1KGUzQKhA5oUXSl8rwUIM5o0S3nCXMliSvy5Dzx7/DJcI+SwgICv+IneSZwhBh1oSyEHA71A==}
@@ -7422,10 +7419,6 @@ snapshots:
 
   pure-rand@7.0.1: {}
 
-  qs@6.15.1:
-    dependencies:
-      side-channel: 1.1.1
-
   qs@6.15.3:
     dependencies:
       es-define-property: 1.0.1
@@ -7980,7 +7973,7 @@ snapshots:
     dependencies:
       des.js: 1.1.0
       js-md4: 0.3.2
-      qs: 6.15.1
+      qs: 6.15.3
       tunnel: 0.0.6
       underscore: 1.13.8
 

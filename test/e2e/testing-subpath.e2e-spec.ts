@@ -4,8 +4,8 @@
  * Layer: e2e.
  * Goal: verify that a module registered from `@bymax-one/nest-config/testing`
  * provides the tokens `@bymax-one/nest-config` exports — the flow
- * `configTestingModule` documents — and that the error `createTestConfig`
- * rejects with is the one the root exports.
+ * `configTestingModule` documents — and that `createTestConfig` rejects with the
+ * error class the root exports.
  *
  * This is the only place the two entry points meet at runtime, and it has to run
  * against `dist` to mean anything: each entry point is a separate bundle, so a
@@ -67,9 +67,10 @@ describe('testing subpath (built artifact)', () => {
   })
 
   /**
-   * `createTestConfig` must reject with the error class the root exports, or a
-   * consumer narrowing on `instanceof` silently misses it and reports an
-   * unexpected failure instead of a configuration one.
+   * `createTestConfig` must reject with the error class the root exports. A
+   * second copy still carries the name and the shape, so a consumer narrowing on
+   * `instanceof` silently misses it and reports an unexpected failure instead of
+   * a configuration one.
    */
   it('rejects an invalid override with the root BymaxConfigValidationError', () => {
     // Arrange

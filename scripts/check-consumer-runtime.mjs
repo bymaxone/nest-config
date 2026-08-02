@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Consumer runtime gate (zero external dependencies).
+ * Consumer runtime gate.
  *
  * Every other gate reads the source or the type declarations. This one packs the
  * tarball, lays it out the way npm would, and boots NestJS against it — in ESM
@@ -14,6 +14,12 @@
  * them by a relative path is copied into each, and a copied class is a different
  * injection token, so the container rejects both while the source suite and
  * `attw` stay green.
+ *
+ * It shells out to `npm pack` and `tar`, both of which have to be on PATH. That
+ * is deliberate: packing through npm itself is what makes the gate inspect the
+ * same tarball a publish would produce, rather than a directory that resembles
+ * it. On Windows, run it from a shell that provides `tar` (Git Bash, WSL, or
+ * Windows 10 1803+, which ships bsdtar).
  *
  * Usage: `node scripts/check-consumer-runtime.mjs` (run after `pnpm build`).
  */

@@ -8,7 +8,7 @@
 // devDep cannot tamper with the bundle before `pnpm publish`. `node:zlib`'s
 // brotli matches what npm/CDN compression produces on the wire.
 
-import { readFileSync, statSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { brotliCompressSync, constants } from 'node:zlib'
@@ -57,13 +57,16 @@ const rows = []
 
 for (const { name, path, brotli: limit } of BUDGETS) {
   const abs = resolve(ROOT, path)
+  // Read straight away rather than stat-then-read: two syscalls where one will
+  // do, and the pair is a check-then-use race — the artifact can be replaced
+  // between them, so the size reported would not be the size that was checked.
+  let raw
   try {
-    statSync(abs)
+    raw = readFileSync(abs)
   } catch {
     console.error(`Missing build artifact: ${path}. Run "pnpm build" first.`)
     process.exit(2)
   }
-  const raw = readFileSync(abs)
   const compressed = brotliCompressSync(raw, BROTLI_OPTS).length
   const ok = compressed <= limit
   if (!ok) failed += 1

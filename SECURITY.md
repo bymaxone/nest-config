@@ -13,8 +13,8 @@ Once v1.0 ships, the support table will be updated.
 
 | Version | Status                          |
 | ------- | ------------------------------- |
-| `0.1.x` | Active, receives security fixes |
-| `< 0.1` | End-of-life                     |
+| `1.0.x` | Active, receives security fixes |
+| `< 1.0` | End-of-life                     |
 
 If you are stuck on an older version and need a backport, open a private
 advisory (see below) and we will discuss feasibility on a case-by-case basis.
@@ -81,7 +81,7 @@ The following classes are explicitly in scope:
 
 These are not vulnerabilities in `@bymax-one/nest-config` itself:
 
-- Issues only reproducible in versions older than `0.1.0`
+- Issues only reproducible in versions older than `1.0.0`
 - Misconfigurations in the consuming application, such as logging the typed
   config object's contents directly instead of through the package's error
   reporting path

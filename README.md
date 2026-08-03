@@ -358,15 +358,15 @@ provider — the sources are the ones you name.
 
 ## 🛡️ Security Table
 
-| Layer          | Implementation                                                                                           |
-| -------------- | -------------------------------------------------------------------------------------------------------- |
-| Error messages | Expected constraint only — type, schema-declared enum options, bounds; never the received value          |
-| Failure mode   | Refuse to start; the whole schema is validated before the context finishes building                      |
-| Aggregation    | Every failure reported at once, so a fix cycle is one restart rather than one per variable               |
-| Immutability   | The validated result is frozen before it is provided                                                     |
-| Sources        | `process.env` only — no file, no network, no remote provider                                             |
-| Type surface   | Dot paths checked against the schema at compile time; a typo is a build error, not a runtime `undefined` |
-| Supply chain   | `dependencies: {}`; SHA-pinned Actions, OSV-Scanner, TruffleHog, OpenSSF Scorecard                       |
+| Layer          | Implementation                                                                                                             |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Error messages | Expected constraint only — type, schema-declared enum options, bounds; never the received value                            |
+| Failure mode   | Refuse to start; the whole schema is validated before the context finishes building                                        |
+| Aggregation    | Every failure reported at once, so a fix cycle is one restart rather than one per variable                                 |
+| Immutability   | The validated result is frozen before it is provided                                                                       |
+| Sources        | `process.env` only — no file, no network, no remote provider                                                               |
+| Type surface   | Dot paths checked against the schema at compile time; a typo is a build error, not a runtime `undefined`                   |
+| Supply chain   | `dependencies: {}`; third-party Actions pinned by commit SHA (org-internal reusables by tag); CodeQL and OpenSSF Scorecard |
 
 > [!IMPORTANT]
 > **Value-free applies to this library's own reports.** If your schema's `.refine`
@@ -490,9 +490,10 @@ run `pnpm test:cov` and `pnpm lint` before submitting.
 
 ## 🔒 Security Policy
 
-If you discover a security vulnerability, please **do not** open a public issue. Instead, email us
-at **support@bymax.one** with `[security] @bymax-one/nest-config` in the subject. We take security
-seriously and will respond promptly. See [`SECURITY.md`](./SECURITY.md) for the full policy.
+If you discover a security vulnerability, please **do not** open a public
+issue. Instead, email us at **support@bymax.one** with `[security]
+@bymax-one/nest-config` in the subject. We take security seriously and will
+respond promptly. See [`SECURITY.md`](./SECURITY.md) for the full policy.
 
 ---
 

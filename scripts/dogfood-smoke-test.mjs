@@ -74,20 +74,30 @@ function specifierFor(subpath) {
   return subpath === '.' ? pkg.name : `${pkg.name}${subpath.slice(1)}`
 }
 
+/**
+ * Resolve a subpath's artifacts from the `exports` map as declared.
+ *
+ * `types` is declared per condition — `import` resolves `.d.ts`, `require`
+ * resolves `.d.cts` — so a CommonJS consumer lands on declarations for the right
+ * module format. Reading both is what makes this check notice a `.d.cts` that was
+ * never emitted, which is the half a single shared `types` entry used to hide.
+ */
 function distArtifactsFor(subpath) {
   const entry = pkg.exports[subpath]
+  const strip = (p) => p.replace(/^\.\//, '')
   return {
-    types: entry.types.replace(/^\.\//, ''),
-    esm: entry.import.replace(/^\.\//, ''),
-    cjs: entry.require.replace(/^\.\//, '')
+    esmTypes: strip(entry.import.types),
+    cjsTypes: strip(entry.require.types),
+    esm: strip(entry.import.default),
+    cjs: strip(entry.require.default)
   }
 }
 
 function checkBuildArtifacts() {
   section('1. Build artifacts')
   for (const subpath of SUBPATHS) {
-    const { types, esm, cjs } = distArtifactsFor(subpath)
-    for (const f of [types, esm, cjs]) {
+    const { esmTypes, cjsTypes, esm, cjs } = distArtifactsFor(subpath)
+    for (const f of [esmTypes, cjsTypes, esm, cjs]) {
       const abs = resolve(ROOT, f)
       if (!existsSync(abs)) {
         console.error(`Missing build artifact: ${f}. Run "pnpm build" first.`)

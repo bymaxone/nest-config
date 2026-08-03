@@ -84,12 +84,29 @@ function specifierFor(subpath) {
  */
 function distArtifactsFor(subpath) {
   const entry = pkg.exports[subpath]
-  const strip = (p) => p.replace(/^\.\//, '')
+  const strip = (value, where) => {
+    // A clear failure beats `p.replace is not a function`: the shape of the
+    // `exports` map is exactly what this script exists to check, so a malformed
+    // one has to say which subpath and which condition is wrong.
+    if (typeof value !== 'string') {
+      console.error(
+        `Malformed exports entry for "${subpath}": ${where} is ${JSON.stringify(value)}, expected a path string.`
+      )
+      process.exit(2)
+    }
+    return value.replace(/^\.\//, '')
+  }
+  if (entry === undefined || entry.import === undefined || entry.require === undefined) {
+    console.error(
+      `Missing exports entry for "${subpath}": expected per-condition "import" and "require" objects.`
+    )
+    process.exit(2)
+  }
   return {
-    esmTypes: strip(entry.import.types),
-    cjsTypes: strip(entry.require.types),
-    esm: strip(entry.import.default),
-    cjs: strip(entry.require.default)
+    esmTypes: strip(entry.import.types, 'import.types'),
+    cjsTypes: strip(entry.require.types, 'require.types'),
+    esm: strip(entry.import.default, 'import.default'),
+    cjs: strip(entry.require.default, 'require.default')
   }
 }
 

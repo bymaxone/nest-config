@@ -43,16 +43,15 @@ have regressed from. They are kept because the reasoning is worth having.
   build tooling, lint and test configuration, mutation testing configuration,
   commit governance, and the open-source baseline files.
 
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/bymaxone/nest-config/releases/tag/v0.1.0
-
 - **`pnpm check:exports`** runs `attw --pack . --profile strict` against the packed
   tarball, which is what surfaced both resolution defects above.
 - **`pnpm check:runtime`** packs the tarball, lays it out the way npm would, and
   boots NestJS against it in ESM _and_ CommonJS, registering `configTestingModule`
   and resolving the root's tokens through it. Every other gate reads the source or
   the declarations, so a defect in how the entry points are bundled was invisible
-  to all of them. Both run in CI and in `prepublishOnly`.
+  to all of them. Both run in CI, as their own release steps — they pack a
+  tarball, and a pack nested inside a publish fails, so they cannot live in
+  `prepublishOnly`.
 - **An end-to-end spec for the `./testing` subpath**, run against `dist`. The e2e
   harness already resolved the built artifact but never exercised the two entry
   points together, which is the gap the defect lived in.
@@ -102,3 +101,6 @@ have regressed from. They are kept because the reasoning is worth having.
   supported one, and nothing in their tooling contradicts it — the install resolves
   cleanly and silently. Corrected before the first publish, so no released version
   ever carried the permissive range. No runtime behaviour changed.
+
+[0.1.0]: https://github.com/bymaxone/nest-config/releases/tag/v0.1.0
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v0.1.0...HEAD

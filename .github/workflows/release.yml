@@ -125,10 +125,9 @@ jobs:
         #
         # `--access public` replaces pnpm's `--no-git-checks`: npm performs no git
         # check on publish, and the scope needs an explicit public access flag.
-        # OIDC trusted publishing: pnpm delegates to the npm CLI, which
-        # exchanges the GitHub OIDC token (`id-token: write` above) for a
-        # short-lived publish credential. `--no-git-checks` is required
-        # because the CI runner checks out a detached HEAD at the tag SHA.
+        # Authentication is OIDC trusted publishing: the npm CLI exchanges the
+        # GitHub OIDC token (`id-token: write` above) for a short-lived publish
+        # credential, so no token secret is involved.
         # `--ignore-scripts` avoids re-running the lifecycle hooks
         # (prepublishOnly, prepare) that already ran in the verify and
         # package smoke-test steps above.

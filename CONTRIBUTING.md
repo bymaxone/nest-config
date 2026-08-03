@@ -71,3 +71,29 @@ The `pre-commit` hook runs lint-staged (ESLint + Prettier on staged files).
 
 By contributing, you agree that your contributions will be licensed under the
 [MIT License](./LICENSE).
+
+---
+
+## Releasing
+
+Publishing is driven entirely from CI through the `release.yml` workflow, which
+uses npm OIDC trusted publishing (no long-lived npm token) and attaches build
+provenance. Provenance and the security workflows (CodeQL, Scorecard, dependency review)
+require a public repository; this repository is public, so those jobs run.
+
+Go-live is a deliberate, manual sequence performed by a maintainer:
+
+1. **Verify the gates locally.** `pnpm mutation` (score at or above the break
+   threshold of 95), `pnpm prepublishOnly`, `pnpm build && pnpm test:e2e`, and
+   `pnpm publish --dry-run` (confirm the tarball packs only `dist/`, `LICENSE`,
+   `README.md`, and `CHANGELOG.md`).
+2. **Confirm the version.** `package.json` `version` and the top dated
+   `CHANGELOG.md` heading must both read the version being released.
+3. **Make the repository public.** This activates the provenance publish job and
+   the CodeQL, Scorecard, and dependency-review gates.
+4. **Tag from `main`.** Push an annotated `vX.Y.Z` tag matching the manifest
+   version. The tag push triggers `release.yml`, which verifies the tag against
+   `package.json`, re-runs the release gates, and publishes with provenance.
+5. **Post-publish smoke.** In a scratch directory outside the repository, install
+   the freshly published version alongside the NestJS 11 peers and boot a minimal
+   fixture to confirm the shipped artifact resolves and starts.

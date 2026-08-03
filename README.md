@@ -33,41 +33,67 @@
 
 ## ✨ Overview
 
-`@bymax-one/nest-config` gives a NestJS application a single, typed, validated
-entry point for environment configuration. It validates `process.env` exactly
-once at bootstrap against a [Zod](https://zod.dev) v4 schema, fails fast with
-one aggregated, human-readable error report, and exposes the result as a
-deep-frozen, fully typed configuration object available anywhere in the
-application through dependency injection.
+`@bymax-one/nest-config` gives a NestJS application a single, typed, validated entry point
+for environment configuration. It validates `process.env` exactly once at bootstrap against a
+[Zod](https://zod.dev) v4 schema, fails fast with one aggregated report, and exposes the
+result as a frozen object reached through typed dot paths.
 
-The library replaces three recurring anti-patterns: scattered `process.env.X`
-reads with ad-hoc parsing scattered across services, lazy validation where a
-missing variable only explodes on the first request that needs it, and
-untyped config access (`config.get('port') as number`) that bypasses the type
-system exactly where mistakes are most expensive.
+The library has **zero direct dependencies** — `zod`, `reflect-metadata` and `@nestjs/*`
+arrive as peer dependencies, so you control exact versions and the supply-chain surface stays
+minimal.
+
+### Why nest-config?
+
+- **A misconfigured process does not boot.** Validation runs before the application context
+  finishes building, so a service that is missing a secret never accepts the first request
+  that would need it.
+- **One round trip to fix the environment.** Every violation is collected and reported
+  together, not the first one that fails.
+- **Errors are value-free by contract.** Configuration is where the secrets are, and the
+  report is the artifact that gets logged and pasted into issues — so messages carry the
+  expected constraint and the schema's own enum options, never the received value.
+- **The schema is the type.** `get('database.url')` is `string` and `get('server.port')` is
+  `number` because the schema says so; a typo in a path is a build error, not a runtime
+  `undefined`.
+
+---
 
 ## 🔥 Features
 
-- **Validate once, at bootstrap.** The environment is parsed and validated a
-  single time, before the application starts serving traffic. No lazy
-  validation at first access, ever.
-- **Fail fast, fail complete.** A misconfigured process does not boot. Every
-  violation is reported together in one aggregated error, so an operator
-  fixes the environment in one round trip instead of one variable at a time.
-- **Never echo values.** Validation errors report variable names, paths, and
-  constraint descriptions only. Raw values never appear in the error output,
-  so secrets cannot leak into logs or crash reports.
-- **Typed end to end.** The configuration type is inferred from the schema.
-  `get('database.url')` returns `string`, `get('server.port')` returns
-  `number`, with no casts and no `any` anywhere in the chain.
-- **Immutable by construction.** The validated object is deep-frozen before it
-  enters the DI container. Configuration is a fact about the process, not a
-  mutable bag.
-- **The environment is injectable.** The raw source defaults to
-  `process.env` but is a plain injectable record, so tests validate any input
-  without touching the real environment.
-- **Zero runtime dependencies.** `dependencies` is empty; NestJS, `zod`, and
-  `reflect-metadata` are peer dependencies controlled by the consumer.
+### ✅ Validation
+
+- ✅ **Validate once, at bootstrap** — parsed and validated a single time, before the
+  application serves traffic; there is no lazy path that could discover a problem later
+- ✅ **Fail fast, fail complete** — every violation reported together in one aggregated
+  error, so an operator fixes the environment in one round trip
+- ✅ **Never echo values** — messages carry variable names, paths and constraint
+  descriptions only, so a secret cannot reach a log or a crash report through this library
+- ✅ **Zod v4 schemas** — the full type language, including coercion, refinements and
+  defaults, with `defineEnv` shaping namespaces and leaves
+
+### 🔒 The Validated Object
+
+- ✅ **Immutable by construction** — deep-frozen before it enters the DI container;
+  configuration is a fact about the process, not a mutable bag
+- ✅ **Typed dot-path access** — `get('database.url')` is `string`, `get('server.port')` is
+  `number`, with no casts and no `any` in the chain
+- ✅ **Injectable environment** — the raw source defaults to `process.env` but is a plain
+  injectable record, so a test validates any input without touching the real environment
+
+### 🧩 Developer Experience
+
+- ✅ **Zero runtime dependencies** — `zod`, `reflect-metadata` and `@nestjs/*` all arrive as
+  peers, so you pin the versions
+- ✅ **Testing entry point** — `./testing` builds the same validated object from an explicit
+  record, so a test never passes because a variable happened to be set on the machine
+- ✅ **One class identity** — the module and its testing entry share a single `./internal`
+  bundle, so `ConfigService` is the same injection token from either, in ESM and CommonJS
+- ✅ **Dual-format output** — ESM + CJS with declarations for each format, verified against
+  the packed tarball on every run
+- ✅ **Typed end to end** — TypeScript `strict` with `exactOptionalPropertyTypes` and
+  `noUncheckedIndexedAccess`; zero `any`
+
+---
 
 ## 📦 Subpath Exports
 
@@ -331,28 +357,54 @@ variable was missing — by then the process would already have refused to start
 needs configuration does not need the application's real environment, and cannot
 accidentally pass because a variable happened to be set on the machine.
 
+### Design Principles
+
+| Principle                            | Description                                                                                                                                                                                |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 💥 **Refuse to start**               | A misconfigured process is stopped before it serves a request, rather than discovering the gap at the first call that needs the value                                                      |
+| 🤐 **Value-free by contract**        | `errors.ts`, `env-validator.ts` and `report-formatter.ts` each state it for themselves: the message carries the expected constraint and the schema's own options, never the received value |
+| 📋 **Report everything at once**     | Validation collects every failure before throwing, so fixing an environment is one cycle instead of one per variable                                                                       |
+| 🧊 **Frozen after validation**       | Nothing in the running process rewrites configuration under a component that already read it                                                                                               |
+| 🔤 **The schema is the type**        | Dot paths are checked against the schema at compile time, so a typo is a build error rather than a runtime `undefined`                                                                     |
+| ⚙️ **Configuration over convention** | Everything goes through `forRoot`/`forRootAsync`. No file discovery, no magic paths, no hidden precedence rules                                                                            |
+| 🧩 **One class identity**            | The module and `./testing` import the shared runtime by package specifier, so `ConfigService` is one injection token in ESM and CommonJS alike                                             |
+
 ---
 
 ## 🔐 Security Model
 
-**Errors are value-free by contract.** Configuration is where the secrets are, and a
-validation report is the one artifact guaranteed to be printed, logged and pasted
-into an issue. Every message states the _expected_ constraint — the type, the
-allowed enum options taken from the schema, the bound — and never the received
-value. `env-validator` and `report-formatter` both say so in their own contracts,
-and the property tests hold them to it.
+Configuration is where the secrets are, and a validation report is the one artifact
+guaranteed to be printed, logged, and pasted into an issue. That shapes the whole contract.
 
-**Failing fast is the security property.** A service that starts with a missing
-`JWT_SECRET` and discovers it at the first login is a service that has already
-accepted traffic it cannot authenticate. The whole schema is validated before the
-application context finishes building, so a misconfigured deployment does not serve
-one request.
+### Errors are value-free by contract
 
-**The validated object is frozen.** Nothing in the running process rewrites
-configuration under a component that already read it.
+Every message states the _expected_ constraint — the type, the allowed enum options taken
+from the schema, the bound — and never the received value. `env-validator` and
+`report-formatter` each say so in their own contracts, and property-based tests hold them
+to it.
 
-**Nothing is read from anywhere but `process.env`.** No file, no network, no
-provider — the sources are the ones you name.
+### Failing fast is the security property
+
+A service that starts with a missing `JWT_SECRET` and discovers it at the first login is a
+service that has already accepted traffic it cannot authenticate. The whole schema is
+validated before the application context finishes building, so a misconfigured deployment
+does not serve one request.
+
+### The validated object is frozen
+
+It is deep-frozen before it enters the container, so nothing in the running process
+rewrites configuration under a component that already read it.
+
+### Nothing is read from anywhere but the source you name
+
+`process.env` by default, or the injectable record you provide. No file, no network, no
+remote provider — there is no path by which configuration arrives from somewhere you did
+not choose.
+
+### Your own messages are yours
+
+Value-free applies to this library's reports. If a `.refine` or a custom message in your
+schema includes a value, that message is printed as written.
 
 ---
 
@@ -388,6 +440,30 @@ provider — the sources are the ones you name.
 ---
 
 ## 🧪 Testing & Quality
+
+Configuration decides whether a process may start at all, so the suite is held to a bar
+beyond "the tests pass".
+
+- ✅ **100% line coverage** — statements, branches, functions and lines, enforced as a gate
+- ✅ **95.72% mutation score** — verified with [Stryker](https://stryker-mutator.io/) at
+  `break: 95`; the eleven survivors are provable equivalents, documented in the
+  [report](./docs/mutation_testing_results.md)
+- ✅ **Property-based tests on the report formatter** — the value-free guarantee is the one
+  claim a single example cannot establish, so it is checked over generated inputs
+- ✅ **Published-artifact gates** — `check:exports` resolves the types the way each module
+  system does, `check:runtime` loads every subpath from the packed tarball in ESM and
+  CommonJS, and `check:published` compiles this README's snippets against `dist/`
+- ✅ **Zero suppressions** — no coverage or mutation directives in the production source
+
+```bash
+pnpm test          # unit suite
+pnpm test:cov      # unit suite with the 100% coverage gate
+pnpm mutation      # Stryker mutation testing (break: 95)
+pnpm typecheck     # tsc strict check
+pnpm lint          # ESLint
+```
+
+### Testing helpers
 
 `@bymax-one/nest-config/testing` removes every excuse for touching
 `process.env` in tests. `createTestConfig` synthesizes a complete valid
@@ -425,19 +501,6 @@ secret-strength constraint; length and format constraints are honored. The
 subpath has no Jest dependency and works with any runner, though the family
 standard is Jest.
 
-## 🎯 Design Principles
-
-1. **Validate once, at bootstrap.** No lazy validation at first access.
-2. **Fail fast, fail complete.** All violations are reported together in one
-   aggregated error.
-3. **Never echo values.** Validation errors report variable names, paths, and
-   constraint descriptions only, never raw values.
-4. **Immutable by construction.** The validated configuration is deep-frozen
-   before it enters the DI container.
-5. **Configuration over convention.** Everything goes through
-   `forRoot`/`forRootAsync`. No file discovery, no magic paths, no hidden
-   precedence rules.
-
 ## 🚫 Known Limitations
 
 1. **Two-level namespace convention.** The path-inference utilities
@@ -456,35 +519,13 @@ standard is Jest.
    registration. Precedence between layers (defaults, env, secrets) is the
    caller's composition (`{ ...a, ...b }`), kept explicit on purpose.
 
-## 🚢 Releasing
-
-Publishing is driven entirely from CI through the `release.yml` workflow, which
-uses npm OIDC trusted publishing (no long-lived npm token) and attaches build
-provenance. Provenance and the security workflows (CodeQL, Scorecard, dependency
-review) require a public repository, so the publish job is gated on repository
-visibility and stays inactive while the repository is private.
-
-Go-live is a deliberate, manual sequence performed by a maintainer:
-
-1. **Verify the gates locally.** `pnpm mutation` (score at or above the break
-   threshold of 95), `pnpm prepublishOnly`, `pnpm build && pnpm test:e2e`, and
-   `pnpm publish --dry-run` (confirm the tarball packs only `dist/`, `LICENSE`,
-   `README.md`, and `CHANGELOG.md`).
-2. **Confirm the version.** `package.json` `version` and the top dated
-   `CHANGELOG.md` heading must both read the version being released.
-3. **Make the repository public.** This activates the provenance publish job and
-   the CodeQL, Scorecard, and dependency-review gates.
-4. **Tag from `main`.** Push an annotated `vX.Y.Z` tag matching the manifest
-   version. The tag push triggers `release.yml`, which verifies the tag against
-   `package.json`, re-runs the release gates, and publishes with provenance.
-5. **Post-publish smoke.** In a scratch directory outside the repository, install
-   the freshly published version alongside the NestJS 11 peers and boot a minimal
-   fixture to confirm the shipped artifact resolves and starts.
-
 ## 🤝 Contributing
 
-For feature requests and bugs, open a GitHub issue. Pull requests are welcome; please
-run `pnpm test:cov` and `pnpm lint` before submitting.
+Pull requests are welcome. Please open an issue first for significant changes.
+
+- Read [`docs/technical_specification.md`](./docs/technical_specification.md) for architecture decisions.
+- Run the full gate listed in [`CONTRIBUTING.md`](./CONTRIBUTING.md) before opening a PR.
+- Conventional Commits are enforced by `commitlint.config.cjs`.
 
 ---
 
@@ -499,4 +540,10 @@ respond promptly. See [`SECURITY.md`](./SECURITY.md) for the full policy.
 
 ## 📄 License
 
-[MIT](./LICENSE)
+[MIT](./LICENSE) © [Bymax One](https://github.com/bymaxone)
+
+---
+
+<p align="center">
+  <sub>Built with ❤️ by <a href="https://github.com/bymaxone">Bymax One</a></sub>
+</p>

@@ -11,6 +11,51 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-03
+
+First published release. Everything below ships in it.
+
+The `Fixed` and `Security` entries record defects found and corrected before
+publication, not regressions any consumer saw — there is no earlier release to
+have regressed from. They are kept because the reasoning is worth having.
+
+### Added
+
+- `defineEnv`: a thin, typed factory over `z.object(...)` establishing the
+  two-level namespace convention, with deterministic `SCREAMING_SNAKE_CASE`
+  source-variable mapping and a `meta({ env })` override for legacy names.
+- Validation pipeline: a single aggregated pass over the source that never
+  echoes raw values, exposed through `BymaxConfigValidationError`,
+  `ConfigIssue`, and the frozen `ConfigErrorCode` catalog
+  (`BYMAX_CONFIG_VALIDATION`, `BYMAX_CONFIG_MISSING`, `BYMAX_CONFIG_INVALID`,
+  `BYMAX_CONFIG_UNKNOWN_KEY`).
+- `BymaxConfigModule`: a global NestJS dynamic module with `forRoot` and
+  `forRootAsync` registration, the `BYMAX_CONFIG` and `BYMAX_CONFIG_OPTIONS`
+  Symbol injection tokens, and deep-freezing of the validated configuration
+  before it enters the DI container.
+- `ConfigService<TConfig>`: a typed accessor with compile-time dot-path
+  inference (`get`, `getAll`, `has`) limited to the two-level namespace
+  convention.
+- `./testing` subpath: `createTestConfig` and `configTestingModule`,
+  synthesizing a complete, schema-compliant source with selective overrides
+  and running the exact production validation and freeze pipeline.
+- Repository scaffold: package manifest with the two-subpath exports map,
+  build tooling, lint and test configuration, mutation testing configuration,
+  commit governance, and the open-source baseline files.
+
+- **`pnpm check:exports`** runs `attw --pack . --profile strict` against the packed
+  tarball, which is what surfaced both resolution defects above.
+- **`pnpm check:runtime`** packs the tarball, lays it out the way npm would, and
+  boots NestJS against it in ESM _and_ CommonJS, registering `configTestingModule`
+  and resolving the root's tokens through it. Every other gate reads the source or
+  the declarations, so a defect in how the entry points are bundled was invisible
+  to all of them. Both run in CI, as their own release steps — they pack a
+  tarball, and a pack nested inside a publish fails, so they cannot live in
+  `prepublishOnly`.
+- **An end-to-end spec for the `./testing` subpath**, run against `dist`. The e2e
+  harness already resolved the built artifact but never exercised the two entry
+  points together, which is the gap the defect lived in.
+
 ### Fixed
 
 - **`configTestingModule()` provided tokens no consumer could inject.** Registering
@@ -40,19 +85,6 @@ as the GitHub Release body, so each released version needs a matching
   carried no `main`, `module` or `types`, and no `typesVersions`. All four are now
   present.
 
-### Added
-
-- **`pnpm check:exports`** runs `attw --pack . --profile strict` against the packed
-  tarball, which is what surfaced both resolution defects above.
-- **`pnpm check:runtime`** packs the tarball, lays it out the way npm would, and
-  boots NestJS against it in ESM _and_ CommonJS, registering `configTestingModule`
-  and resolving the root's tokens through it. Every other gate reads the source or
-  the declarations, so a defect in how the entry points are bundled was invisible
-  to all of them. Both run in CI and in `prepublishOnly`.
-- **An end-to-end spec for the `./testing` subpath**, run against `dist`. The e2e
-  harness already resolved the built artifact but never exercised the two entry
-  points together, which is the gap the defect lived in.
-
 ### Security
 
 - **Peer floors raised to exclude known-vulnerable NestJS versions.** The declared
@@ -70,34 +102,5 @@ as the GitHub Release body, so each released version needs a matching
   cleanly and silently. Corrected before the first publish, so no released version
   ever carried the permissive range. No runtime behaviour changed.
 
-## [0.1.0] - 2026-07-16
-
-Initial public release: a typed, validated environment-configuration entry
-point for NestJS 11 applications, built on Zod v4.
-
-### Added
-
-- `defineEnv`: a thin, typed factory over `z.object(...)` establishing the
-  two-level namespace convention, with deterministic `SCREAMING_SNAKE_CASE`
-  source-variable mapping and a `meta({ env })` override for legacy names.
-- Validation pipeline: a single aggregated pass over the source that never
-  echoes raw values, exposed through `BymaxConfigValidationError`,
-  `ConfigIssue`, and the frozen `ConfigErrorCode` catalog
-  (`BYMAX_CONFIG_VALIDATION`, `BYMAX_CONFIG_MISSING`, `BYMAX_CONFIG_INVALID`,
-  `BYMAX_CONFIG_UNKNOWN_KEY`).
-- `BymaxConfigModule`: a global NestJS dynamic module with `forRoot` and
-  `forRootAsync` registration, the `BYMAX_CONFIG` and `BYMAX_CONFIG_OPTIONS`
-  Symbol injection tokens, and deep-freezing of the validated configuration
-  before it enters the DI container.
-- `ConfigService<TConfig>`: a typed accessor with compile-time dot-path
-  inference (`get`, `getAll`, `has`) limited to the two-level namespace
-  convention.
-- `./testing` subpath: `createTestConfig` and `configTestingModule`,
-  synthesizing a complete, schema-compliant source with selective overrides
-  and running the exact production validation and freeze pipeline.
-- Repository scaffold: package manifest with the two-subpath exports map,
-  build tooling, lint and test configuration, mutation testing configuration,
-  commit governance, and the open-source baseline files.
-
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/bymaxone/nest-config/releases/tag/v0.1.0
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v0.1.0...HEAD

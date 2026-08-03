@@ -74,20 +74,47 @@ function specifierFor(subpath) {
   return subpath === '.' ? pkg.name : `${pkg.name}${subpath.slice(1)}`
 }
 
+/**
+ * Resolve a subpath's artifacts from the `exports` map as declared.
+ *
+ * `types` is declared per condition — `import` resolves `.d.ts`, `require`
+ * resolves `.d.cts` — so a CommonJS consumer lands on declarations for the right
+ * module format. Reading both is what makes this check notice a `.d.cts` that was
+ * never emitted, which is the half a single shared `types` entry used to hide.
+ */
 function distArtifactsFor(subpath) {
   const entry = pkg.exports[subpath]
+  const strip = (value, where) => {
+    // A clear failure beats `p.replace is not a function`: the shape of the
+    // `exports` map is exactly what this script exists to check, so a malformed
+    // one has to say which subpath and which condition is wrong.
+    if (typeof value !== 'string') {
+      console.error(
+        `Malformed exports entry for "${subpath}": ${where} is ${JSON.stringify(value)}, expected a path string.`
+      )
+      process.exit(2)
+    }
+    return value.replace(/^\.\//, '')
+  }
+  if (entry === undefined || entry.import === undefined || entry.require === undefined) {
+    console.error(
+      `Missing exports entry for "${subpath}": expected per-condition "import" and "require" objects.`
+    )
+    process.exit(2)
+  }
   return {
-    types: entry.types.replace(/^\.\//, ''),
-    esm: entry.import.replace(/^\.\//, ''),
-    cjs: entry.require.replace(/^\.\//, '')
+    esmTypes: strip(entry.import.types, 'import.types'),
+    cjsTypes: strip(entry.require.types, 'require.types'),
+    esm: strip(entry.import.default, 'import.default'),
+    cjs: strip(entry.require.default, 'require.default')
   }
 }
 
 function checkBuildArtifacts() {
   section('1. Build artifacts')
   for (const subpath of SUBPATHS) {
-    const { types, esm, cjs } = distArtifactsFor(subpath)
-    for (const f of [types, esm, cjs]) {
+    const { esmTypes, cjsTypes, esm, cjs } = distArtifactsFor(subpath)
+    for (const f of [esmTypes, cjsTypes, esm, cjs]) {
       const abs = resolve(ROOT, f)
       if (!existsSync(abs)) {
         console.error(`Missing build artifact: ${f}. Run "pnpm build" first.`)

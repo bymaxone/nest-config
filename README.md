@@ -1,22 +1,37 @@
+<p align="center">
+  <img src="https://img.shields.io/badge/%40bymax--one-nest--config-000000?style=for-the-badge&logo=nestjs&logoColor=E0234E" alt="@bymax-one/nest-config" />
+</p>
+
 <h1 align="center">@bymax-one/nest-config</h1>
 
 <p align="center">
   <strong>Typed and validated environment configuration for NestJS</strong><br />
-  <sub>Zod v4 · Fail-fast · Value-free errors · Zero runtime dependencies</sub>
+  <sub>Zod v4 · Fail-fast at bootstrap · Value-free errors · Typed dot-path access · Testing helpers · Zero Runtime Dependencies</sub>
 </p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@bymax-one/nest-config"><img src="https://img.shields.io/npm/v/@bymax-one/nest-config?style=flat-square&colorA=000000&colorB=000000" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/@bymax-one/nest-config"><img src="https://img.shields.io/npm/dm/@bymax-one/nest-config?style=flat-square&colorA=000000&colorB=000000" alt="npm downloads" /></a>
   <a href="https://github.com/bymaxone/nest-config/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/bymaxone/nest-config/ci.yml?branch=main&style=flat-square&colorA=000000&label=CI" alt="CI status" /></a>
   <a href="https://github.com/bymaxone/nest-config/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/coverage-100%25-brightgreen?style=flat-square&colorA=000000" alt="coverage" /></a>
+  <a href="https://github.com/bymaxone/nest-config/blob/main/docs/mutation_testing_results.md"><img src="https://img.shields.io/badge/mutation-95.72%25-brightgreen?style=flat-square&colorA=000000" alt="mutation score" /></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/bymaxone/nest-config"><img src="https://api.scorecard.dev/projects/github.com/bymaxone/nest-config/badge?style=flat-square" alt="OpenSSF Scorecard" /></a>
   <a href="https://github.com/bymaxone/nest-config/blob/main/LICENSE"><img src="https://img.shields.io/github/license/bymaxone/nest-config?style=flat-square&colorA=000000&colorB=000000" alt="license" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" /></a>
   <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-24%2B-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js" /></a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/bymaxone/nest-config">GitHub</a> ·
+  <a href="https://github.com/bymaxone/nest-config/issues">Issues</a> ·
+  <a href="#-quick-start">Quick Start</a> ·
+  <a href="#-api-reference">API Reference</a> ·
+  <a href="https://github.com/bymaxone/nest-config-example">Example App</a>
+</p>
+
 ---
 
-## Overview
+## ✨ Overview
 
 `@bymax-one/nest-config` gives a NestJS application a single, typed, validated
 entry point for environment configuration. It validates `process.env` exactly
@@ -31,7 +46,7 @@ missing variable only explodes on the first request that needs it, and
 untyped config access (`config.get('port') as number`) that bypasses the type
 system exactly where mistakes are most expensive.
 
-## Features
+## 🔥 Features
 
 - **Validate once, at bootstrap.** The environment is parsed and validated a
   single time, before the application starts serving traffic. No lazy
@@ -54,7 +69,21 @@ system exactly where mistakes are most expensive.
 - **Zero runtime dependencies.** `dependencies` is empty; NestJS, `zod`, and
   `reflect-metadata` are peer dependencies controlled by the consumer.
 
-## Installation
+## 📦 Subpath Exports
+
+| Subpath      | Contents                                                                                                                                                                   |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.`          | `BymaxConfigModule`, `ConfigService`, `defineEnv`, the DI tokens, `BymaxConfigValidationError` and every option type                                                       |
+| `./testing`  | `configTestingModule`, `createTestConfig` — a validated config for a test without booting the application's own                                                            |
+| `./internal` | The shared runtime both entry points build on. **Not public API**: it is in the `exports` map because it has to resolve at runtime, not because it is meant to be imported |
+
+`.` and `./testing` are separate bundles, and a module reached from both by a
+relative path would be _copied_ into each — a copied class is a different injection
+token and a different `instanceof` target. `./internal` is the one bundle they both
+import by package specifier, which is what gives `ConfigService` a single identity in
+ESM and CommonJS alike.
+
+### Install
 
 ```bash
 pnpm add @bymax-one/nest-config @nestjs/common @nestjs/core reflect-metadata zod
@@ -65,12 +94,12 @@ pnpm add @bymax-one/nest-config @nestjs/common @nestjs/core reflect-metadata zod
 | Package            | Version    |
 | ------------------ | ---------- |
 | Node.js            | `>=24.0.0` |
-| `@nestjs/common`   | `^11.0.0`  |
-| `@nestjs/core`     | `^11.0.0`  |
+| `@nestjs/common`   | `^11.0.16` |
+| `@nestjs/core`     | `^11.1.18` |
 | `reflect-metadata` | `^0.2.0`   |
 | `zod`              | `^4.0.0`   |
 
-## Quick start
+## 🚀 Quick Start
 
 Define a schema with `defineEnv`. Top-level keys are namespaces, leaves are
 environment-derived values; each leaf reads a `SCREAMING_SNAKE_CASE` variable
@@ -150,7 +179,7 @@ Fix the variables above and restart the process.
 Raw values are never printed, not truncated, not masked, absent. This is a
 hard guarantee of the package, verified by tests.
 
-## API reference
+## 📖 API Reference
 
 ### `defineEnv(shape)`
 
@@ -266,7 +295,7 @@ dot-path inference, limited to the two-level namespace convention. All five
 are exported for advanced generic code (custom decorators, typed wrappers)
 that needs to reference the schema shape directly.
 
-## Error catalog
+## 🚨 Error Catalog
 
 | Code                       | Meaning                                                |
 | -------------------------- | ------------------------------------------------------ |
@@ -275,7 +304,90 @@ that needs to reference the schema shape directly.
 | `BYMAX_CONFIG_INVALID`     | Present but failed its constraint (issue code).        |
 | `BYMAX_CONFIG_UNKNOWN_KEY` | Strict mode: source variable matches no declared leaf. |
 
-## Testing
+## 🏗️ Architecture
+
+```
+BymaxConfigModule (@Global, forRoot / forRootAsync)
+  │
+  ├── defineEnv ─────────── the schema: namespaces at the top level, leaves below,
+  │                         each leaf a Zod v4 type with its own coercion
+  │
+  ├── createValidatedConfig  runs ONCE at bootstrap against process.env
+  │       │                  · every failure collected, not the first one
+  │       │                  · one aggregated report, value-free
+  │       └── throws BymaxConfigValidationError → the process does not start
+  │
+  ├── BYMAX_CONFIG ───────── the frozen, validated result
+  │
+  └── ConfigService ──────── typed dot-path access over it; `get('db.host')` is
+                             checked at compile time against the schema
+```
+
+Validation happens at bootstrap and nowhere else. There is no lazy read, no cache to
+invalidate, and no path where a request-time lookup can discover that an environment
+variable was missing — by then the process would already have refused to start.
+
+`./testing` builds the same validated object from an explicit record, so a test that
+needs configuration does not need the application's real environment, and cannot
+accidentally pass because a variable happened to be set on the machine.
+
+---
+
+## 🔐 Security Model
+
+**Errors are value-free by contract.** Configuration is where the secrets are, and a
+validation report is the one artifact guaranteed to be printed, logged and pasted
+into an issue. Every message states the _expected_ constraint — the type, the
+allowed enum options taken from the schema, the bound — and never the received
+value. `env-validator` and `report-formatter` both say so in their own contracts,
+and the property tests hold them to it.
+
+**Failing fast is the security property.** A service that starts with a missing
+`JWT_SECRET` and discovers it at the first login is a service that has already
+accepted traffic it cannot authenticate. The whole schema is validated before the
+application context finishes building, so a misconfigured deployment does not serve
+one request.
+
+**The validated object is frozen.** Nothing in the running process rewrites
+configuration under a component that already read it.
+
+**Nothing is read from anywhere but `process.env`.** No file, no network, no
+provider — the sources are the ones you name.
+
+---
+
+## 🛡️ Security Table
+
+| Layer          | Implementation                                                                                                             |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Error messages | Expected constraint only — type, schema-declared enum options, bounds; never the received value                            |
+| Failure mode   | Refuse to start; the whole schema is validated before the context finishes building                                        |
+| Aggregation    | Every failure reported at once, so a fix cycle is one restart rather than one per variable                                 |
+| Immutability   | The validated result is frozen before it is provided                                                                       |
+| Sources        | `process.env` only — no file, no network, no remote provider                                                               |
+| Type surface   | Dot paths checked against the schema at compile time; a typo is a build error, not a runtime `undefined`                   |
+| Supply chain   | `dependencies: {}`; third-party Actions pinned by commit SHA (org-internal reusables by tag); CodeQL and OpenSSF Scorecard |
+
+> [!IMPORTANT]
+> **Value-free applies to this library's own reports.** If your schema's `.refine`
+> or a custom message includes a value, that message is printed as written.
+
+---
+
+## 🧱 Tech Stack
+
+- **Runtime:** Node.js 24+
+- **Framework:** NestJS 11 (`ConfigurableModuleBuilder`, `@Global()`, `Symbol()` tokens)
+- **Validation:** Zod `^4` (peer) — the schema language, the coercion and the error source
+- **Build:** tsup — ESM + CJS per subpath, with `.d.ts` _and_ `.d.cts` declarations,
+  and one shared `./internal` bundle so the module and its testing entry point hold
+  a single class identity
+- **Tests:** Jest, including property-based tests over the report formatter + Stryker (mutation)
+- **TypeScript:** 5.x strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), zero `any`
+
+---
+
+## 🧪 Testing & Quality
 
 `@bymax-one/nest-config/testing` removes every excuse for touching
 `process.env` in tests. `createTestConfig` synthesizes a complete valid
@@ -313,7 +425,7 @@ secret-strength constraint; length and format constraints are honored. The
 subpath has no Jest dependency and works with any runner, though the family
 standard is Jest.
 
-## Design principles
+## 🎯 Design Principles
 
 1. **Validate once, at bootstrap.** No lazy validation at first access.
 2. **Fail fast, fail complete.** All violations are reported together in one
@@ -326,7 +438,7 @@ standard is Jest.
    `forRoot`/`forRootAsync`. No file discovery, no magic paths, no hidden
    precedence rules.
 
-## Known limitations
+## 🚫 Known Limitations
 
 1. **Two-level namespace convention.** The path-inference utilities
    (`Path<T>`, `PathValue<T, P>`) target `namespace.leaf` schemas. Deeper
@@ -344,7 +456,7 @@ standard is Jest.
    registration. Precedence between layers (defaults, env, secrets) is the
    caller's composition (`{ ...a, ...b }`), kept explicit on purpose.
 
-## Releasing
+## 🚢 Releasing
 
 Publishing is driven entirely from CI through the `release.yml` workflow, which
 uses npm OIDC trusted publishing (no long-lived npm token) and attaches build
@@ -369,6 +481,22 @@ Go-live is a deliberate, manual sequence performed by a maintainer:
    the freshly published version alongside the NestJS 11 peers and boot a minimal
    fixture to confirm the shipped artifact resolves and starts.
 
-## License
+## 🤝 Contributing
+
+For feature requests and bugs, open a GitHub issue. Pull requests are welcome; please
+run `pnpm test:cov` and `pnpm lint` before submitting.
+
+---
+
+## 🔒 Security Policy
+
+If you discover a security vulnerability, please **do not** open a public
+issue. Instead, email us at **support@bymax.one** with `[security]
+@bymax-one/nest-config` in the subject. We take security seriously and will
+respond promptly. See [`SECURITY.md`](./SECURITY.md) for the full policy.
+
+---
+
+## 📄 License
 
 [MIT](./LICENSE)

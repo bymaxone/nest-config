@@ -448,8 +448,10 @@ beyond "the tests pass".
 - ✅ **95.72% mutation score** — verified with [Stryker](https://stryker-mutator.io/) at
   `break: 95`; the eleven survivors are provable equivalents, documented in the
   [report](./docs/mutation_testing_results.md)
-- ✅ **Property-based tests on the report formatter** — the value-free guarantee is the one
-  claim a single example cannot establish, so it is checked over generated inputs
+- ✅ **The value-free guarantee is tested, not assumed** — a sentinel secret is placed in a
+  source and the assertion is that it appears nowhere in the rendered report or in the thrown
+  error, because a guarantee about what is _absent_ is the one thing an ordinary assertion
+  about output does not cover
 - ✅ **Published-artifact gates** — `check:exports` resolves the types the way each module
   system does, `check:runtime` loads every subpath from the packed tarball in ESM and
   CommonJS, and `check:published` compiles this README's snippets against `dist/`

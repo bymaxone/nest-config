@@ -89,8 +89,10 @@ Go-live is a deliberate, manual sequence performed by a maintainer:
    `README.md`, and `CHANGELOG.md`).
 2. **Confirm the version.** `package.json` `version` and the top dated
    `CHANGELOG.md` heading must both read the version being released.
-3. **Make the repository public.** This activates the provenance publish job and
-   the CodeQL, Scorecard, and dependency-review gates.
+3. **Confirm the repository is public.** Provenance publishing and the CodeQL,
+   Scorecard and dependency-review gates all require it. It is public today; this
+   step exists so a repository that was made private for any reason is not tagged
+   for release while those jobs cannot run.
 4. **Tag from `main`.** Push an annotated `vX.Y.Z` tag matching the manifest
    version. The tag push triggers `release.yml`, which verifies the tag against
    `package.json`, re-runs the release gates, and publishes with provenance.

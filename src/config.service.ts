@@ -39,10 +39,27 @@ import type { Path, PathValue } from './types'
  */
 @Injectable()
 export class ConfigService<TConfig> {
-  private readonly config: Readonly<TConfig>
+  /**
+   * The frozen configuration root.
+   *
+   * Held in an ECMAScript private field rather than a TypeScript `private`
+   * property: `private` is erased at runtime, leaving an enumerable own
+   * property that `JSON.stringify`, `Object.entries`, object spread and
+   * `util.inspect` all walk into. This object aggregates every secret the
+   * application declared, so any code that incidentally serializes the
+   * injected service — a logger that renders its arguments, an observability
+   * SDK capturing the scope of a thrown error, a stray `console.log` — would
+   * emit them in plaintext. A `#` field is unreachable to all of those.
+   */
+  readonly #config: Readonly<TConfig>
 
-  /** Precomputed `namespace.leaf` to value lookup, built once at construction. */
-  private readonly leaves: ReadonlyMap<string, unknown>
+  /**
+   * Precomputed `namespace.leaf` to value lookup, built once at construction.
+   *
+   * An ECMAScript private field for the same reason as the config root: it
+   * holds the same values, flattened.
+   */
+  readonly #leaves: ReadonlyMap<string, unknown>
 
   /**
    * Bind the accessor to the frozen configuration object.
@@ -54,14 +71,34 @@ export class ConfigService<TConfig> {
    * @param config - The validated, deep-frozen config injected via {@link BYMAX_CONFIG}.
    */
   public constructor(@Inject(BYMAX_CONFIG) config: Readonly<TConfig>) {
-    this.config = config
+    this.#config = config
     const leaves = new Map<string, unknown>()
     for (const [namespace, value] of Object.entries(config as Record<string, unknown>)) {
       for (const [leaf, leafValue] of Object.entries(value as Record<string, unknown>)) {
         leaves.set(`${namespace}.${leaf}`, leafValue)
       }
     }
-    this.leaves = leaves
+    this.#leaves = leaves
+  }
+
+  /**
+   * Describe the service for serialization without disclosing any value.
+   *
+   * `JSON.stringify` on an instance would otherwise yield `{}`, which reads as
+   * a bug rather than as a deliberate omission. Returning the namespace names
+   * keeps the output useful for debugging while the values stay unreachable.
+   *
+   * @returns The declared namespace names, never their contents.
+   * @example
+   * ```typescript
+   * JSON.stringify(config); // {"service":"ConfigService","namespaces":["server","database"]}
+   * ```
+   */
+  public toJSON(): { readonly service: string; readonly namespaces: readonly string[] } {
+    return {
+      service: 'ConfigService',
+      namespaces: Object.keys(this.#config as Record<string, unknown>)
+    }
   }
 
   /**
@@ -98,7 +135,7 @@ export class ConfigService<TConfig> {
    * ```
    */
   public getAll(): Readonly<TConfig> {
-    return this.config
+    return this.#config
   }
 
   /**
@@ -129,6 +166,6 @@ export class ConfigService<TConfig> {
    * @returns The leaf value as `unknown`, or `undefined` when the leaf is unset.
    */
   private resolve(path: Path<TConfig>): unknown {
-    return this.leaves.get(String(path))
+    return this.#leaves.get(String(path))
   }
 }

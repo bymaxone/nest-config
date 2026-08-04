@@ -404,6 +404,16 @@ from the schema, the bound — and never the received value. `env-validator` and
 `report-formatter` each say so in their own contracts, and property-based tests hold them
 to it.
 
+### The service does not serialize its configuration
+
+`ConfigService` keeps the validated root in an ECMAScript private field, so
+`JSON.stringify`, `Object.entries`, object spread and `util.inspect` cannot reach the
+values. Those are the paths taken by code that renders an injected provider it was handed
+incidentally — a logger formatting its arguments, an error reporter capturing the scope of
+a throw. `toJSON` returns the declared namespace names, so the omission reads as deliberate
+rather than as an empty object. Reading on purpose is unaffected: `get`, `has` and the
+`getAll` escape hatch return the real values.
+
 ### Failing fast is the security property
 
 A service that starts with a missing `JWT_SECRET` and discovers it at the first login is a
@@ -437,6 +447,7 @@ schema includes a value, that message is printed as written.
 | Failure mode   | Refuse to start; the whole schema is validated before the context finishes building                                        |
 | Aggregation    | Every failure reported at once, so a fix cycle is one restart rather than one per variable                                 |
 | Immutability   | The validated result is frozen before it is provided                                                                       |
+| Service state  | The root lives in a private field; serializing the injected service yields namespace names only                            |
 | Sources        | `process.env` only — no file, no network, no remote provider                                                               |
 | Type surface   | Dot paths checked against the schema at compile time; a typo is a build error, not a runtime `undefined`                   |
 | Supply chain   | `dependencies: {}`; third-party Actions pinned by commit SHA (org-internal reusables by tag); CodeQL and OpenSSF Scorecard |

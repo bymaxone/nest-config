@@ -374,6 +374,10 @@ Validation happens at bootstrap and nowhere else. There is no lazy read, no cach
 invalidate, and no path where a request-time lookup can discover that an environment
 variable was missing — by then the process would already have refused to start.
 
+`./testing` builds the same validated object from an explicit record, so a test that
+needs configuration does not need the application's real environment, and cannot
+accidentally pass because a variable happened to be set on the machine.
+
 ### Design Principles
 
 | Principle                            | Description                                                                                                                                                                                |

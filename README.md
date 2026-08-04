@@ -333,20 +333,41 @@ that needs to reference the schema shape directly.
 ## 🏗️ Architecture
 
 ```
-BymaxConfigModule (@Global, forRoot / forRootAsync)
-  │
-  ├── defineEnv ─────────── the schema: namespaces at the top level, leaves below,
-  │                         each leaf a Zod v4 type with its own coercion
-  │
-  ├── createValidatedConfig  runs ONCE at bootstrap against process.env
-  │       │                  · every failure collected, not the first one
-  │       │                  · one aggregated report, value-free
-  │       └── throws BymaxConfigValidationError → the process does not start
-  │
-  ├── BYMAX_CONFIG ───────── the frozen, validated result
-  │
-  └── ConfigService ──────── typed dot-path access over it; `get('db.host')` is
-                             checked at compile time against the schema
+                          process.env
+                     (or the record you inject)
+                                │
+                                ▼
+            ┌───────────────────────────────────────┐
+            │              defineEnv                │
+            │  namespaces at the top, Zod v4 leaves │
+            └───────────────────┬───────────────────┘
+                                │
+                                ▼
+            ┌───────────────────────────────────────┐
+            │        createValidatedConfig          │
+            │   runs ONCE, at bootstrap, and        │
+            │   collects EVERY failure first        │
+            └─────────┬─────────────────┬───────────┘
+                      │                 │
+                 all valid          any invalid
+                      │                 │
+                      ▼                 ▼
+              deep-frozen        BymaxConfigValidationError
+              BYMAX_CONFIG       one aggregated, value-free report
+                      │                 │
+                      ▼                 ▼
+               ConfigService     the process does not start
+          get('db.host') typed          │
+          from the schema itself   no request is ever served
+                      │                 with a missing secret
+                      ▼
+        ┌─────────────────────────────┐
+        │  ./testing                  │
+        │  same pipeline, explicit    │
+        │  source — a test cannot     │
+        │  pass because a variable    │
+        │  happened to be set         │
+        └─────────────────────────────┘
 ```
 
 Validation happens at bootstrap and nowhere else. There is no lazy read, no cache to

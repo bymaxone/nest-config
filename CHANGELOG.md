@@ -11,6 +11,23 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-08-04
+
+### Security
+
+- `ConfigService` no longer discloses configured values when an instance is serialized.
+  The validated root and its flattened lookup moved from TypeScript `private` properties —
+  which are erased at runtime, leaving enumerable own properties — to ECMAScript private
+  fields. `JSON.stringify`, `Object.entries`, object spread and `util.inspect` (including
+  `showHidden`) previously emitted every secret the application declared in plaintext,
+  which is what code that renders an injected provider incidentally does: a logger
+  formatting its arguments, an error reporter capturing the scope of a throw.
+- `ConfigService.toJSON` reports the declared namespace names and nothing else, so a
+  serialized instance stays informative for debugging without carrying values.
+
+Reading on purpose is unchanged. `get`, `has` and `getAll` return the same values as
+before; only incidental serialization is affected. No API was removed.
+
 ## [1.0.0] - 2026-08-03
 
 First published release. Everything below ships in it.
@@ -103,4 +120,5 @@ have regressed from. They are kept because the reasoning is worth having.
   ever carried the permissive range. No runtime behaviour changed.
 
 [1.0.0]: https://github.com/bymaxone/nest-config/releases/tag/v1.0.0
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.0.0...HEAD
+[1.0.1]: https://github.com/bymaxone/nest-config/compare/v1.0.0...v1.0.1
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.0.1...HEAD

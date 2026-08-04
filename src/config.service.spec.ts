@@ -12,6 +12,8 @@
  * same shape the DI provider would hand it, so no Nest container is needed.
  */
 
+import { inspect } from 'node:util'
+
 import { deepFreeze } from './deep-freeze'
 import { ConfigService } from './config.service'
 
@@ -123,6 +125,74 @@ describe('ConfigService.getAll', () => {
 
     expect(service.getAll()).toBe(config)
     expect(Object.isFrozen(service.getAll())).toBe(true)
+  })
+})
+
+describe('ConfigService serialization', () => {
+  /** A value distinctive enough that any leak shows up as a substring match. */
+  const SECRET = 'pa55word-canary'
+
+  /** Build a service whose config carries a recognizable secret in a leaf. */
+  function buildServiceWithSecret(): ConfigService<SampleConfig> {
+    return new ConfigService<SampleConfig>(
+      deepFreeze<SampleConfig>({
+        server: { port: 4000, env: 'production' },
+        database: { url: `postgres://admin:${SECRET}@db.internal:5432/app` },
+        log: { level: 'info' },
+        feature: { flag: undefined }
+      })
+    )
+  }
+
+  it('keeps configured values out of every incidental serialization path', () => {
+    /**
+     * Accidental-disclosure containment.
+     *
+     * The service aggregates every secret the application declared, so the four
+     * ways host code stumbles into serializing an injected provider — a logger
+     * rendering its arguments, `Object.entries`, object spread, and Node's
+     * inspector, which an error reporter reaches through the scope of a throw —
+     * must not reach the values. `showHidden` is included because it is what
+     * defeats a merely non-enumerable property; only a `#` field survives it.
+     */
+    const service = buildServiceWithSecret()
+
+    expect(JSON.stringify(service)).not.toContain(SECRET)
+    expect(JSON.stringify(Object.entries(service))).not.toContain(SECRET)
+    expect(JSON.stringify({ ...service })).not.toContain(SECRET)
+    expect(inspect(service, { depth: null, showHidden: true })).not.toContain(SECRET)
+  })
+
+  it('serializes to the declared namespace names so the omission reads as deliberate', () => {
+    /**
+     * Useful-but-empty contract.
+     *
+     * Without `toJSON` the same containment would render as `{}`, which reads as
+     * a broken provider. Naming the service and its namespaces keeps a debug log
+     * informative while every value stays unreachable.
+     */
+    const service = buildServiceWithSecret()
+
+    expect(service.toJSON()).toEqual({
+      service: 'ConfigService',
+      namespaces: ['server', 'database', 'log', 'feature']
+    })
+    expect(JSON.parse(JSON.stringify(service))).toEqual(service.toJSON())
+  })
+
+  it('still resolves values through the accessors it is meant to be read with', () => {
+    /**
+     * No-regression guard.
+     *
+     * Containment must cost nothing at the supported surface: `get`, `has` and
+     * the `getAll` escape hatch keep returning the real values, since hiding the
+     * field changes how the object serializes, not what it stores.
+     */
+    const service = buildServiceWithSecret()
+
+    expect(service.get('database.url')).toContain(SECRET)
+    expect(service.has('database.url')).toBe(true)
+    expect(service.getAll().database.url).toContain(SECRET)
   })
 })
 

@@ -127,17 +127,6 @@
     "typescript": "^5.9.3",
     "zod": "^4.0.0"
   },
-  "pnpm": {
-    "overrides": {
-      "brace-expansion@1": "^1.1.17",
-      "brace-expansion@2": "^2.1.3",
-      "brace-expansion@5": "^5.0.8",
-      "esbuild": "^0.28.1",
-      "fast-uri": "^3.1.4",
-      "protobufjs": "^7.6.5",
-      "qs": "^6.15.2"
-    }
-  },
   "keywords": [
     "nestjs",
     "config",
@@ -150,7 +139,7 @@
     "fail-fast",
     "configuration"
   ],
-  "packageManager": "pnpm@10.8.1",
+  "packageManager": "pnpm@11.20.0",
   "engines": {
     "node": ">=24.0.0"
   },

@@ -130,5 +130,6 @@ have regressed from. They are kept because the reasoning is worth having.
   ever carried the permissive range. No runtime behaviour changed.
 
 [1.0.0]: https://github.com/bymaxone/nest-config/releases/tag/v1.0.0
+[1.0.2]: https://github.com/bymaxone/nest-config/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/bymaxone/nest-config/compare/v1.0.0...v1.0.1
 [Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.0.1...HEAD

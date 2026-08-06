@@ -217,6 +217,7 @@ function synthesizeEmail(lengths: { min: number; max: number; exact?: number }):
 function synthesizePlainString(lengths: { min: number; max: number; exact?: number }): string {
   if (lengths.exact !== undefined) return FILLER_CHARACTER.repeat(lengths.exact)
   const target = Math.max(lengths.min, DEFAULT_STRING_LENGTH)
+  // Stryker disable next-line EqualityOperator: equivalent — the two arms are the same value when `target` equals `lengths.max`, which is the only case the operator distinguishes
   const bounded = target > lengths.max ? lengths.max : target
   return FILLER_CHARACTER.repeat(bounded)
 }

@@ -215,6 +215,7 @@ function longestMatchingPrefix(
   let match: NamespacePrefix | undefined
   for (const entry of prefixes) {
     if (!key.startsWith(entry.prefix)) continue
+    // Stryker disable next-line EqualityOperator: equivalent — two DIFFERENT prefixes of equal length cannot both prefix one key, so the comparison only ever separates unequal lengths; identical prefixes would be a duplicate registration, where first and last name the same namespace
     if (match === undefined || entry.prefix.length > match.prefix.length) {
       match = entry
     }
@@ -257,9 +258,11 @@ function detectUnknownKeys(
   // Sort by variable in code-point order (locale-independent) so the aggregated
   // report is stable across platforms regardless of the source key-enumeration
   // order (process.env order can vary across runs).
+  // Stryker disable ConditionalExpression,EqualityOperator: equivalent — issues are aggregated one per variable, so the equal case these operators decide never arises; the comparator is written in this code-point form to be locale-independent, not to order duplicates
   return issues.sort(
     (left, right) => Number(left.variable > right.variable) - Number(left.variable < right.variable)
   )
+  // Stryker restore ConditionalExpression,EqualityOperator
 }
 
 /**

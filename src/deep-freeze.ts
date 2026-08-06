@@ -14,6 +14,7 @@
  * @returns True when the value is a non-null object or array.
  */
 function isFreezable(value: unknown): value is Record<string, unknown> {
+  // Stryker disable next-line ConditionalExpression,LogicalOperator: equivalent — these mutants make the guard admit more inputs (primitives and `null`), but `deepFreeze` guards with `!isFreezable(value) || Object.isFrozen(value)`, and `Object.isFrozen` is `true` for every input they newly admit. The same early `return value` is reached, nothing is frozen or recursed differently, and the returned reference is unchanged.
   return typeof value === 'object' && value !== null
 }
 

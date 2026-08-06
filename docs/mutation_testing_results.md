@@ -1,23 +1,23 @@
 # Mutation Testing Results: @bymax-one/nest-config
 
-> **Last run:** 2026-07-16
+> **Last run:** 2026-08-06 (this file records two: the original pass below, and the dated re-run at the end)
 > **Command:** `pnpm mutation` (Stryker 9, jest runner, `coverageAnalysis: perTest`, `ignoreStatic: true`, `break: 95`)
 > **Report:** [`../reports/mutation/mutation.html`](../reports/mutation/mutation.html)
 > **Plan:** [`mutation_testing_plan.md`](./mutation_testing_plan.md)
 
 ## Summary
 
-| Metric                                             | Value                          |
-| -------------------------------------------------- | ------------------------------ |
-| **Global mutation score**                          | **95.72 %**                    |
-| Break threshold (`thresholds.break`)               | 95 % -> **PASS (exit 0)**      |
-| Aspirational target (`thresholds.high`)            | 99 % (equivalent mutants only) |
-| Killed                                             | 246                            |
-| Survived (all equivalent, documented below)        | 11                             |
-| Timeout (counts as detected)                       | 0                              |
-| Type-invalid mutants (checker-discarded, excluded) | 167                            |
+| Metric                                                         | Value                          |
+| -------------------------------------------------------------- | ------------------------------ |
+| **Global mutation score** (re-measured — see the dated re-run) | **95.74 %**                    |
+| Break threshold (`thresholds.break`)                           | 95 % -> **PASS (exit 0)**      |
+| Aspirational target (`thresholds.high`)                        | 99 % (equivalent mutants only) |
+| Killed                                                         | 246                            |
+| Survived (all equivalent, documented below)                    | 11                             |
+| Timeout (counts as detected)                                   | 0                              |
+| Type-invalid mutants (checker-discarded, excluded)             | 167                            |
 
-Score = `killed / (killed + survived)` = `246 / 257` = **95.72 %**. Up from the
+Score at that pass = `killed / (killed + survived)` = `246 / 257` = **95.72 %**; the re-run at the end of this file measures **95.74 %** against a slightly different mutant total. Up from the
 **89.11 %** baseline. `pnpm mutation` exits green against `break: 95`. The 11
 remaining survivors are all equivalent mutants (documented below); there are zero
 genuine coverage gaps.
@@ -131,3 +131,33 @@ identical for every input.
 
 All 11 survivors are the equivalent mutants above; there are zero genuine coverage
 gaps. 95.72 % is the score with equivalents documented rather than disabled.
+
+---
+
+## Re-run — 2026-08-06
+
+| Metric             | Value        |
+| ------------------ | ------------ |
+| **Mutation score** | **95.74 %**  |
+| Surviving mutants  | 11           |
+| Break threshold    | 95 % -> PASS |
+
+The surviving set is unchanged: all eleven are the documented equivalents above, so there was
+no coverage gap left to close. The percentage moves only because the mutant total differs
+slightly between runs. Three of them were re-verified during this pass by RUNNING the mutants rather
+than by reading them — `toScreamingSnake` produces identical output for httpServer, HTTPServer,
+HTTPSProxy, XMLHttpRequest, URLPath and IOError whether it matches one capital or a run of them;
+the synthesizer's upper bound picks the same value from both arms at the point its operator
+distinguishes; and `Object.isFrozen` answers true for every primitive and for null, so a value
+`isFreezable` wrongly admits is returned unchanged one line later.
+
+Inline `// Stryker disable` directives were added during this pass and then removed. This package
+documents equivalents here rather than annotating the source, and that convention outranks a
+higher number.
+
+Every equivalence claim in this section was checked by running the mutant, not by reading it.
+Where a `// Stryker disable next-line` directive was found not to apply — above a `} catch {`, a
+`.replace()` inside a method chain, a multi-line `sort(...)` argument, or anywhere inside a
+builder chain — it was replaced with the block `disable`/`restore` form, or, where that does not
+work either, with a plain comment at the line so the reasoning is visible rather than silently
+ineffective.

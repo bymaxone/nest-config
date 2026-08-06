@@ -11,7 +11,7 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
-## [1.0.2] — 2026-08-06
+## [1.0.2] - 2026-08-06
 
 **Documentation only.** `dist/` is byte-identical to `1.0.1`.
 

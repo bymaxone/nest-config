@@ -1,6 +1,6 @@
 # Mutation Testing Results: @bymax-one/nest-config
 
-> **Last run:** 2026-07-16
+> **Last run:** 2026-08-06 (this file records two: the original pass below, and the dated re-run at the end)
 > **Command:** `pnpm mutation` (Stryker 9, jest runner, `coverageAnalysis: perTest`, `ignoreStatic: true`, `break: 95`)
 > **Report:** [`../reports/mutation/mutation.html`](../reports/mutation/mutation.html)
 > **Plan:** [`mutation_testing_plan.md`](./mutation_testing_plan.md)
@@ -17,7 +17,7 @@
 | Timeout (counts as detected)                                   | 0                              |
 | Type-invalid mutants (checker-discarded, excluded)             | 167                            |
 
-Score = `killed / (killed + survived)` = `246 / 257` = **95.72 %**. Up from the
+Score at that pass = `killed / (killed + survived)` = `246 / 257` = **95.72 %**; the re-run at the end of this file measures **95.74 %** against a slightly different mutant total. Up from the
 **89.11 %** baseline. `pnpm mutation` exits green against `break: 95`. The 11
 remaining survivors are all equivalent mutants (documented below); there are zero
 genuine coverage gaps.
@@ -142,8 +142,9 @@ gaps. 95.72 % is the score with equivalents documented rather than disabled.
 | Surviving mutants  | 11           |
 | Break threshold    | 95 % -> PASS |
 
-No change to the score, and none was available: all eleven survivors are the documented
-equivalents below. Three of them were re-verified during this pass by RUNNING the mutants rather
+The surviving set is unchanged: all eleven are the documented equivalents above, so there was
+no coverage gap left to close. The percentage moves only because the mutant total differs
+slightly between runs. Three of them were re-verified during this pass by RUNNING the mutants rather
 than by reading them — `toScreamingSnake` produces identical output for httpServer, HTTPServer,
 HTTPSProxy, XMLHttpRequest, URLPath and IOError whether it matches one capital or a run of them;
 the synthesizer's upper bound picks the same value from both arms at the point its operator

@@ -40,12 +40,10 @@ export interface NamespacePrefix {
  * @returns The segment as one or more underscore-joined uppercase words.
  */
 function toScreamingSnake(segment: string): string {
-  // Stryker disable Regex: equivalent — the replacement keeps `$1` verbatim, so matching one capital or a run of them rewrites the same boundary; verified against httpServer, HTTPServer, HTTPSProxy, XMLHttpRequest, URLPath and IOError, which all produce identical output
   return segment
     .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')
     .toUpperCase()
-  // Stryker restore Regex
 }
 
 /**

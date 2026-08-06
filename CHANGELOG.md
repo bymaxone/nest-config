@@ -11,6 +11,16 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.0.2] — 2026-08-06
+
+**Documentation only.** `dist/` is byte-identical to `1.0.1`.
+
+### Documentation
+
+- The mutation badge said **95.72%**; the re-measured score is **95.74%**. The report gains a
+  dated re-run recording that three of the eleven documented equivalents were re-verified by
+  running the mutants rather than by reading them.
+
 ## [1.0.1] - 2026-08-04
 
 ### Security

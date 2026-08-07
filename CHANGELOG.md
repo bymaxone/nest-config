@@ -38,6 +38,15 @@ described below; no runtime code changed.
 - The README claimed **Zero suppressions** as a rule. It states what is true now: every
   suppression carries its reason, in the grammar Stryker parses.
 
+### Security
+
+- **`js-yaml` is floored at the patched release** (GHSA-5p4m-2wfm-xmqj, CVSS 7.5), which was
+  open as a Dependabot alert. It reaches this repo only through `jest` ->
+  `babel-plugin-istanbul` -> `@istanbuljs/load-nyc-config`; this package declares
+  `"dependencies": {}`, so `js-yaml` is never installed beside it and no consumer was
+  exposed. `dist/` is unaffected. (Landed separately, recorded here because it ships in this
+  version.)
+
 ### Added
 
 - `check:mutants` gate (`scripts/check-mutation-directives.mjs`) — validates every

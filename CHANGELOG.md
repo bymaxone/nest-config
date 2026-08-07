@@ -11,6 +11,41 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-08-07
+
+**Documentation and tooling.** `dist/` differs from `1.0.2` only in the text of the comments
+described below; no runtime code changed.
+
+### Changed
+
+- **Equivalent mutants are documented in the source instead of only in the report.** Ten of
+  the eleven now carry `// Stryker disable next-line <Mutator>: <reason>` on the line they
+  apply to, which is the convention now shared across the `@bymax-one/nest-*` libraries. The
+  measured score moves from **95.74%** to **99.59%** — no test and no production logic
+  changed; Stryker excludes an ignored mutant from the denominator instead of counting it as
+  one the suite failed to kill.
+
+  Two needed the block `disable`/`restore` form, because `next-line` binds to the following
+  statement and those mutants do not sit on one.
+
+  The eleventh stays a **counted survivor**. A directive on the line above it was measured,
+  not assumed, to do nothing — one does not attach to a `.replace()` inside a method chain,
+  and the mutant still reported as surviving. Silencing it would take a block directive
+  spanning the neighbouring `.replace()`, whose own regex mutants the suite does kill, and a
+  killable mutant is never disabled to raise a number. It is argued in a plain comment at the
+  line and counted in the report.
+
+- The README claimed **Zero suppressions** as a rule. It states what is true now: every
+  suppression carries its reason, in the grammar Stryker parses.
+
+### Added
+
+- `check:mutants` gate (`scripts/check-mutation-directives.mjs`) — validates every
+  `// Stryker` comment against the parser's own regular expression, rejecting a reason
+  written after `--` instead of a colon, a reason wrapped onto a second comment line, a
+  stray comma in the mutator list, and a mutator name Stryker does not know, which matches
+  nothing and so silences nothing. Wired into CI and `prepublishOnly`.
+
 ## [1.0.2] - 2026-08-06
 
 **Documentation only.** `dist/` is byte-identical to `1.0.1`.
@@ -132,4 +167,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.0.0]: https://github.com/bymaxone/nest-config/releases/tag/v1.0.0
 [1.0.2]: https://github.com/bymaxone/nest-config/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/bymaxone/nest-config/compare/v1.0.0...v1.0.1
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.0.1...HEAD
+[1.0.3]: https://github.com/bymaxone/nest-config/compare/v1.0.2...v1.0.3
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.0.3...HEAD

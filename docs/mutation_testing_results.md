@@ -1,34 +1,49 @@
 # Mutation Testing Results: @bymax-one/nest-config
 
-> **Last run:** 2026-08-06 (this file records two: the original pass below, and the dated re-run at the end)
+> **Last run:** 2026-08-07
 > **Command:** `pnpm mutation` (Stryker 9, jest runner, `coverageAnalysis: perTest`, `ignoreStatic: true`, `break: 95`)
 > **Report:** [`../reports/mutation/mutation.html`](../reports/mutation/mutation.html)
 > **Plan:** [`mutation_testing_plan.md`](./mutation_testing_plan.md)
 
 ## Summary
 
-| Metric                                                         | Value                          |
-| -------------------------------------------------------------- | ------------------------------ |
-| **Global mutation score** (re-measured — see the dated re-run) | **95.74 %**                    |
-| Break threshold (`thresholds.break`)                           | 95 % -> **PASS (exit 0)**      |
-| Aspirational target (`thresholds.high`)                        | 99 % (equivalent mutants only) |
-| Killed                                                         | 246                            |
-| Survived (all equivalent, documented below)                    | 11                             |
-| Timeout (counts as detected)                                   | 0                              |
-| Type-invalid mutants (checker-discarded, excluded)             | 167                            |
+| Metric                                                 | Value                     |
+| ------------------------------------------------------ | ------------------------- |
+| **Global mutation score**                              | **99.59 %**               |
+| Break threshold (`thresholds.break`)                   | 95 % -> **PASS (exit 0)** |
+| Aspirational target (`thresholds.high`)                | 99 % -> **reached**       |
+| Killed                                                 | 240                       |
+| Survived (equivalent, and unable to carry a directive) | 1                         |
+| Timeout (counts as detected)                           | 0                         |
+| Type-invalid mutants (checker-discarded, excluded)     | 168                       |
 
-Score at that pass = `killed / (killed + survived)` = `246 / 257` = **95.72 %**; the re-run at the end of this file measures **95.74 %** against a slightly different mutant total. Up from the
-**89.11 %** baseline. `pnpm mutation` exits green against `break: 95`. The 11
-remaining survivors are all equivalent mutants (documented below); there are zero
-genuine coverage gaps.
+Score = `killed / (killed + survived)` = `240 / 241` = **99.59 %**, up from **95.74 %** and a
+**89.11 %** baseline. `pnpm mutation` exits green against `break: 95`, and now also clears the
+`high: 99` target.
 
-## Approach to equivalents: documentation, not inline disables
+The jump is not new tests: the eleven equivalents were already argued here and left to survive.
+Ten of them now carry their reason as an inline directive, so Stryker excludes them from the
+denominator instead of counting them as failures to kill. The eleventh cannot carry one and is
+still counted — see the section below. There are zero genuine coverage gaps, before or after.
 
-Equivalent mutants are documented here rather than annotated with
-`// Stryker disable` comments. The production source stays free of suppression
-comments, matching the project code-craft standard, and the reasons below carry
-more context than an inline note could. Each entry states why the mutant produces
-no observable behavioral difference within the supported two-level convention.
+## Approach to equivalents: documented in the source
+
+Equivalent mutants carry their reason on the line they apply to, as
+`// Stryker disable next-line <Mutator>: <reason>`, which is the convention shared across
+the `@bymax-one/nest-*` libraries — see `mutation_testing_plan.md §Suppression policy`.
+The argument for each is reproduced below, because the entries here carry context an
+inline note cannot: what the supported two-level convention rules out, and what was
+verified by running the mutant rather than reading it.
+
+Ten of the eleven are silenced that way. **One is not, and is a counted survivor:**
+
+| Location               | Mutator                      | Why it stays counted                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ---------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `source-mapping.ts:47` | `Regex` (`[A-Z]+` → `[A-Z]`) | The mutation is equivalent — the underscore's position is fixed by the following `[A-Z][a-z]` boundary, which both variants locate identically. But a directive does not attach inside a method chain: measured, not assumed — with `// Stryker disable next-line Regex` on the line above, the mutant still reported as surviving. Silencing it would take a block directive spanning the `.replace()` above it, whose own regex mutants the suite does kill, and a killable mutant is never disabled. So it is argued in the source, counted here, and left in the score. |
+
+That is the policy's own escape hatch: where the source cannot carry the directive, the
+report carries the argument and the mutant stays in the denominator. The score is an
+accounting either way.
 
 ## Hardening performed
 
@@ -59,10 +74,10 @@ non-equivalent survivors:
 | `errors.ts`                          | 100.00 % | 0                      |
 | `report-formatter.ts`                | 100.00 % | 0                      |
 | `testing/create-test-config.ts`      | 100.00 % | 0                      |
-| `testing/placeholder-synthesizer.ts` | 99.12 %  | 1                      |
-| `source-mapping.ts`                  | 93.33 %  | 1                      |
-| `env-validator.ts`                   | 92.65 %  | 5                      |
-| `deep-freeze.ts`                     | 50.00 %  | 4                      |
+| `testing/placeholder-synthesizer.ts` | 100.00 % | 0 (1 silenced)         |
+| `env-validator.ts`                   | 100.00 % | 0 (5 silenced)         |
+| `deep-freeze.ts`                     | 100.00 % | 0 (4 silenced)         |
+| `source-mapping.ts`                  | 93.33 %  | 1 (cannot be silenced) |
 
 `config.module-definition.ts`, `config.options.ts`, `config.tokens.ts`,
 `define-env.ts`, `types.ts`, and `testing/config-testing.module.ts` produce only
@@ -129,8 +144,9 @@ identical for every input.
 
 ## Residual survivors
 
-All 11 survivors are the equivalent mutants above; there are zero genuine coverage
-gaps. 95.72 % is the score with equivalents documented rather than disabled.
+All 11 were the equivalent mutants above, counted as survivors because the convention at the
+time was to document rather than disable. Ten now carry an inline directive; the eleventh is
+the `source-mapping.ts` regex, which no directive can reach.
 
 ---
 
@@ -151,9 +167,10 @@ the synthesizer's upper bound picks the same value from both arms at the point i
 distinguishes; and `Object.isFrozen` answers true for every primitive and for null, so a value
 `isFreezable` wrongly admits is returned unchanged one line later.
 
-Inline `// Stryker disable` directives were added during this pass and then removed. This package
-documents equivalents here rather than annotating the source, and that convention outranks a
-higher number.
+Inline `// Stryker disable` directives were added during this pass and then removed, because the
+convention at the time was to document here instead. That convention has since been replaced by
+the one in `mutation_testing_plan.md §Suppression policy`, shared across the libraries, and the
+directives are back — the reason belongs on the line it explains.
 
 Every equivalence claim in this section was checked by running the mutant, not by reading it.
 Where a `// Stryker disable next-line` directive was found not to apply — above a `} catch {`, a
@@ -161,3 +178,32 @@ Where a `// Stryker disable next-line` directive was found not to apply — abov
 builder chain — it was replaced with the block `disable`/`restore` form, or, where that does not
 work either, with a plain comment at the line so the reasoning is visible rather than silently
 ineffective.
+
+---
+
+## Re-run — 2026-08-07
+
+| Metric             | Value           |
+| ------------------ | --------------- |
+| **Mutation score** | **99.59 %**     |
+| Killed             | 240             |
+| Surviving mutants  | 1               |
+| Break threshold    | 95 % -> PASS    |
+| High target        | 99 % -> reached |
+
+No test changed and no production logic changed. Ten of the eleven equivalents argued above
+now carry their reason as an inline `// Stryker disable next-line <Mutator>: <reason>`, so
+Stryker excludes them from the denominator rather than counting them as mutants the suite
+failed to kill. That is the whole of the move from 95.74 % to 99.59 %.
+
+Two of the ten needed the block `disable`/`restore` form, because `next-line` binds to the
+following statement and the mutants do not sit on one: the unknown-key sort comparator is a
+multi-line `sort` argument, and the `restore` for it sits after the enclosing function's
+closing brace so the rule cannot leak into the next declaration.
+
+The eleventh — the `source-mapping.ts` acronym regex — is a counted survivor and stays one.
+A directive placed on the line above it was measured, not assumed, to have no effect: the
+mutant still reported as surviving, because a directive does not attach to a `.replace()`
+inside a method chain. The only way to silence it would be a block directive spanning the
+neighbouring `.replace()`, whose own regex mutants the suite does kill, and a killable
+mutant is never disabled to raise a number.

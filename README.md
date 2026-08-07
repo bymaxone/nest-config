@@ -14,7 +14,7 @@
   <a href="https://www.npmjs.com/package/@bymax-one/nest-config"><img src="https://img.shields.io/npm/dm/@bymax-one/nest-config?style=flat-square&colorA=000000&colorB=000000" alt="npm downloads" /></a>
   <a href="https://github.com/bymaxone/nest-config/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/bymaxone/nest-config/ci.yml?branch=main&style=flat-square&colorA=000000&label=CI" alt="CI status" /></a>
   <a href="https://github.com/bymaxone/nest-config/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/coverage-100%25-brightgreen?style=flat-square&colorA=000000" alt="coverage" /></a>
-  <a href="https://github.com/bymaxone/nest-config/blob/main/docs/mutation_testing_results.md"><img src="https://img.shields.io/badge/mutation-95.74%25-brightgreen?style=flat-square&colorA=000000" alt="mutation score" /></a>
+  <a href="https://github.com/bymaxone/nest-config/blob/main/docs/mutation_testing_results.md"><img src="https://img.shields.io/badge/mutation-99.59%25-brightgreen?style=flat-square&colorA=000000" alt="mutation score" /></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/bymaxone/nest-config"><img src="https://api.scorecard.dev/projects/github.com/bymaxone/nest-config/badge?style=flat-square" alt="OpenSSF Scorecard" /></a>
   <a href="https://github.com/bymaxone/nest-config/blob/main/LICENSE"><img src="https://img.shields.io/github/license/bymaxone/nest-config?style=flat-square&colorA=000000&colorB=000000" alt="license" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" /></a>
@@ -477,9 +477,10 @@ Configuration decides whether a process may start at all, so the suite is held t
 beyond "the tests pass".
 
 - ✅ **100% line coverage** — statements, branches, functions and lines, enforced as a gate
-- ✅ **95.74% mutation score** — verified with [Stryker](https://stryker-mutator.io/) at
-  `break: 95`; the eleven survivors are provable equivalents, documented in the
-  [report](./docs/mutation_testing_results.md)
+- ✅ **99.59% mutation score** — verified with [Stryker](https://stryker-mutator.io/) at
+  `break: 95`; ten provable equivalents carry their reason inline, and the one survivor left
+  is an equivalent no directive can reach, so it stays counted rather than silenced
+  ([report](./docs/mutation_testing_results.md))
 - ✅ **The value-free guarantee is tested, not assumed** — a sentinel secret is placed in a
   source and the assertion is that it appears nowhere in the rendered report or in the thrown
   error, because a guarantee about what is _absent_ is the one thing an ordinary assertion
@@ -487,7 +488,11 @@ beyond "the tests pass".
 - ✅ **Published-artifact gates** — `check:exports` resolves the types the way each module
   system does, `check:runtime` loads every subpath from the packed tarball in ESM and
   CommonJS, and `check:published` compiles this README's snippets against `dist/`
-- ✅ **Zero suppressions** — no coverage or mutation directives in the production source
+- ✅ **Every suppression carries its reason** — no coverage directives anywhere; each
+  `// Stryker disable` in the production source names, after the `:` Stryker reads it from,
+  why the mutant it silences is behaviour-preserving, and `check:mutants` proves those
+  reasons parse so they reach the mutation report rather than the `Ignored using a comment`
+  fallback
 
 ```bash
 pnpm test          # unit suite

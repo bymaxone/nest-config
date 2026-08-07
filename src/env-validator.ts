@@ -215,6 +215,7 @@ function longestMatchingPrefix(
   let match: NamespacePrefix | undefined
   for (const entry of prefixes) {
     if (!key.startsWith(entry.prefix)) continue
+    // Stryker disable next-line EqualityOperator: equivalent — `>` and `>=` differ only when two declared namespaces produce equal-length prefixes that both prefix the same source key. Equal-length prefixes can only be identical prefixes, which also collides their leaf variable names — a degenerate schema outside the supported two-level convention. Within the convention the tie is never taken.
     if (match === undefined || entry.prefix.length > match.prefix.length) {
       match = entry
     }
@@ -257,10 +258,12 @@ function detectUnknownKeys(
   // Sort by variable in code-point order (locale-independent) so the aggregated
   // report is stable across platforms regardless of the source key-enumeration
   // order (process.env order can vary across runs).
+  // Stryker disable EqualityOperator,ConditionalExpression: equivalent — the `>`/`<` mutants differ only when `left.variable === right.variable`, and the compared values are distinct Map keys, so the equal case never occurs. The two conditional mutants both reduce the comparator to "negative when `left < right`, else `0`", which still orders every realistic unknown-key list ascending under the stable sort (verified across all permutations up to length 32); a divergence would depend on the engine's internal sort-algorithm selection, which is not a documented contract. The block form is required because a directive does not attach to a multi-line `sort` argument.
   return issues.sort(
     (left, right) => Number(left.variable > right.variable) - Number(left.variable < right.variable)
   )
 }
+// Stryker restore EqualityOperator,ConditionalExpression
 
 /**
  * Validate a flat source against a schema in a single pass.

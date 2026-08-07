@@ -51,7 +51,7 @@ function toScreamingSnake(segment: string): string {
       // chain — measured, not assumed: with the directive here the mutant still reported
       // as surviving. Silencing it would mean a block directive spanning the `.replace()`
       // above, whose own regex mutants the suite does kill, and a killable mutant is never
-      // disabled. It stays a counted survivor, recorded in `mutation_testing_results.md`.
+      // disabled. It stays a counted survivor, recorded in `docs/mutation_testing_results.md`.
       .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')
       .toUpperCase()
   )

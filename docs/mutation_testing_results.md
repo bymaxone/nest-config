@@ -37,9 +37,9 @@ verified by running the mutant rather than reading it.
 
 Ten of the eleven are silenced that way. **One is not, and is a counted survivor:**
 
-| Location               | Mutator                      | Why it stays counted                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| ---------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `source-mapping.ts:47` | `Regex` (`[A-Z]+` → `[A-Z]`) | The mutation is equivalent — the underscore's position is fixed by the following `[A-Z][a-z]` boundary, which both variants locate identically. But a directive does not attach inside a method chain: measured, not assumed — with `// Stryker disable next-line Regex` on the line above, the mutant still reported as surviving. Silencing it would take a block directive spanning the `.replace()` above it, whose own regex mutants the suite does kill, and a killable mutant is never disabled. So it is argued in the source, counted here, and left in the score. |
+| Location                                 | Mutator                      | Why it stays counted                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ---------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `source-mapping.ts` — `toScreamingSnake` | `Regex` (`[A-Z]+` → `[A-Z]`) | The mutation is equivalent — the underscore's position is fixed by the following `[A-Z][a-z]` boundary, which both variants locate identically. But a directive does not attach inside a method chain: measured, not assumed — with `// Stryker disable next-line Regex` on the line above, the mutant still reported as surviving. Silencing it would take a block directive spanning the `.replace()` above it, whose own regex mutants the suite does kill, and a killable mutant is never disabled. So it is argued in the source, counted here, and left in the score. |
 
 That is the policy's own escape hatch: where the source cannot carry the directive, the
 report carries the argument and the mutant stays in the denominator. The score is an
@@ -132,7 +132,7 @@ mutant only changes the chosen branch when `target === lengths.max`, and in that
 case both branches evaluate to the same number (`lengths.max === target`), so the
 filler length is identical.
 
-### `source-mapping.ts:45` - acronym regex quantifier (`[A-Z]+` to `[A-Z]`, 1 mutant)
+### `source-mapping.ts` — `toScreamingSnake` acronym regex quantifier (`[A-Z]+` to `[A-Z]`, 1 mutant)
 
 `.replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')` inserts an underscore before the
 final capital of an acronym. The mutant shrinks the first group from `[A-Z]+` to a
@@ -201,7 +201,7 @@ following statement and the mutants do not sit on one: the unknown-key sort comp
 multi-line `sort` argument, and the `restore` for it sits after the enclosing function's
 closing brace so the rule cannot leak into the next declaration.
 
-The eleventh — the `source-mapping.ts` acronym regex — is a counted survivor and stays one.
+The eleventh — the acronym regex in `toScreamingSnake` (`source-mapping.ts`) — is a counted survivor and stays one.
 A directive placed on the line above it was measured, not assumed, to have no effect: the
 mutant still reported as surviving, because a directive does not attach to a `.replace()`
 inside a method chain. The only way to silence it would be a block directive spanning the

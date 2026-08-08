@@ -48,9 +48,7 @@ Everything is in place; no install or config steps are needed.
 pnpm mutation
 
 # Faster re-run using the cached results from the last full run
-pnpm mutation:incremental
-
-# Validate the config without running any mutants
+pnpm mutation:full        # cold — deletes the baseline first, measures the truth
 pnpm mutation:dry-run
 ```
 

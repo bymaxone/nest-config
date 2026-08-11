@@ -11,6 +11,21 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-11
+
+Coordinated ecosystem release aligning every `@bymax-one/*` package after the ioredis 6 /
+bullmq 6 migration. **No source, runtime, or public-API change in this package** — the
+published `dist/` is byte-identical to `1.0.3`; the changes below are development
+and CI tooling only.
+
+### Changed
+
+- Bumped the `dev-dependencies` group with 3 updates. None of these reaches the published bundle.
+- Bumped the pinned `pnpm/action-setup` CI action from 6.0.9 to 6.0.10.
+- Bumped the pinned `github/codeql-action/upload-sarif` CI action from 4.37.4 to 4.37.6 in the
+  codeql group.
+- Reworked the mutation workflow to run incrementally on each push and to measure cold once a week.
+
 ## [1.0.3] - 2026-08-07
 
 **Documentation and tooling.** `dist/` differs from `1.0.2` only in the text of the comments
@@ -177,4 +192,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.0.2]: https://github.com/bymaxone/nest-config/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/bymaxone/nest-config/compare/v1.0.0...v1.0.1
 [1.0.3]: https://github.com/bymaxone/nest-config/compare/v1.0.2...v1.0.3
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.0.3...HEAD
+[1.1.0]: https://github.com/bymaxone/nest-config/compare/v1.0.3...v1.1.0
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.1.0...HEAD

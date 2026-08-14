@@ -3,7 +3,7 @@
  * Renders the ConfigIssue fields into the multi-line layout that is part of the
  * package contract: a header with the issue count, one aligned line per issue
  * (resolved variable name and constraint description), and a closing fix
- * instruction. It reads only the two value-free fields and never reaches for a
+ * instruction. It reads only the two report fields and never reaches for a
  * source value of its own, so nothing it adds can leak one; the description it
  * is handed is rendered verbatim, which for a schema author's own `custom`
  * message means whatever that message says.

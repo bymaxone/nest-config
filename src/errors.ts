@@ -45,7 +45,7 @@ export type ConfigIssueCode =
   | typeof ConfigErrorCode.UNKNOWN_KEY
 
 /**
- * A single configuration violation, described without any raw value.
+ * A single configuration violation, described for the operator who must fix it.
  *
  * Every description this package generates is value-free by contract: `message`
  * states the expected constraint, never the received input, so an issue can be

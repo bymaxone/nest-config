@@ -1,9 +1,10 @@
 /**
- * @fileoverview Value-free error model for the configuration validation
- * pipeline: the frozen issue-code catalog, the ConfigIssue shape, and the
+ * @fileoverview Error model for the configuration validation pipeline: the
+ * frozen issue-code catalog, the ConfigIssue shape, and the
  * BymaxConfigValidationError aggregate. The error carries every violation as a
  * structured, immutable issue list and renders a multi-line report that never
- * echoes a raw source value.
+ * echoes a raw source value of its own — see {@link ConfigIssue} for the one
+ * exception, a message written by the schema author.
  * @layer Error
  */
 
@@ -68,7 +69,7 @@ export interface ConfigIssue {
 }
 
 /**
- * Aggregated, value-free configuration validation error.
+ * Aggregated configuration validation error.
  *
  * Thrown once at bootstrap when the source fails the schema. It carries every
  * violation in an immutable, structured {@link ConfigIssue} list and a
@@ -95,15 +96,15 @@ export class BymaxConfigValidationError extends Error {
   public readonly issues: ReadonlyArray<ConfigIssue>
 
   /**
-   * Build the aggregated error from a list of value-free issues.
+   * Build the aggregated error from the collected issues.
    *
    * @param issues - Every collected violation; copied and frozen so neither the
    * caller nor consumer code can mutate the reported list.
    */
   constructor(issues: ReadonlyArray<ConfigIssue>) {
-    // Copy each issue into a fresh, frozen object carrying only the contract
-    // fields, so the value-free guarantee holds structurally: even an issue
-    // that arrives with an extra property cannot leak it through the report or
+    // Copy each issue into a fresh, frozen object carrying only the four
+    // contract fields, so the shape holds structurally: even an issue that
+    // arrives with an extra property cannot leak it through the report or
     // through JSON serialization of the error.
     const normalized = issues.map((issue) =>
       Object.freeze({
@@ -115,7 +116,7 @@ export class BymaxConfigValidationError extends Error {
     )
     super(formatIssueReport(normalized))
     // Keep `name` non-enumerable so JSON.stringify(error) surfaces only the
-    // code and the value-free issues, while it stays available for
+    // code and the collected issues, while it stays available for
     // String(error) and stack traces.
     Object.defineProperty(this, 'name', {
       value: 'BymaxConfigValidationError',

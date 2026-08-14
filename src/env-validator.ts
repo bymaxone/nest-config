@@ -176,7 +176,7 @@ function authoredMessage(issue: ZodValidationIssue): string | undefined {
 }
 
 /**
- * Translate a single Zod issue into a value-free ConfigIssue for one binding.
+ * Translate a single Zod issue into a ConfigIssue for one binding.
  *
  * An authored `custom` message wins over both generated descriptions, including
  * the missing one: a conditional rule ("required when X is enabled") explains an
@@ -186,7 +186,8 @@ function authoredMessage(issue: ZodValidationIssue): string | undefined {
  * @param binding - The leaf binding the issue belongs to.
  * @param issue - The Zod issue reported at the binding's path.
  * @param source - The source values, used to classify missing versus invalid.
- * @returns The value-free issue with resolved variable name and code.
+ * @returns The issue with resolved variable name and code; its message is a
+ * generated, value-free description unless the author wrote one.
  */
 function toConfigIssue(
   binding: SourceBinding,
@@ -204,7 +205,7 @@ function toConfigIssue(
 }
 
 /**
- * Aggregate the Zod issues into value-free ConfigIssues in declaration order.
+ * Aggregate the Zod issues into ConfigIssues in declaration order.
  *
  * Iterates the bindings so the report follows schema order and every emitted
  * issue carries a resolved variable name.
@@ -316,7 +317,8 @@ function detectUnknownKeys(
  * either returns the typed, default-applied, coerced output or throws a
  * BymaxConfigValidationError listing every violation at once. With `strict`,
  * unrecognized prefixed variables are aggregated alongside missing and invalid
- * issues. The thrown error never contains a raw source value.
+ * issues. No description this function generates contains a raw source value;
+ * a message written by the schema author is passed through as written.
  *
  * @typeParam TShape - The two-level schema shape.
  * @param schema - A schema produced by `defineEnv`.

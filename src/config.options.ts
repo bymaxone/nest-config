@@ -1,7 +1,7 @@
 /**
  * @fileoverview Public options contract for the BymaxConfigModule dynamic
  * module: the schema to validate against, an optional raw source (defaulting to
- * the process environment inside the provider factory), an optional value-free
+ * the process environment inside the provider factory), an optional
  * observability hook invoked before the fail-fast throw, and an optional strict
  * unknown-key flag. This file declares only types and carries no runtime code.
  * @layer Types

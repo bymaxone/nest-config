@@ -204,8 +204,9 @@ BymaxConfigValidationError: environment validation failed (3 issues)
 Fix the variables above and restart the process.
 ```
 
-Raw values are never printed, not truncated, not masked, absent. This is a
-hard guarantee of the package, verified by tests.
+In a message this package generates, raw values are never printed — not
+truncated, not masked, absent. That is a hard guarantee, verified by tests. The
+one exception is a message you write yourself, described next.
 
 A rule you write yourself — a `.check`, `.refine` or `.superRefine` raising a
 `custom` issue — has no structural constraint to describe, so its own message is

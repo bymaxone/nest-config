@@ -29,12 +29,21 @@ as the GitHub Release body, so each released version needs a matching
   does — while `issue.code` still classifies it as `BYMAX_CONFIG_MISSING` or
   `BYMAX_CONFIG_INVALID`, so machine consumers are unaffected. Whitespace runs collapse to
   single spaces to keep the one-line-per-variable layout; the column layout and the
-  resolved `variable` name are unchanged. A `custom` issue raised without a message of its
-  own still reads `invalid value`.
+  resolved `variable` name are unchanged.
+
+  A `custom` issue raised without a message of its own still reads `invalid value`. Zod
+  fills a message-less `custom` issue with its locale default before the validator sees it,
+  so "no authored message" is recognized by matching that default (`Invalid input`) rather
+  than by absence. Two consequences, both deliberate: the string is reserved, so a schema
+  that authors it verbatim reports `invalid value`; and under a configured non-English Zod
+  locale or a global custom error map the localized default does not match and is reported
+  as written.
 
   Value-free stays a contract for the text this library generates. An authored message is
-  schema text and is printed as written, including a value interpolated into it — stated in
-  the README and in `env-validator`'s own contract.
+  schema text and is printed as written, including a value interpolated into it. The
+  exception is now stated everywhere the guarantee is made: the `ConfigIssue`,
+  `BymaxConfigValidationError` and `onValidationError` contracts, `env-validator`'s own
+  contract, the README (including the security table) and spec 6.1.
 
   **Apply to a derived backend:** nothing to change. A schema that already raises `custom`
   issues with messages starts reporting them on the next boot.

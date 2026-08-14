@@ -581,6 +581,57 @@ Fix the variables above and restart the process."
     expect(issues.get('LIMITS_FIRST')?.message).toBe('invalid value')
     expect(issues.get('LIMITS_SECOND')?.message).toBe('invalid value')
   })
+
+  it('treats Zod default text authored by hand as the reserved no-message signal', () => {
+    /**
+     * Reserved message (documented exception).
+     *
+     * Zod fills a message-less custom issue with `Invalid input` before the
+     * validator sees it, so "no message" can only be recognized by that text.
+     * A schema that writes the same string by hand is therefore indistinguishable
+     * from one that wrote nothing and reports the generic wording. Pinned here
+     * so the exception is a decision on record rather than a surprise.
+     */
+    const reservedSchema = defineEnv({
+      limits: z.object({ reserved: z.string().default('') }).check((ctx) => {
+        ctx.issues.push({
+          code: 'custom',
+          input: ctx.value.reserved,
+          path: ['reserved'],
+          message: 'Invalid input'
+        })
+      })
+    })
+    const error = captureError(reservedSchema, { LIMITS_RESERVED: 'a' })
+
+    expect(issuesByVariable(error).get('LIMITS_RESERVED')?.message).toBe('invalid value')
+  })
+
+  it('reports a localized Zod default as written when a locale is configured', () => {
+    /**
+     * Locale exception (documented behavior).
+     *
+     * The no-message fallback matches Zod's English default text, so a
+     * configured non-English locale supplies a default that does not match and
+     * is reported verbatim. That is a translated message rather than a wrong
+     * one, and it is the documented boundary of the fallback — asserted here so
+     * the documentation and the behavior cannot drift apart.
+     */
+    const localizedSchema = defineEnv({
+      limits: z.object({ localized: z.string().default('') }).check((ctx) => {
+        ctx.issues.push({ code: 'custom', input: ctx.value.localized, path: ['localized'] })
+      })
+    })
+
+    z.config(z.locales.pt())
+    try {
+      const error = captureError(localizedSchema, { LIMITS_LOCALIZED: 'a' })
+
+      expect(issuesByVariable(error).get('LIMITS_LOCALIZED')?.message).toBe('Campo inválido')
+    } finally {
+      z.config(z.locales.en())
+    }
+  })
 })
 
 describe('validateEnv value-free guarantee', () => {

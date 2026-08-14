@@ -49,9 +49,14 @@ const MISSING_MESSAGE = 'missing required value'
  * Zod's own text for a `custom` issue raised without a message. Zod fills the
  * field in before the issue reaches this module, so an authored message cannot
  * be recognized by presence alone; this default stands for "none was written"
- * and hands the line back to the report's own wording. Under a configured
- * non-English Zod locale the default is localized and no longer matches, so the
- * localized text is reported as written — a translated message, never a wrong one.
+ * and hands the line back to the report's own wording.
+ *
+ * Two consequences follow from matching on the text, and both are deliberate.
+ * It is a reserved message: a schema that authors this exact string is read as
+ * having written nothing and reports `invalid value`. And under a configured
+ * non-English Zod locale (or a global custom error map) the default no longer
+ * matches, so that localized default is reported as written — a translated
+ * message rather than a wrong one.
  */
 const ZOD_DEFAULT_CUSTOM_MESSAGE = 'Invalid input'
 

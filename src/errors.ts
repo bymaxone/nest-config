@@ -44,11 +44,17 @@ export type ConfigIssueCode =
   | typeof ConfigErrorCode.UNKNOWN_KEY
 
 /**
- * A single configuration violation, described entirely without any raw value.
+ * A single configuration violation, described without any raw value.
  *
- * Every field is value-free by contract: `message` states the expected
- * constraint, never the received input, so an issue can be logged or serialized
- * without leaking a secret.
+ * Every description this package generates is value-free by contract: `message`
+ * states the expected constraint, never the received input, so an issue can be
+ * logged or serialized without leaking a secret.
+ *
+ * The one exception is the message a schema author attaches to a `custom` issue
+ * (`.check`, `.refine`, `.superRefine`), which is reported as written because it
+ * is the only statement of a rule that has no structural constraint to describe.
+ * A message that interpolates the received value therefore carries that value
+ * into the report; keeping an authored message value-free is the author's call.
  */
 export interface ConfigIssue {
   /** Nested config path, e.g. `database.url`; the namespace alone (e.g. `database`) for an unknown-key issue. */
@@ -57,7 +63,7 @@ export interface ConfigIssue {
   readonly variable: string
   /** Stable machine-readable classification. */
   readonly code: ConfigIssueCode
-  /** Human-readable constraint description, value-free. */
+  /** Human-readable constraint description; value-free unless a schema author's own `custom` message says otherwise. */
   readonly message: string
 }
 
@@ -67,7 +73,8 @@ export interface ConfigIssue {
  * Thrown once at bootstrap when the source fails the schema. It carries every
  * violation in an immutable, structured {@link ConfigIssue} list and a
  * human-readable message that lists the offending variables and their expected
- * constraints, never their received values.
+ * constraints, never their received values — except where a schema author's own
+ * `custom` message says otherwise, as described on {@link ConfigIssue}.
  *
  * @example
  * ```typescript

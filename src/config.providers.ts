@@ -22,7 +22,7 @@ import type { EnvOutput, EnvSchema, EnvShape } from './types'
 /**
  * Invoke the observability hook without letting it change the outcome.
  *
- * The hook receives the value-free issue list for custom reporting. Any error
+ * The hook receives the collected issue list for custom reporting. Any error
  * it raises is deliberately swallowed here so the original
  * {@link BymaxConfigValidationError} remains the propagated failure; this is an
  * intentional no-op on hook errors, not a dropped error path.

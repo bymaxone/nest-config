@@ -339,7 +339,8 @@ Formatting rules:
 1. One line per issue: variable name, constraint description, expected shape.
 2. **Raw values are never printed.** Not truncated, not masked, absent. This is a hard guarantee of the package, verified by tests.
 3. Variable names are the resolved source names (after `meta({ env })` overrides), so the report matches what the operator must edit.
-4. **A `custom` issue is described by its author's message.** A `.check`, `.refine` or `.superRefine` carries no structural constraint to translate, so the message written in the schema is the description, whether the variable is absent or present-but-invalid; `code` still classifies it as missing or invalid. Whitespace runs collapse to single spaces to preserve rule 1, and a `custom` issue with no message of its own falls back to `invalid value`. Rule 2 covers this library's generated text; a value interpolated into an authored message is printed as written.
+4. **A `custom` issue is described by its author's message.** A `.check`, `.refine` or `.superRefine` carries no structural constraint to translate, so the message written in the schema is the description, whether the variable is absent or present-but-invalid; `code` still classifies it as missing or invalid. Whitespace runs collapse to single spaces to preserve rule 1. Rule 2 covers this library's generated text; a value interpolated into an authored message is printed as written.
+5. **"No authored message" is recognized by Zod's default text, not by absence.** Zod fills a message-less `custom` issue with its locale default before validation returns, so the fallback to `invalid value` is keyed on that exact string (`Invalid input`). Two exceptions follow and are intentional: the string is reserved, so a schema authoring it verbatim reports `invalid value`; and under a configured non-English locale or a global custom error map the localized default does not match and is reported as written.
 
 ### 6.2 `BymaxConfigValidationError`
 
@@ -356,7 +357,7 @@ export interface ConfigIssue {
   readonly variable: string
   /** Stable machine-readable code. */
   readonly code: ConfigIssueCode
-  /** Human-readable constraint description, value-free. */
+  /** Human-readable constraint description; value-free unless a schema author's own `custom` message says otherwise. */
   readonly message: string
 }
 ```

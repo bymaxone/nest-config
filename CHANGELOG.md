@@ -11,6 +11,8 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-08-14
+
 ### Fixed
 
 - **A `custom` issue is reported with the message its author wrote.** `.check`, `.refine`
@@ -219,4 +221,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.0.1]: https://github.com/bymaxone/nest-config/compare/v1.0.0...v1.0.1
 [1.0.3]: https://github.com/bymaxone/nest-config/compare/v1.0.2...v1.0.3
 [1.1.0]: https://github.com/bymaxone/nest-config/compare/v1.0.3...v1.1.0
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.1.0...HEAD
+[1.1.1]: https://github.com/bymaxone/nest-config/compare/v1.1.0...v1.1.1
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.1.1...HEAD

@@ -1,7 +1,7 @@
 /**
  * @fileoverview Public options contract for the BymaxConfigModule dynamic
  * module: the schema to validate against, an optional raw source (defaulting to
- * the process environment inside the provider factory), an optional value-free
+ * the process environment inside the provider factory), an optional
  * observability hook invoked before the fail-fast throw, and an optional strict
  * unknown-key flag. This file declares only types and carries no runtime code.
  * @layer Types
@@ -36,10 +36,12 @@ export interface BymaxConfigModuleOptions<TSchema extends EnvSchema = EnvSchema>
   readonly source?: Record<string, string | undefined>
 
   /**
-   * Observability hook invoked once with the structured, value-free issue list
-   * immediately before the validation error is thrown. It is observability
-   * only and cannot suppress the failure: the error still propagates even when
-   * the hook itself throws.
+   * Observability hook invoked once with the structured issue list immediately
+   * before the validation error is thrown. The issues are value-free on the
+   * terms stated by {@link ConfigIssue}: generated descriptions never carry a
+   * received value, while a schema author's own `custom` message is passed
+   * through as written. It is observability only and cannot suppress the
+   * failure: the error still propagates even when the hook itself throws.
    */
   readonly onValidationError?: (issues: ReadonlyArray<ConfigIssue>) => void
 

@@ -4,7 +4,10 @@
  * one Zod parse, and either returns the typed parsed output or throws a
  * BymaxConfigValidationError aggregating every violation. Zod issues are
  * translated into value-free ConfigIssue descriptions that state only the
- * expected constraint, never the received value.
+ * expected constraint, never the received value. The one exception is the
+ * message a schema author attaches to a `custom` issue (`.check`, `.refine`,
+ * `.superRefine`), which is reported as written: it is schema text, not input,
+ * and it is the only place a conditional or cross-field rule can explain itself.
  * @layer Service
  */
 
@@ -41,6 +44,21 @@ interface PresentLeaf {
 }
 
 const MISSING_MESSAGE = 'missing required value'
+
+/**
+ * Zod's own text for a `custom` issue raised without a message. Zod fills the
+ * field in before the issue reaches this module, so an authored message cannot
+ * be recognized by presence alone; this default stands for "none was written"
+ * and hands the line back to the report's own wording.
+ *
+ * Two consequences follow from matching on the text, and both are deliberate.
+ * It is a reserved message: a schema that authors this exact string is read as
+ * having written nothing and reports `invalid value`. And under a configured
+ * non-English Zod locale (or a global custom error map) the default no longer
+ * matches, so that localized default is reported as written — a translated
+ * message rather than a wrong one.
+ */
+const ZOD_DEFAULT_CUSTOM_MESSAGE = 'Invalid input'
 
 /**
  * Collect the declared leaves whose source variable is present (defined).
@@ -138,12 +156,38 @@ function describeConstraint(issue: ZodValidationIssue): string {
 }
 
 /**
- * Translate a single Zod issue into a value-free ConfigIssue for one binding.
+ * Extract the message a schema author attached to a `custom` issue.
+ *
+ * A `custom` issue carries no structural constraint to describe: the rule lives
+ * in the author's own check, and the message is the only statement of it. It is
+ * schema text rather than input, so it is reported as written. Whitespace runs
+ * (a message written across several source lines) collapse to single spaces so
+ * the one-line-per-issue report layout holds.
+ *
+ * @param issue - The Zod issue reported at a binding's path.
+ * @returns The authored message, or undefined when the issue is not `custom` or
+ * carries no message of its own.
+ */
+function authoredMessage(issue: ZodValidationIssue): string | undefined {
+  if (issue.code !== 'custom') return undefined
+  const collapsed = issue.message.replace(/\s+/g, ' ').trim()
+  if (collapsed.length === 0 || collapsed === ZOD_DEFAULT_CUSTOM_MESSAGE) return undefined
+  return collapsed
+}
+
+/**
+ * Translate a single Zod issue into a ConfigIssue for one binding.
+ *
+ * An authored `custom` message wins over both generated descriptions, including
+ * the missing one: a conditional rule ("required when X is enabled") explains an
+ * absent variable better than a bare presence complaint. The `code` still
+ * classifies missing versus invalid, so machine consumers are unaffected.
  *
  * @param binding - The leaf binding the issue belongs to.
  * @param issue - The Zod issue reported at the binding's path.
  * @param source - The source values, used to classify missing versus invalid.
- * @returns The value-free issue with resolved variable name and code.
+ * @returns The issue with resolved variable name and code; its message is a
+ * generated, value-free description unless the author wrote one.
  */
 function toConfigIssue(
   binding: SourceBinding,
@@ -151,16 +195,17 @@ function toConfigIssue(
   source: ReadonlyMap<string, string | undefined>
 ): ConfigIssue {
   const isMissing = source.get(binding.variable) === undefined
+  const authored = authoredMessage(issue)
   return {
     path: binding.path,
     variable: binding.variable,
     code: isMissing ? ConfigErrorCode.MISSING : ConfigErrorCode.INVALID,
-    message: isMissing ? MISSING_MESSAGE : describeConstraint(issue)
+    message: authored ?? (isMissing ? MISSING_MESSAGE : describeConstraint(issue))
   }
 }
 
 /**
- * Aggregate the Zod issues into value-free ConfigIssues in declaration order.
+ * Aggregate the Zod issues into ConfigIssues in declaration order.
  *
  * Iterates the bindings so the report follows schema order and every emitted
  * issue carries a resolved variable name.
@@ -272,7 +317,8 @@ function detectUnknownKeys(
  * either returns the typed, default-applied, coerced output or throws a
  * BymaxConfigValidationError listing every violation at once. With `strict`,
  * unrecognized prefixed variables are aggregated alongside missing and invalid
- * issues. The thrown error never contains a raw source value.
+ * issues. No description this function generates contains a raw source value;
+ * a message written by the schema author is passed through as written.
  *
  * @typeParam TShape - The two-level schema shape.
  * @param schema - A schema produced by `defineEnv`.

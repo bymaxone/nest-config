@@ -11,6 +11,43 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-08-14
+
+### Fixed
+
+- **A `custom` issue is reported with the message its author wrote.** `.check`, `.refine`
+  and `.superRefine` all raise Zod's `custom` code, which carries no structural constraint
+  to translate, so every one of them rendered as the literal `invalid value` and the rule's
+  own explanation was discarded. Built-in codes were unaffected, which is what made it easy
+  to miss: the report looked correct until a rule stopped being trivial. A conditional
+  requirement, a cross-field rule or a security floor states itself only through that
+  message, and the aggregated report is the one artifact an operator gets for a failure that
+  stops the process.
+
+  The message is used whether the variable is absent or present-but-invalid — "required
+  when `X` is enabled" explains an absent variable better than `missing required value`
+  does — while `issue.code` still classifies it as `BYMAX_CONFIG_MISSING` or
+  `BYMAX_CONFIG_INVALID`, so machine consumers are unaffected. Whitespace runs collapse to
+  single spaces to keep the one-line-per-variable layout; the column layout and the
+  resolved `variable` name are unchanged.
+
+  A `custom` issue raised without a message of its own still reads `invalid value`. Zod
+  fills a message-less `custom` issue with its locale default before the validator sees it,
+  so "no authored message" is recognized by matching that default (`Invalid input`) rather
+  than by absence. Two consequences, both deliberate: the string is reserved, so a schema
+  that authors it verbatim reports `invalid value`; and under a configured non-English Zod
+  locale or a global custom error map the localized default does not match and is reported
+  as written.
+
+  Value-free stays a contract for the text this library generates. An authored message is
+  schema text and is printed as written, including a value interpolated into it. The
+  exception is now stated everywhere the guarantee is made: the `ConfigIssue`,
+  `BymaxConfigValidationError` and `onValidationError` contracts, `env-validator`'s own
+  contract, the README (including the security table) and spec 6.1.
+
+  **Apply to a derived backend:** nothing to change. A schema that already raises `custom`
+  issues with messages starts reporting them on the next boot.
+
 ## [1.1.0] - 2026-08-11
 
 Coordinated ecosystem release aligning every `@bymax-one/*` package after the ioredis 6 /
@@ -193,4 +230,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.0.1]: https://github.com/bymaxone/nest-config/compare/v1.0.0...v1.0.1
 [1.0.3]: https://github.com/bymaxone/nest-config/compare/v1.0.2...v1.0.3
 [1.1.0]: https://github.com/bymaxone/nest-config/compare/v1.0.3...v1.1.0
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.1.0...HEAD
+[1.1.1]: https://github.com/bymaxone/nest-config/compare/v1.1.0...v1.1.1
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.1.1...HEAD

@@ -1,18 +1,20 @@
 /**
  * @fileoverview Pure formatter for the aggregated configuration error report.
- * Renders the value-free ConfigIssue fields into the multi-line layout that is
- * part of the package contract: a header with the issue count, one aligned line
- * per issue (resolved variable name and constraint description), and a closing
- * fix instruction. It reads only the value-free fields, so no raw source value
- * can ever reach the output.
+ * Renders the ConfigIssue fields into the multi-line layout that is part of the
+ * package contract: a header with the issue count, one aligned line per issue
+ * (resolved variable name and constraint description), and a closing fix
+ * instruction. It reads only the two value-free fields and never reaches for a
+ * source value of its own, so nothing it adds can leak one; the description it
+ * is handed is rendered verbatim, which for a schema author's own `custom`
+ * message means whatever that message says.
  * @layer Utility
  */
 
-/** The value-free fields the report needs from each collected issue. */
+/** The fields the report needs from each collected issue. */
 interface ReportableIssue {
   /** Resolved environment variable name, e.g. `DATABASE_URL`. */
   readonly variable: string
-  /** Human-readable, value-free constraint description. */
+  /** Human-readable constraint description, rendered as given. */
   readonly message: string
 }
 
@@ -64,11 +66,12 @@ function formatIssueLine(issue: ReportableIssue, columnWidth: number): string {
 }
 
 /**
- * Format the aggregated, value-free error report.
+ * Format the aggregated error report.
  *
  * Produces the multi-line message body: a header stating the issue count, one
- * aligned line per issue, and a closing fix instruction. The output is pure and
- * locale-independent, and it never contains a raw source value.
+ * aligned line per issue, and a closing fix instruction. The output is pure,
+ * and every character it contributes around the issue fields is a constant, so
+ * it introduces no source value; it renders the descriptions it is given.
  *
  * @param issues - The collected issues, in report order.
  * @returns The formatted report body used as the error message.

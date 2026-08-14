@@ -445,6 +445,195 @@ describe('validateEnv strict mode', () => {
   })
 })
 
+describe('validateEnv authored custom messages', () => {
+  const storageSchema = defineEnv({
+    storage: z
+      .object({
+        enabled: z.string().default('false'),
+        endpoint: z.string().default('')
+      })
+      .check((ctx) => {
+        if (ctx.value.enabled !== 'true' || ctx.value.endpoint.length > 0) return
+        ctx.issues.push({
+          code: 'custom',
+          input: ctx.value.endpoint,
+          path: ['endpoint'],
+          message: 'STORAGE_ENDPOINT is required when STORAGE_ENABLED is true.'
+        })
+      })
+  })
+
+  it('renders the authored message of a present-but-invalid leaf', () => {
+    /**
+     * Authored message, rendered.
+     *
+     * A conditional rule states itself only through the message its author
+     * wrote; the generated "invalid value" describes nothing. The assertion is
+     * on the rendered report, because the issue object carried the variable
+     * name correctly even while the report printed the generic text.
+     */
+    const error = captureError(storageSchema, {
+      STORAGE_ENABLED: 'true',
+      STORAGE_ENDPOINT: ''
+    })
+
+    expect(error.message).toMatchInlineSnapshot(`
+"environment validation failed (1 issue)
+
+  STORAGE_ENDPOINT      STORAGE_ENDPOINT is required when STORAGE_ENABLED is true.
+
+Fix the variables above and restart the process."
+`)
+    expect(issuesByVariable(error).get('STORAGE_ENDPOINT')?.code).toBe(ConfigErrorCode.INVALID)
+  })
+
+  it('renders the authored message for an absent variable and still codes it missing', () => {
+    /**
+     * Authored message over the missing wording.
+     *
+     * The same rule fires when the variable is absent rather than empty. The
+     * author's explanation outranks "missing required value" in the report,
+     * while the machine-readable code still classifies it as missing.
+     */
+    const error = captureError(storageSchema, { STORAGE_ENABLED: 'true' })
+    const issue = issuesByVariable(error).get('STORAGE_ENDPOINT')
+
+    expect(issue?.message).toBe('STORAGE_ENDPOINT is required when STORAGE_ENABLED is true.')
+    expect(issue?.code).toBe(ConfigErrorCode.MISSING)
+    expect(error.message).toContain('STORAGE_ENDPOINT is required when STORAGE_ENABLED is true.')
+  })
+
+  it('renders the authored message raised through superRefine', () => {
+    /**
+     * The other authoring path.
+     *
+     * `.superRefine` produces the same `custom` issue code as `.check`, so both
+     * must reach the report through one mapping site.
+     */
+    const refinedSchema = defineEnv({
+      auth: z.object({ previousSecrets: z.string().default('') }).superRefine((value, ctx) => {
+        if (value.previousSecrets.length >= 32) return
+        ctx.addIssue({
+          code: 'custom',
+          path: ['previousSecrets'],
+          message: 'Each retired signing secret must be at least 32 characters'
+        })
+      })
+    })
+    const error = captureError(refinedSchema, { AUTH_PREVIOUS_SECRETS: 'short' })
+
+    expect(error.message).toContain('Each retired signing secret must be at least 32 characters')
+  })
+
+  it('collapses a message written across several lines onto one report line', () => {
+    /**
+     * Layout protection.
+     *
+     * The report is one line per variable and the aligned column is part of the
+     * package contract, so a message wrapped across source lines is collapsed
+     * to single spaces instead of breaking the block.
+     */
+    const wrappedSchema = defineEnv({
+      log: z.object({ pretty: z.string().default('false') }).check((ctx) => {
+        ctx.issues.push({
+          code: 'custom',
+          input: ctx.value.pretty,
+          path: ['pretty'],
+          message: '  LOG_PRETTY must be false\n   when NODE_ENV is production.  '
+        })
+      })
+    })
+    const error = captureError(wrappedSchema, { LOG_PRETTY: 'true' })
+
+    expect(error.message).toMatchInlineSnapshot(`
+"environment validation failed (1 issue)
+
+  LOG_PRETTY            LOG_PRETTY must be false when NODE_ENV is production.
+
+Fix the variables above and restart the process."
+`)
+  })
+
+  it('keeps the generic wording for a custom issue that carries no message', () => {
+    /**
+     * Fallback boundary.
+     *
+     * Zod fills a message-less custom issue with its own default text, and a
+     * whitespace-only message says nothing either. Both keep the report's own
+     * wording rather than printing Zod's or an empty column.
+     */
+    const silentSchema = defineEnv({
+      limits: z
+        .object({ first: z.string().default(''), second: z.string().default('') })
+        .check((ctx) => {
+          ctx.issues.push({ code: 'custom', input: ctx.value.first, path: ['first'] })
+          ctx.issues.push({
+            code: 'custom',
+            input: ctx.value.second,
+            path: ['second'],
+            message: '   '
+          })
+        })
+    })
+    const error = captureError(silentSchema, { LIMITS_FIRST: 'a', LIMITS_SECOND: 'b' })
+    const issues = issuesByVariable(error)
+
+    expect(issues.get('LIMITS_FIRST')?.message).toBe('invalid value')
+    expect(issues.get('LIMITS_SECOND')?.message).toBe('invalid value')
+  })
+
+  it('treats Zod default text authored by hand as the reserved no-message signal', () => {
+    /**
+     * Reserved message (documented exception).
+     *
+     * Zod fills a message-less custom issue with `Invalid input` before the
+     * validator sees it, so "no message" can only be recognized by that text.
+     * A schema that writes the same string by hand is therefore indistinguishable
+     * from one that wrote nothing and reports the generic wording. Pinned here
+     * so the exception is a decision on record rather than a surprise.
+     */
+    const reservedSchema = defineEnv({
+      limits: z.object({ reserved: z.string().default('') }).check((ctx) => {
+        ctx.issues.push({
+          code: 'custom',
+          input: ctx.value.reserved,
+          path: ['reserved'],
+          message: 'Invalid input'
+        })
+      })
+    })
+    const error = captureError(reservedSchema, { LIMITS_RESERVED: 'a' })
+
+    expect(issuesByVariable(error).get('LIMITS_RESERVED')?.message).toBe('invalid value')
+  })
+
+  it('reports a localized Zod default as written when a locale is configured', () => {
+    /**
+     * Locale exception (documented behavior).
+     *
+     * The no-message fallback matches Zod's English default text, so a
+     * configured non-English locale supplies a default that does not match and
+     * is reported verbatim. That is a translated message rather than a wrong
+     * one, and it is the documented boundary of the fallback — asserted here so
+     * the documentation and the behavior cannot drift apart.
+     */
+    const localizedSchema = defineEnv({
+      limits: z.object({ localized: z.string().default('') }).check((ctx) => {
+        ctx.issues.push({ code: 'custom', input: ctx.value.localized, path: ['localized'] })
+      })
+    })
+
+    z.config(z.locales.pt())
+    try {
+      const error = captureError(localizedSchema, { LIMITS_LOCALIZED: 'a' })
+
+      expect(issuesByVariable(error).get('LIMITS_LOCALIZED')?.message).toBe('Campo inválido')
+    } finally {
+      z.config(z.locales.en())
+    }
+  })
+})
+
 describe('validateEnv value-free guarantee', () => {
   it('never leaks a sentinel secret into the error message, issues, or serialization', () => {
     /**

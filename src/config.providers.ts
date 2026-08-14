@@ -2,8 +2,8 @@
  * @fileoverview The BYMAX_CONFIG provider factory: the fail-fast heart of the
  * module. It resolves the source (defaulting to `process.env`, using a custom
  * source verbatim), runs the single-pass validator, and on success returns the
- * deep-frozen typed config. On failure it invokes the value-free observability
- * hook exactly once before rethrowing the aggregated error; the hook is
+ * deep-frozen typed config. On failure it invokes the observability hook
+ * exactly once before rethrowing the aggregated error; the hook is
  * observability only and can never suppress or replace the failure, so a
  * misconfigured process is stopped before any consumer provider is constructed.
  * @layer Provider
@@ -22,13 +22,13 @@ import type { EnvOutput, EnvSchema, EnvShape } from './types'
 /**
  * Invoke the observability hook without letting it change the outcome.
  *
- * The hook receives the value-free issue list for custom reporting. Any error
+ * The hook receives the collected issue list for custom reporting. Any error
  * it raises is deliberately swallowed here so the original
  * {@link BymaxConfigValidationError} remains the propagated failure; this is an
  * intentional no-op on hook errors, not a dropped error path.
  *
  * @param hook - The optional consumer-supplied reporting hook.
- * @param issues - The aggregated, value-free validation issues.
+ * @param issues - The aggregated validation issues.
  */
 function reportIssues(
   hook: ((issues: ReadonlyArray<ConfigIssue>) => void) | undefined,

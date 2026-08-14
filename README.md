@@ -50,8 +50,9 @@ minimal.
 - **One round trip to fix the environment.** Every violation is collected and reported
   together, not the first one that fails.
 - **Errors are value-free by contract.** Configuration is where the secrets are, and the
-  report is the artifact that gets logged and pasted into issues — so messages carry the
-  expected constraint and the schema's own enum options, never the received value.
+  report is the artifact that gets logged and pasted into issues — so generated messages
+  carry the expected constraint and the schema's own enum options, never the received
+  value. Your own `custom` messages are the documented exception: they print as written.
 - **The schema is the type.** `get('database.url')` is `string` and `get('server.port')` is
   `number` because the schema says so; a typo in a path is a build error, not a runtime
   `undefined`.
@@ -66,8 +67,9 @@ minimal.
   application serves traffic; there is no lazy path that could discover a problem later
 - ✅ **Fail fast, fail complete** — every violation reported together in one aggregated
   error, so an operator fixes the environment in one round trip
-- ✅ **Never echo values** — messages carry variable names, paths and constraint
-  descriptions only, so a secret cannot reach a log or a crash report through this library
+- ✅ **Never echo values** — generated messages carry variable names, paths and constraint
+  descriptions only, so a secret cannot reach a log or a crash report through this library;
+  a `custom` message you write yourself is printed as written and is yours to keep value-free
 - ✅ **Zod v4 schemas** — the full type language, including coercion, refinements and
   defaults, with `defineEnv` shaping namespaces and leaves
 
@@ -202,8 +204,38 @@ BymaxConfigValidationError: environment validation failed (3 issues)
 Fix the variables above and restart the process.
 ```
 
-Raw values are never printed, not truncated, not masked, absent. This is a
-hard guarantee of the package, verified by tests.
+In a message this package generates, raw values are never printed — not
+truncated, not masked, absent. That is a hard guarantee, verified by tests. The
+one exception is a message you write yourself, described next.
+
+A rule you write yourself — a `.check`, `.refine` or `.superRefine` raising a
+`custom` issue — has no structural constraint to describe, so its own message is
+what the report prints:
+
+```
+BymaxConfigValidationError: environment validation failed (2 issues)
+
+  STORAGE_ENDPOINT      STORAGE_ENDPOINT is required when STORAGE_ENABLED is true.
+  LOG_PRETTY            LOG_PRETTY must be false when NODE_ENV is production.
+
+Fix the variables above and restart the process.
+```
+
+The message is used whether the variable is absent or present-but-invalid — a
+conditional rule explains an absent variable better than "missing required
+value" does — while `issue.code` still classifies it as
+`BYMAX_CONFIG_MISSING` or `BYMAX_CONFIG_INVALID`. Whitespace runs collapse to
+single spaces so a message wrapped across source lines keeps the one-line
+layout.
+
+A `custom` issue raised without a message falls back to `invalid value`. Zod
+fills a message-less `custom` issue with its own default text before the
+validator sees it, so "no message" is recognized by matching that default
+(`Invalid input`) rather than by its absence. Two consequences, both deliberate:
+that exact string is reserved — a schema that authors it verbatim reports
+`invalid value` — and under a configured non-English Zod locale (or a global
+custom error map) the default no longer matches, so the localized default is
+reported as written instead.
 
 ## 📖 API Reference
 
@@ -287,7 +319,7 @@ export interface ConfigIssue {
   readonly path: string // e.g. "database.url"
   readonly variable: string // e.g. "DATABASE_URL"
   readonly code: ConfigIssueCode
-  readonly message: string // value-free constraint description
+  readonly message: string // constraint description, or your own `custom` message
 }
 ```
 
@@ -399,10 +431,11 @@ guaranteed to be printed, logged, and pasted into an issue. That shapes the whol
 
 ### Errors are value-free by contract
 
-Every message states the _expected_ constraint — the type, the allowed enum options taken
-from the schema, the bound — and never the received value. `env-validator` and
-`report-formatter` each say so in their own contracts, and property-based tests hold them
-to it.
+Every message this library generates states the _expected_ constraint — the type, the
+allowed enum options taken from the schema, the bound — and never the received value.
+`env-validator` and `report-formatter` each say so in their own contracts, and
+property-based tests hold them to it. The messages you write yourself are the exception,
+covered below.
 
 ### The service does not serialize its configuration
 
@@ -434,27 +467,31 @@ not choose.
 
 ### Your own messages are yours
 
-Value-free applies to this library's reports. If a `.refine` or a custom message in your
-schema includes a value, that message is printed as written.
+Value-free applies to this library's reports. A `custom` issue from your own `.check`,
+`.refine` or `.superRefine` is printed as written — it is schema text, and it is the only
+place a conditional or cross-field rule can state itself. That also means the message is
+yours to keep value-free: if it interpolates the received value, that value reaches the
+report.
 
 ---
 
 ## 🛡️ Security Table
 
-| Layer          | Implementation                                                                                                             |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Error messages | Expected constraint only — type, schema-declared enum options, bounds; never the received value                            |
-| Failure mode   | Refuse to start; the whole schema is validated before the context finishes building                                        |
-| Aggregation    | Every failure reported at once, so a fix cycle is one restart rather than one per variable                                 |
-| Immutability   | The validated result is frozen before it is provided                                                                       |
-| Service state  | The root lives in a private field; serializing the injected service yields namespace names only                            |
-| Sources        | `process.env` only — no file, no network, no remote provider                                                               |
-| Type surface   | Dot paths checked against the schema at compile time; a typo is a build error, not a runtime `undefined`                   |
-| Supply chain   | `dependencies: {}`; third-party Actions pinned by commit SHA (org-internal reusables by tag); CodeQL and OpenSSF Scorecard |
+| Layer          | Implementation                                                                                                                                                                  |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Error messages | Expected constraint only — type, schema-declared enum options, bounds; never the received value. A `custom` message from your own schema is the exception: it prints as written |
+| Failure mode   | Refuse to start; the whole schema is validated before the context finishes building                                                                                             |
+| Aggregation    | Every failure reported at once, so a fix cycle is one restart rather than one per variable                                                                                      |
+| Immutability   | The validated result is frozen before it is provided                                                                                                                            |
+| Service state  | The root lives in a private field; serializing the injected service yields namespace names only                                                                                 |
+| Sources        | `process.env` only — no file, no network, no remote provider                                                                                                                    |
+| Type surface   | Dot paths checked against the schema at compile time; a typo is a build error, not a runtime `undefined`                                                                        |
+| Supply chain   | `dependencies: {}`; third-party Actions pinned by commit SHA (org-internal reusables by tag); CodeQL and OpenSSF Scorecard                                                      |
 
 > [!IMPORTANT]
-> **Value-free applies to this library's own reports.** If your schema's `.refine`
-> or a custom message includes a value, that message is printed as written.
+> **Value-free applies to this library's own reports.** A `custom` message from your
+> schema's `.check`, `.refine` or `.superRefine` is printed as written — including a
+> value, if you interpolate one into it.
 
 ---
 

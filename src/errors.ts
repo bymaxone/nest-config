@@ -1,9 +1,10 @@
 /**
- * @fileoverview Value-free error model for the configuration validation
- * pipeline: the frozen issue-code catalog, the ConfigIssue shape, and the
+ * @fileoverview Error model for the configuration validation pipeline: the
+ * frozen issue-code catalog, the ConfigIssue shape, and the
  * BymaxConfigValidationError aggregate. The error carries every violation as a
  * structured, immutable issue list and renders a multi-line report that never
- * echoes a raw source value.
+ * echoes a raw source value of its own — see {@link ConfigIssue} for the one
+ * exception, a message written by the schema author.
  * @layer Error
  */
 
@@ -44,11 +45,17 @@ export type ConfigIssueCode =
   | typeof ConfigErrorCode.UNKNOWN_KEY
 
 /**
- * A single configuration violation, described entirely without any raw value.
+ * A single configuration violation, described without any raw value.
  *
- * Every field is value-free by contract: `message` states the expected
- * constraint, never the received input, so an issue can be logged or serialized
- * without leaking a secret.
+ * Every description this package generates is value-free by contract: `message`
+ * states the expected constraint, never the received input, so an issue can be
+ * logged or serialized without leaking a secret.
+ *
+ * The one exception is the message a schema author attaches to a `custom` issue
+ * (`.check`, `.refine`, `.superRefine`), which is reported as written because it
+ * is the only statement of a rule that has no structural constraint to describe.
+ * A message that interpolates the received value therefore carries that value
+ * into the report; keeping an authored message value-free is the author's call.
  */
 export interface ConfigIssue {
   /** Nested config path, e.g. `database.url`; the namespace alone (e.g. `database`) for an unknown-key issue. */
@@ -57,17 +64,18 @@ export interface ConfigIssue {
   readonly variable: string
   /** Stable machine-readable classification. */
   readonly code: ConfigIssueCode
-  /** Human-readable constraint description, value-free. */
+  /** Human-readable constraint description; value-free unless a schema author's own `custom` message says otherwise. */
   readonly message: string
 }
 
 /**
- * Aggregated, value-free configuration validation error.
+ * Aggregated configuration validation error.
  *
  * Thrown once at bootstrap when the source fails the schema. It carries every
  * violation in an immutable, structured {@link ConfigIssue} list and a
  * human-readable message that lists the offending variables and their expected
- * constraints, never their received values.
+ * constraints, never their received values — except where a schema author's own
+ * `custom` message says otherwise, as described on {@link ConfigIssue}.
  *
  * @example
  * ```typescript
@@ -88,15 +96,15 @@ export class BymaxConfigValidationError extends Error {
   public readonly issues: ReadonlyArray<ConfigIssue>
 
   /**
-   * Build the aggregated error from a list of value-free issues.
+   * Build the aggregated error from the collected issues.
    *
    * @param issues - Every collected violation; copied and frozen so neither the
    * caller nor consumer code can mutate the reported list.
    */
   constructor(issues: ReadonlyArray<ConfigIssue>) {
-    // Copy each issue into a fresh, frozen object carrying only the contract
-    // fields, so the value-free guarantee holds structurally: even an issue
-    // that arrives with an extra property cannot leak it through the report or
+    // Copy each issue into a fresh, frozen object carrying only the four
+    // contract fields, so the shape holds structurally: even an issue that
+    // arrives with an extra property cannot leak it through the report or
     // through JSON serialization of the error.
     const normalized = issues.map((issue) =>
       Object.freeze({
@@ -108,7 +116,7 @@ export class BymaxConfigValidationError extends Error {
     )
     super(formatIssueReport(normalized))
     // Keep `name` non-enumerable so JSON.stringify(error) surfaces only the
-    // code and the value-free issues, while it stays available for
+    // code and the collected issues, while it stays available for
     // String(error) and stack traces.
     Object.defineProperty(this, 'name', {
       value: 'BymaxConfigValidationError',

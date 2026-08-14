@@ -385,7 +385,7 @@ that needs to reference the schema shape directly.
                       │                 │
                       ▼                 ▼
               deep-frozen        BymaxConfigValidationError
-              BYMAX_CONFIG       one aggregated, value-free report
+              BYMAX_CONFIG       one aggregated boot-time report
                       │                 │
                       ▼                 ▼
                ConfigService     the process does not start
@@ -412,15 +412,15 @@ accidentally pass because a variable happened to be set on the machine.
 
 ### Design Principles
 
-| Principle                            | Description                                                                                                                                                                                |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 💥 **Refuse to start**               | A misconfigured process is stopped before it serves a request, rather than discovering the gap at the first call that needs the value                                                      |
-| 🤐 **Value-free by contract**        | `errors.ts`, `env-validator.ts` and `report-formatter.ts` each state it for themselves: the message carries the expected constraint and the schema's own options, never the received value |
-| 📋 **Report everything at once**     | Validation collects every failure before throwing, so fixing an environment is one cycle instead of one per variable                                                                       |
-| 🧊 **Frozen after validation**       | Nothing in the running process rewrites configuration under a component that already read it                                                                                               |
-| 🔤 **The schema is the type**        | Dot paths are checked against the schema at compile time, so a typo is a build error rather than a runtime `undefined`                                                                     |
-| ⚙️ **Configuration over convention** | Everything goes through `forRoot`/`forRootAsync`. No file discovery, no magic paths, no hidden precedence rules                                                                            |
-| 🧩 **One class identity**            | The module and `./testing` import the shared runtime by package specifier, so `ConfigService` is one injection token in ESM and CommonJS alike                                             |
+| Principle                            | Description                                                                                                                                                                                        |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 💥 **Refuse to start**               | A misconfigured process is stopped before it serves a request, rather than discovering the gap at the first call that needs the value                                                              |
+| 🤐 **Value-free by contract**        | `errors.ts`, `env-validator.ts` and `report-formatter.ts` each state it for themselves: a generated message carries the expected constraint and the schema's own options, never the received value |
+| 📋 **Report everything at once**     | Validation collects every failure before throwing, so fixing an environment is one cycle instead of one per variable                                                                               |
+| 🧊 **Frozen after validation**       | Nothing in the running process rewrites configuration under a component that already read it                                                                                                       |
+| 🔤 **The schema is the type**        | Dot paths are checked against the schema at compile time, so a typo is a build error rather than a runtime `undefined`                                                                             |
+| ⚙️ **Configuration over convention** | Everything goes through `forRoot`/`forRootAsync`. No file discovery, no magic paths, no hidden precedence rules                                                                                    |
+| 🧩 **One class identity**            | The module and `./testing` import the shared runtime by package specifier, so `ConfigService` is one injection token in ESM and CommonJS alike                                                     |
 
 ---
 
@@ -521,7 +521,8 @@ beyond "the tests pass".
 - ✅ **The value-free guarantee is tested, not assumed** — a sentinel secret is placed in a
   source and the assertion is that it appears nowhere in the rendered report or in the thrown
   error, because a guarantee about what is _absent_ is the one thing an ordinary assertion
-  about output does not cover
+  about output does not cover; the schema under test writes no `custom` message, so what is
+  proven is the guarantee this package makes for its own generated text
 - ✅ **Published-artifact gates** — `check:exports` resolves the types the way each module
   system does, `check:runtime` loads every subpath from the packed tarball in ESM and
   CommonJS, and `check:published` compiles this README's snippets against `dist/`

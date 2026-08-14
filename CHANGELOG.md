@@ -11,6 +11,32 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Fixed
+
+- **A `custom` issue is reported with the message its author wrote.** `.check`, `.refine`
+  and `.superRefine` all raise Zod's `custom` code, which carries no structural constraint
+  to translate, so every one of them rendered as the literal `invalid value` and the rule's
+  own explanation was discarded. Built-in codes were unaffected, which is what made it easy
+  to miss: the report looked correct until a rule stopped being trivial. A conditional
+  requirement, a cross-field rule or a security floor states itself only through that
+  message, and the aggregated report is the one artifact an operator gets for a failure that
+  stops the process.
+
+  The message is used whether the variable is absent or present-but-invalid — "required
+  when `X` is enabled" explains an absent variable better than `missing required value`
+  does — while `issue.code` still classifies it as `BYMAX_CONFIG_MISSING` or
+  `BYMAX_CONFIG_INVALID`, so machine consumers are unaffected. Whitespace runs collapse to
+  single spaces to keep the one-line-per-variable layout; the column layout and the
+  resolved `variable` name are unchanged. A `custom` issue raised without a message of its
+  own still reads `invalid value`.
+
+  Value-free stays a contract for the text this library generates. An authored message is
+  schema text and is printed as written, including a value interpolated into it — stated in
+  the README and in `env-validator`'s own contract.
+
+  **Apply to a derived backend:** nothing to change. A schema that already raises `custom`
+  issues with messages starts reporting them on the next boot.
+
 ## [1.1.0] - 2026-08-11
 
 Coordinated ecosystem release aligning every `@bymax-one/*` package after the ioredis 6 /

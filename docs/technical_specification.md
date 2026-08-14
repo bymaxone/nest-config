@@ -339,6 +339,7 @@ Formatting rules:
 1. One line per issue: variable name, constraint description, expected shape.
 2. **Raw values are never printed.** Not truncated, not masked, absent. This is a hard guarantee of the package, verified by tests.
 3. Variable names are the resolved source names (after `meta({ env })` overrides), so the report matches what the operator must edit.
+4. **A `custom` issue is described by its author's message.** A `.check`, `.refine` or `.superRefine` carries no structural constraint to translate, so the message written in the schema is the description, whether the variable is absent or present-but-invalid; `code` still classifies it as missing or invalid. Whitespace runs collapse to single spaces to preserve rule 1, and a `custom` issue with no message of its own falls back to `invalid value`. Rule 2 covers this library's generated text; a value interpolated into an authored message is printed as written.
 
 ### 6.2 `BymaxConfigValidationError`
 

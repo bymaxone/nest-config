@@ -205,6 +205,26 @@ Fix the variables above and restart the process.
 Raw values are never printed, not truncated, not masked, absent. This is a
 hard guarantee of the package, verified by tests.
 
+A rule you write yourself — a `.check`, `.refine` or `.superRefine` raising a
+`custom` issue — has no structural constraint to describe, so its own message is
+what the report prints:
+
+```
+BymaxConfigValidationError: environment validation failed (2 issues)
+
+  STORAGE_ENDPOINT      STORAGE_ENDPOINT is required when STORAGE_ENABLED is true.
+  LOG_PRETTY            LOG_PRETTY must be false when NODE_ENV is production.
+
+Fix the variables above and restart the process.
+```
+
+The message is used whether the variable is absent or present-but-invalid — a
+conditional rule explains an absent variable better than "missing required
+value" does — while `issue.code` still classifies it as
+`BYMAX_CONFIG_MISSING` or `BYMAX_CONFIG_INVALID`. Whitespace runs collapse to
+single spaces so a message wrapped across source lines keeps the one-line
+layout. A `custom` issue raised without a message falls back to `invalid value`.
+
 ## 📖 API Reference
 
 ### `defineEnv(shape)`
@@ -399,10 +419,11 @@ guaranteed to be printed, logged, and pasted into an issue. That shapes the whol
 
 ### Errors are value-free by contract
 
-Every message states the _expected_ constraint — the type, the allowed enum options taken
-from the schema, the bound — and never the received value. `env-validator` and
-`report-formatter` each say so in their own contracts, and property-based tests hold them
-to it.
+Every message this library generates states the _expected_ constraint — the type, the
+allowed enum options taken from the schema, the bound — and never the received value.
+`env-validator` and `report-formatter` each say so in their own contracts, and
+property-based tests hold them to it. The messages you write yourself are the exception,
+covered below.
 
 ### The service does not serialize its configuration
 
@@ -434,8 +455,11 @@ not choose.
 
 ### Your own messages are yours
 
-Value-free applies to this library's reports. If a `.refine` or a custom message in your
-schema includes a value, that message is printed as written.
+Value-free applies to this library's reports. A `custom` issue from your own `.check`,
+`.refine` or `.superRefine` is printed as written — it is schema text, and it is the only
+place a conditional or cross-field rule can state itself. That also means the message is
+yours to keep value-free: if it interpolates the received value, that value reaches the
+report.
 
 ---
 
@@ -453,8 +477,9 @@ schema includes a value, that message is printed as written.
 | Supply chain   | `dependencies: {}`; third-party Actions pinned by commit SHA (org-internal reusables by tag); CodeQL and OpenSSF Scorecard |
 
 > [!IMPORTANT]
-> **Value-free applies to this library's own reports.** If your schema's `.refine`
-> or a custom message includes a value, that message is printed as written.
+> **Value-free applies to this library's own reports.** A `custom` message from your
+> schema's `.check`, `.refine` or `.superRefine` is printed as written — including a
+> value, if you interpolate one into it.
 
 ---
 

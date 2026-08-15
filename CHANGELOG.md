@@ -11,6 +11,38 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-08-14
+
+**Documentation only.** `dist/` is byte-identical to `1.1.1`, verified by hashing every file in
+the published tarball against a local build. Inside the package only `README.md`, `CHANGELOG.md`
+and the `version` field of `package.json` differ.
+
+### Documentation
+
+- **The `1.1.1` apply-note understated the work for a consumer with a mutation gate.** It said
+  a derived backend has nothing to change, which is true for correctness and wrong as an
+  estimate. Under Stryker, a message string literal is a mutant: authoring messages for rules
+  that had none converts operator-facing prose into tested behavior, and a repo gating at
+  `break: 100` fails until an assertion pins each message. Reported by a consumer adopting
+  `1.1.1`, which added one assertion per message to keep its gate green.
+
+  The honest version of the note: **upgrading changes nothing** — a rule that carries no
+  message renders exactly as it did before, verified byte-for-byte on a real boot. **Writing
+  the messages the release makes worth writing is real work**: wherever mutation testing is a
+  gate, every message needs an assertion that covers it — one assertion on the rendered report
+  can cover several — and that is the work the release exists to enable.
+
+  Also worth knowing before writing them: a rule whose variable is _absent_ rendered
+  `missing required value` on `1.1.0`, not `invalid value`. For a conditionally-required
+  variable that is the more misleading of the two — nothing was forgotten, another variable
+  made it required — so the before/after is larger than the `invalid value` case suggests.
+
+- The mutation badge read **99.59%**; the score measured as the `v1.1.1` release gate is
+  **99.61%**. The denominator grew with the new code — 14 more killed mutants in
+  `env-validator.ts`, the only file the release changed executably, and the same single
+  counted survivor — so the badge, the README claim and `docs/mutation_testing_results.md`
+  now state the measured number, with a dated re-run entry recording it.
+
 ## [1.1.1] - 2026-08-14
 
 ### Fixed
@@ -231,4 +263,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.0.3]: https://github.com/bymaxone/nest-config/compare/v1.0.2...v1.0.3
 [1.1.0]: https://github.com/bymaxone/nest-config/compare/v1.0.3...v1.1.0
 [1.1.1]: https://github.com/bymaxone/nest-config/compare/v1.1.0...v1.1.1
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.1.1...HEAD
+[1.1.2]: https://github.com/bymaxone/nest-config/compare/v1.1.1...v1.1.2
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.1.2...HEAD

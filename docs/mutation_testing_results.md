@@ -29,9 +29,10 @@ them from the denominator instead of counting them as failures to kill. The elev
 carry one and is still counted — see the section below. There are zero genuine coverage gaps,
 before or after.
 
-**99.59 % -> 99.61 % is new code with new tests.** The `v1.1.1` fix added 14 mutants in
-`env-validator.ts`, all killed, so the denominator grew while the survivor count held at one.
-Nothing was silenced to get there — see the dated re-run at the end.
+**99.59 % -> 99.61 % is new code with new tests.** The `v1.1.1` fix generated 17 mutants in
+`env-validator.ts`: 14 that count toward the score, all killed, and 3 the type checker discards
+(the type-invalid total moves 168 -> 171). So the denominator grew by 14 while the survivor count
+held at one. Nothing was silenced to get there — see the dated re-run at the end.
 
 ## Approach to equivalents: documented in the source
 

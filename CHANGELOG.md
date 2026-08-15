@@ -14,8 +14,8 @@ as the GitHub Release body, so each released version needs a matching
 ## [1.1.2] - 2026-08-14
 
 **Documentation only.** `dist/` is byte-identical to `1.1.1`, verified by hashing every file in
-the published tarball against a local build. Only `README.md` and `CHANGELOG.md` differ in the
-package.
+the published tarball against a local build. Inside the package only `README.md`, `CHANGELOG.md`
+and the `version` field of `package.json` differ.
 
 ### Documentation
 
@@ -28,8 +28,9 @@ package.
 
   The honest version of the note: **upgrading changes nothing** — a rule that carries no
   message renders exactly as it did before, verified byte-for-byte on a real boot. **Writing
-  the messages the release makes worth writing is real work**, one assertion per message
-  wherever mutation testing is a gate, and it is the work the release exists to enable.
+  the messages the release makes worth writing is real work**: wherever mutation testing is a
+  gate, every message needs an assertion that covers it — one assertion on the rendered report
+  can cover several — and that is the work the release exists to enable.
 
   Also worth knowing before writing them: a rule whose variable is _absent_ rendered
   `missing required value` on `1.1.0`, not `invalid value`. For a conditionally-required

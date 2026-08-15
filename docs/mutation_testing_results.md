@@ -21,10 +21,17 @@ Score = `killed / (killed + survived)` = `254 / 255` = **99.61 %**, up from **95
 **89.11 %** baseline. `pnpm mutation` exits green against `break: 95`, and now also clears the
 `high: 99` target.
 
-The jump is not new tests: the eleven equivalents were already argued here and left to survive.
-Ten of them now carry their reason as an inline directive, so Stryker excludes them from the
-denominator instead of counting them as failures to kill. The eleventh cannot carry one and is
-still counted — see the section below. There are zero genuine coverage gaps, before or after.
+Two moves produced that number, and they are different in kind.
+
+**95.74 % -> 99.59 % was not new tests.** The eleven equivalents were already argued here and
+left to survive. Ten of them now carry their reason as an inline directive, so Stryker excludes
+them from the denominator instead of counting them as failures to kill. The eleventh cannot
+carry one and is still counted — see the section below. There are zero genuine coverage gaps,
+before or after.
+
+**99.59 % -> 99.61 % is new code with new tests.** The `v1.1.1` fix added 14 mutants in
+`env-validator.ts`, all killed, so the denominator grew while the survivor count held at one.
+Nothing was silenced to get there — see the dated re-run at the end.
 
 ## Approach to equivalents: documented in the source
 

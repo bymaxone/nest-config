@@ -1,6 +1,6 @@
 {
   "name": "@bymax-one/nest-config",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Typed and validated environment configuration entry point for NestJS 11 applications, built on Zod v4.",
   "author": "Bymax One <support@bymax.one>",
   "license": "MIT",

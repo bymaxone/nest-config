@@ -11,6 +11,12 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-08-14
+
+**Documentation only.** `dist/` is byte-identical to `1.1.1`, verified by hashing every file in
+the published tarball against a local build. Only `README.md` and `CHANGELOG.md` differ in the
+package.
+
 ### Documentation
 
 - **The `1.1.1` apply-note understated the work for a consumer with a mutation gate.** It said
@@ -256,4 +262,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.0.3]: https://github.com/bymaxone/nest-config/compare/v1.0.2...v1.0.3
 [1.1.0]: https://github.com/bymaxone/nest-config/compare/v1.0.3...v1.1.0
 [1.1.1]: https://github.com/bymaxone/nest-config/compare/v1.1.0...v1.1.1
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.1.1...HEAD
+[1.1.2]: https://github.com/bymaxone/nest-config/compare/v1.1.1...v1.1.2
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.1.2...HEAD

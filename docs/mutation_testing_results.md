@@ -1,6 +1,6 @@
 # Mutation Testing Results: @bymax-one/nest-config
 
-> **Last run:** 2026-08-07
+> **Last run:** 2026-08-14
 > **Command:** `pnpm mutation` (Stryker 9, jest runner, `coverageAnalysis: perTest`, `ignoreStatic: true`, `break: 95`)
 > **Report:** [`../reports/mutation/mutation.html`](../reports/mutation/mutation.html)
 > **Plan:** [`mutation_testing_plan.md`](./mutation_testing_plan.md)
@@ -9,15 +9,15 @@
 
 | Metric                                                 | Value                     |
 | ------------------------------------------------------ | ------------------------- |
-| **Global mutation score**                              | **99.59 %**               |
+| **Global mutation score**                              | **99.61 %**               |
 | Break threshold (`thresholds.break`)                   | 95 % -> **PASS (exit 0)** |
 | Aspirational target (`thresholds.high`)                | 99 % -> **reached**       |
-| Killed                                                 | 240                       |
+| Killed                                                 | 254                       |
 | Survived (equivalent, and unable to carry a directive) | 1                         |
 | Timeout (counts as detected)                           | 0                         |
-| Type-invalid mutants (checker-discarded, excluded)     | 168                       |
+| Type-invalid mutants (checker-discarded, excluded)     | 171                       |
 
-Score = `killed / (killed + survived)` = `240 / 241` = **99.59 %**, up from **95.74 %** and a
+Score = `killed / (killed + survived)` = `254 / 255` = **99.61 %**, up from **95.74 %** and a
 **89.11 %** baseline. `pnpm mutation` exits green against `break: 95`, and now also clears the
 `high: 99` target.
 
@@ -207,3 +207,29 @@ mutant still reported as surviving, because a directive does not attach to a `.r
 inside a method chain. The only way to silence it would be a block directive spanning the
 neighbouring `.replace()`, whose own regex mutants the suite does kill, and a killable
 mutant is never disabled to raise a number.
+
+## Re-run — 2026-08-14
+
+Measured as the release gate for `v1.1.1` (the authored `custom` message fix), on `main` at
+`dd30e04`.
+
+| Metric             | Value           |
+| ------------------ | --------------- |
+| **Mutation score** | **99.61 %**     |
+| Killed             | 254             |
+| Surviving mutants  | 1               |
+| Break threshold    | 95 % -> PASS    |
+| High target        | 99 % -> reached |
+
+The score moved 99.59 % -> 99.61 % because the denominator grew, not because anything was
+silenced: the fix added 14 killed mutants, all in `env-validator.ts` — the only file the
+release changed executably, since the edits to `errors.ts`, `report-formatter.ts`,
+`config.options.ts` and `config.providers.ts` are comments, which carry no mutants. The
+survivor count did not change. `env-validator.ts` — the file the
+release changed — scores **100.00 %** with **0 survivors**, including the whitespace-collapsing
+regex and the reserved-default comparison, which the new tests kill by asserting the rendered
+report line rather than the issue object.
+
+The single counted survivor is unchanged: the acronym regex in `toScreamingSnake`
+(`source-mapping.ts`), argued above and left in the denominator because a directive cannot
+attach inside a method chain.

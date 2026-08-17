@@ -372,16 +372,24 @@ and nothing about the failure reaches the entry.
 > [!IMPORTANT]
 > **With `@bymax-one/nest-logger`, do not hand this error to the logger directly —
 > wrap it.** Its redactor drops the whole `err` field and leaves only
-> `_redactionFailed: true`. Measured on 1.2.7 and again on 1.2.9, with the same
-> controls each time: an error of identical shape that is _not_ frozen serializes
-> completely, so does an unfrozen error carrying a frozen `issues` array, and so does
-> this error as the `cause` of a plain wrapper.
+> `_redactionFailed: true`. Measured on 1.2.7 and again on 1.2.9.
 >
-> The trigger is `issues`, not `code`. A frozen error whose locked properties are all
-> scalars serializes — though without its `stack`, which the same mechanism silently
-> loses. It is the object-valued one that fails, because the redactor's clone inherits
-> the locked descriptors and then cannot redefine a property whose value changed, and
-> only an object changes: a copied array is a new value, an identical string is not.
+> The trigger is `issues`, and what matters is how it is defined rather than that
+> anything is frozen — this error is not: it defines `code` and `issues` as
+> non-writable, non-configurable own properties and freezes the issue list, while the
+> instance itself stays extensible. Four controls, same result on both versions:
+>
+> | the error carries                                 | outcome    |
+> | ------------------------------------------------- | ---------- |
+> | a **locked** object property (`issues`)           | dropped    |
+> | a **locked** scalar property (`code`)             | serializes |
+> | the same object assigned normally                 | serializes |
+> | the same object, itself frozen, assigned normally | serializes |
+>
+> A locked scalar survives because redefining it with an identical string changes
+> nothing; a locked object does not, because the redactor's clone inherits the locked
+> descriptors and the walked value is a fresh structural copy — and redefining a
+> non-configurable property fails exactly when the value differs.
 >
 > Wrapping is something you write: a `catch` receives this error unchanged — the module
 > rethrows the instance it caught — so the workaround is an explicit

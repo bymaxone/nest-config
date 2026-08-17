@@ -34,11 +34,14 @@ as the GitHub Release body, so each released version needs a matching
 
   Those versions carry a caveat the README states in full: handed this error **directly**,
   its redactor drops the whole `err` field, leaving `_redactionFailed: true` and no report
-  at all. The trigger is `issues` rather than `code` — a frozen error whose locked
-  properties are all scalars serializes, minus its `stack`, because the redactor's clone
-  inherits the locked descriptors and can only fail to redefine a property whose value
-  changed, which an object does and an identical string does not. Isolated
-  against an unfrozen error of identical shape, which serializes completely. Measured on
+  at all. The trigger is `issues` rather than `code`, and it is the property definition
+  rather than freezing: this error is not frozen — it defines `code` and `issues` as
+  non-writable, non-configurable own properties and freezes the issue list, while the
+  instance stays extensible. A locked scalar serializes, the same object assigned normally
+  serializes, the object frozen but assigned normally serializes, and only the locked
+  object property fails — the redactor's clone inherits the locked descriptors, and
+  redefining a non-configurable property fails exactly when the value differs, which a
+  structurally copied object does and an identical string does not. Measured on
   1.2.7 and again on 1.2.9, so it is not a single bad release. Reported upstream with the
   isolation. Wrapping is unaffected, but it is something a consumer writes: a `catch`
   receives this error unchanged, since the module rethrows the instance it caught, so the

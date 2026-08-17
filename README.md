@@ -347,6 +347,12 @@ Wrapping the error as a `cause` keeps them too, wherever the logger's serializer
 walks the chain copying own enumerables — measured against `@bymax-one/nest-logger`
 1.2.7, where a fifteen-issue report survives the chain intact.
 
+The same rule holds before any logger exists, which is where this failure usually
+lands: a `catch` in `main.ts` runs before the logging module is registered, so it
+reports through `console.error`. Node's inspector appends an error's own enumerables
+after the stack, so `console.error(message, error)` prints the `code` and the
+expanded `issues` list, while `console.error(message, error.stack)` prints neither.
+
 `message` is the aggregated report itself, so the operator-facing text survives
 either way. What the stack-string form drops is the machine-readable half: `code`
 distinguishes a configuration failure from any other boot failure, and `issues`

@@ -28,6 +28,12 @@ as the GitHub Release body, so each released version needs a matching
   assumed: a fifteen-issue report crosses the chain with every issue and the full multi-line
   `message` intact.
 
+  The rule also covers the call site where this failure usually lands: a `catch` in
+  `main.ts` runs before any logging module is registered, so it reports through
+  `console.error`. Node's inspector appends an error's own enumerables after the stack,
+  so `console.error(message, error)` prints the `code` and the expanded `issues` and
+  `console.error(message, error.stack)` prints neither — the same split, one layer earlier.
+
   The same fact is now stated on `BymaxConfigValidationError` itself, so it reaches a
   consumer through the published types and not only through the README.
 

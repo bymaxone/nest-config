@@ -330,33 +330,49 @@ error catalog below for every value.
 ### Reporting the failure
 
 `onValidationError` receives `ReadonlyArray<ConfigIssue>` — four string fields per
-issue, value-free and JSON-serializable. Log it as structured data: there is no
-error to unwrap and, for the descriptions this package generates, nothing to redact.
+issue, JSON-serializable, with no error to unwrap. Every description this package
+generates is value-free, so it can go straight into a log as structured data. The
+exception is the one described above: a `custom` message written by your own schema
+is printed as written, so if one of yours interpolates a value, reviewing it before
+it reaches a log is the schema author's job, not this package's.
 
-If you also log the thrown error from a bootstrap `catch`, pass the error object
-rather than its stack string. `code` and `issues` are the **only two own enumerable
-properties** of `BymaxConfigValidationError`, so a structured logger that copies own
-enumerables keeps both, while a stack string carries neither:
+If you also log the thrown error from a bootstrap `catch`, how you pass it decides
+what survives. `code` and `issues` are the **only two own enumerable properties** of
+`BymaxConfigValidationError`; `name`, `message` and `stack` are non-enumerable, as
+on any `Error`. That splits the outcome three ways — all three measured:
+
+| What you log                            | The report (`message`) | `code` and `issues` |
+| --------------------------------------- | ---------------------- | ------------------- |
+| `error` (the object)                    | ✅                     | ✅                  |
+| `error.stack`                           | ✅ inside the string   | ❌                  |
+| `JSON.stringify(error)`, `{ ...error }` | ❌                     | ✅                  |
 
 ```typescript
-logger.error('configuration invalid', error) // keeps code and issues
-logger.error('configuration invalid', error.stack) // keeps neither
+logger.error('configuration invalid', error) // keeps everything
+logger.error('configuration invalid', error.stack) // loses code and issues
 ```
 
-Wrapping the error as a `cause` keeps them too, wherever the logger's serializer
-walks the chain copying own enumerables — measured against `@bymax-one/nest-logger`
-1.2.7, where a fifteen-issue report survives the chain intact.
+The object form works because every serializer that handles errors — Pino, the Nest
+logger, `console.error` — reads `name`, `message` and `stack` explicitly and then
+copies the own enumerables. A serializer that only copies own enumerables is the
+third row: `JSON.stringify` on this error yields `code` and `issues` and no report
+at all, so if you build the log record yourself, add `message` explicitly.
 
-The same rule holds before any logger exists, which is where this failure usually
+Wrapping the error as a `cause` keeps all of it, wherever the serializer walks the
+chain the same way — measured against `@bymax-one/nest-logger` 1.2.7, where a
+fifteen-issue report crosses the chain with `code`, every issue and the full
+multi-line `message` intact.
+
+The same split holds before any logger exists, which is where this failure usually
 lands: a `catch` in `main.ts` runs before the logging module is registered, so it
-reports through `console.error`. Node's inspector appends an error's own enumerables
-after the stack, so `console.error(message, error)` prints the `code` and the
-expanded `issues` list, while `console.error(message, error.stack)` prints neither.
+reports through `console.error`. Node's inspector prints the stack and then appends
+the own enumerables, so `console.error(message, error)` shows the report, the `code`
+and the expanded `issues` list, while `console.error(message, error.stack)` shows
+the report alone.
 
-`message` is the aggregated report itself, so the operator-facing text survives
-either way. What the stack-string form drops is the machine-readable half: `code`
-distinguishes a configuration failure from any other boot failure, and `issues`
-is what an alert or a dashboard keys on per variable.
+Losing the machine-readable half is easy to miss precisely because the report keeps
+arriving: `code` is what separates a configuration failure from any other boot
+failure, and `issues` is what an alert or a dashboard keys on per variable.
 
 ### Injection tokens
 

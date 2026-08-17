@@ -28,15 +28,16 @@ as the GitHub Release body, so each released version needs a matching
   failure from any other boot failure, and `issues` is what an alert keys on per variable.
 
   Wrapping the error as a `cause` also keeps all of it, wherever the serializer walks the
-  chain the same way. Measured against `@bymax-one/nest-logger` 1.2.7 rather than
-  assumed: a fifteen-issue report crosses the chain with every issue and the full multi-line
+  chain the same way. Measured against `@bymax-one/nest-logger` 1.2.7 and 1.2.9 rather
+  than assumed: a fifteen-issue report crosses the chain with every issue and the full multi-line
   `message` intact.
 
-  That version carries a caveat the README states in full: handed this error **directly**,
+  Those versions carry a caveat the README states in full: handed this error **directly**,
   its redactor fails on the frozen, non-writable `code` and `issues` properties and drops
   the whole `err` field, leaving `_redactionFailed: true` and no report at all. Isolated
-  against an unfrozen error of identical shape, which serializes completely. Reported
-  upstream; wrapping — the form a bootstrap `catch` produces anyway — is unaffected.
+  against an unfrozen error of identical shape, which serializes completely. Measured on
+  1.2.7 and again on 1.2.9, so it is not a single bad release. Reported upstream with the
+  isolation; wrapping — the form a bootstrap `catch` produces anyway — is unaffected.
 
   The rule also covers the call site where this failure usually lands: a `catch` in
   `main.ts` runs before any logging module is registered, so it reports through

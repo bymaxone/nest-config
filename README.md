@@ -365,18 +365,20 @@ under `err`; passed as a trailing argument it is treated as an interpolation val
 and nothing about the failure reaches the entry.
 
 > [!IMPORTANT]
-> **With `@bymax-one/nest-logger` 1.2.7, do not hand this error to the logger
-> directly — wrap it.** Its redactor fails on this error's frozen, non-writable
-> `code` and `issues` properties and drops the whole `err` field, leaving only
-> `_redactionFailed: true`. Isolated against that version: an error of identical
-> shape that is _not_ frozen serializes completely, and so does this error when it
-> is the `cause` of a plain wrapper, which is the form a bootstrap `catch` produces
-> anyway. Reported upstream; a later version is expected to serialize it directly.
+> **With `@bymax-one/nest-logger`, do not hand this error to the logger directly —
+> wrap it.** Its redactor fails on this error's frozen, non-writable `code` and
+> `issues` properties and drops the whole `err` field, leaving only
+> `_redactionFailed: true`. Measured on 1.2.7 and again on 1.2.9, with the same
+> controls each time: an error of identical shape that is _not_ frozen serializes
+> completely, so does an unfrozen error carrying a frozen `issues` array, and so
+> does this error as the `cause` of a plain wrapper — which is the form a bootstrap
+> `catch` produces anyway. Reported upstream with the isolation; this block goes
+> away in the release that fixes it.
 
 Wrapping the error as the `cause` of a bootstrap error keeps all of it wherever the
-serializer walks the chain — measured against `@bymax-one/nest-logger` 1.2.7, where
-a fifteen-issue report crosses the chain with `code`, every issue and the full
-multi-line `message` intact.
+serializer walks the chain — measured against `@bymax-one/nest-logger` 1.2.7 and
+1.2.9, where a fifteen-issue report crosses the chain with `code`, every issue and
+the full multi-line `message` intact.
 
 Before any logger exists — which is where this failure usually lands, since a `catch`
 in `main.ts` runs before the logging module is registered — `console.error` is the

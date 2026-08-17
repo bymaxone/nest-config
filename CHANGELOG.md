@@ -18,8 +18,8 @@ as the GitHub Release body, so each released version needs a matching
   hands you, which left the choice at the call site with no way to know the cost. `code` and
   `issues` are the only two own enumerable properties of `BymaxConfigValidationError`,
   while `name`, `message` and `stack` are non-enumerable as on any `Error`. That splits the
-  outcome three ways by representation: an error object read by a serializer that handles
-  errors keeps everything; `error.stack` keeps the report and drops `code` and `issues`;
+  outcome three ways by representation: an error object keeps everything when the serializer
+  extracts the standard fields and copies the own enumerables, which are two separate steps; `error.stack` keeps the report and drops `code` and `issues`;
   and a plain `JSON.stringify(error)` keeps `code` and `issues` and drops the report.
   Which representation reaches the sink is decided by the logging call, and that call is
   library-specific — Pino serializes an error only as the merging object or under `err`,
@@ -37,7 +37,9 @@ as the GitHub Release body, so each released version needs a matching
   the whole `err` field, leaving `_redactionFailed: true` and no report at all. Isolated
   against an unfrozen error of identical shape, which serializes completely. Measured on
   1.2.7 and again on 1.2.9, so it is not a single bad release. Reported upstream with the
-  isolation; wrapping — the form a bootstrap `catch` produces anyway — is unaffected.
+  isolation. Wrapping is unaffected, but it is something a consumer writes: a `catch`
+  receives this error unchanged, since the module rethrows the instance it caught, so the
+  workaround is an explicit `new Error(message, { cause: error })`.
 
   The rule also covers the call site where this failure usually lands: a `catch` in
   `main.ts` runs before any logging module is registered, so it reports through

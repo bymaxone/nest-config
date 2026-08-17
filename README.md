@@ -341,15 +341,17 @@ what survives. `code` and `issues` are the **only two own enumerable properties*
 `BymaxConfigValidationError`; `name`, `message` and `stack` are non-enumerable, as
 on any `Error`. That splits the outcome three ways — all three measured:
 
-| Which representation reaches the sink                      | The report (`message`) | `code` and `issues` |
-| ---------------------------------------------------------- | ---------------------- | ------------------- |
-| the error object, read by a serializer that handles errors | ✅                     | ✅                  |
-| `error.stack`                                              | ✅ inside the string   | ❌                  |
-| `JSON.stringify(error)`, `{ ...error }`                    | ❌                     | ✅                  |
+| Which representation reaches the sink                                                                   | The report (`message`) | `code` and `issues` |
+| ------------------------------------------------------------------------------------------------------- | ---------------------- | ------------------- |
+| the error object, read by a serializer that extracts the standard fields **and** copies own enumerables | ✅                     | ✅                  |
+| `error.stack`                                                                                           | ✅ inside the string   | ❌                  |
+| `JSON.stringify(error)`, `{ ...error }`                                                                 | ❌                     | ✅                  |
 
-The third row is the one worth remembering: a serializer that only copies own
-enumerables produces `code` and `issues` and no report at all, so if you build the
-log record by hand, add `message` explicitly.
+Recognizing an `Error` is not enough on its own: extracting `name`, `message` and
+`stack` is what preserves the report, and copying the own enumerables is a separate
+step that preserves `code` and `issues`. A serializer that does only the second is
+the third row — `code` and `issues` and no report at all — so if you build the log
+record by hand, add `message` explicitly.
 
 **Which representation the sink sees is decided by your logging call, and that call
 is library-specific.** These are measured, not assumed:
@@ -358,6 +360,9 @@ is library-specific.** These are measured, not assumed:
 console.error('configuration invalid', error) // report, code and issues
 pino.error({ err: error }, 'configuration invalid') // report, code and issues
 pino.error('configuration invalid', error) // the error is dropped entirely
+
+// @bymax-one/nest-logger 1.2.7 and 1.2.9: wrap it, explicitly
+nestLogger.error('BOOT_FAILED', new Error('bootstrap failed', { cause: error }))
 ```
 
 Pino only applies error serialization when the error is the merging object or sits
@@ -371,11 +376,13 @@ and nothing about the failure reaches the entry.
 > `_redactionFailed: true`. Measured on 1.2.7 and again on 1.2.9, with the same
 > controls each time: an error of identical shape that is _not_ frozen serializes
 > completely, so does an unfrozen error carrying a frozen `issues` array, and so
-> does this error as the `cause` of a plain wrapper — which is the form a bootstrap
-> `catch` produces anyway. Reported upstream with the isolation; this block goes
-> away in the release that fixes it.
+> does this error as the `cause` of a plain wrapper. Wrapping is something you write:
+> a `catch` receives this error unchanged — the module rethrows the instance it caught
+> — so the workaround is an explicit `new Error(message, { cause: error })`, not a
+> side effect of catching. Reported upstream with the isolation; this block goes away
+> in the release that fixes it.
 
-Wrapping the error as the `cause` of a bootstrap error keeps all of it wherever the
+Wrapping the error as the `cause` of an error you construct keeps all of it wherever the
 serializer walks the chain — measured against `@bymax-one/nest-logger` 1.2.7 and
 1.2.9, where a fifteen-issue report crosses the chain with `code`, every issue and
 the full multi-line `message` intact.

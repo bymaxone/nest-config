@@ -11,6 +11,46 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Documentation
+
+- **How to report the failure is documented, because the two obvious ways are not
+  equivalent.** `onValidationError` said what the hook is and nothing about logging what it
+  hands you, which left the choice at the call site with no way to know the cost. `code` and
+  `issues` are the only two own enumerable properties of `BymaxConfigValidationError`,
+  while `name`, `message` and `stack` are non-enumerable as on any `Error`. That splits the
+  outcome three ways by representation: an error object keeps everything when the serializer
+  extracts the standard fields and copies the own enumerables, which are two separate steps; `error.stack` keeps the report and drops `code` and `issues`;
+  and a plain `JSON.stringify(error)` keeps `code` and `issues` and drops the report.
+  Which representation reaches the sink is decided by the logging call, and that call is
+  library-specific — Pino serializes an error only as the merging object or under `err`,
+  and drops it entirely when it is passed as a trailing argument. The machine-readable half is the easy one to
+  lose, precisely because the report keeps arriving — `code` separates a configuration
+  failure from any other boot failure, and `issues` is what an alert keys on per variable.
+
+  Wrapping the error as a `cause` also keeps all of it, wherever the serializer walks the
+  chain the same way. Measured against `@bymax-one/nest-logger` 1.2.7 and 1.2.9 rather
+  than assumed: a fifteen-issue report crosses the chain with every issue and the full multi-line
+  `message` intact.
+
+  Those versions carry a caveat the README states in full: handed this error **directly**,
+  its redactor fails on the frozen, non-writable `code` and `issues` properties and drops
+  the whole `err` field, leaving `_redactionFailed: true` and no report at all. Isolated
+  against an unfrozen error of identical shape, which serializes completely. Measured on
+  1.2.7 and again on 1.2.9, so it is not a single bad release. Reported upstream with the
+  isolation. Wrapping is unaffected, but it is something a consumer writes: a `catch`
+  receives this error unchanged, since the module rethrows the instance it caught, so the
+  workaround is an explicit `new Error(message, { cause: error })`.
+
+  The rule also covers the call site where this failure usually lands: a `catch` in
+  `main.ts` runs before any logging module is registered, so it reports through
+  `console.error`. Node's inspector appends an error's own enumerables after the stack,
+  so `console.error(message, error)` prints the report, the `code` and the expanded `issues`, while
+  `console.error(message, error.stack)` prints the report alone — the same split, one layer
+  earlier.
+
+  The same fact is now stated on `BymaxConfigValidationError` itself, so it reaches a
+  consumer through the published types and not only through the README.
+
 ## [1.1.2] - 2026-08-14
 
 **Documentation only.** `dist/` is byte-identical to `1.1.1`, verified by hashing every file in

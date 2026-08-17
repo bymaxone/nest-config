@@ -77,6 +77,10 @@ export interface ConfigIssue {
  * constraints, never their received values — except where a schema author's own
  * `custom` message says otherwise, as described on {@link ConfigIssue}.
  *
+ * `code` and `issues` are its only own enumerable properties, so a structured
+ * logger that copies own enumerables keeps both; passing `error.stack` instead of
+ * the error keeps neither.
+ *
  * @example
  * ```typescript
  * try {

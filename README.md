@@ -327,6 +327,76 @@ export interface ConfigIssue {
 error's own `code`) and `ConfigIssueCode` (each issue's `code`); see the
 error catalog below for every value.
 
+### Reporting the failure
+
+`onValidationError` receives `ReadonlyArray<ConfigIssue>` — four string fields per
+issue, JSON-serializable, with no error to unwrap. Every description this package
+generates is value-free, so it can go straight into a log as structured data. The
+exception is the one described above: a `custom` message written by your own schema
+is printed as written, so if one of yours interpolates a value, reviewing it before
+it reaches a log is the schema author's job, not this package's.
+
+If you also log the thrown error from a bootstrap `catch`, how you pass it decides
+what survives. `code` and `issues` are the **only two own enumerable properties** of
+`BymaxConfigValidationError`; `name`, `message` and `stack` are non-enumerable, as
+on any `Error`. That splits the outcome three ways — all three measured:
+
+| Which representation reaches the sink                                                                   | The report (`message`) | `code` and `issues` |
+| ------------------------------------------------------------------------------------------------------- | ---------------------- | ------------------- |
+| the error object, read by a serializer that extracts the standard fields **and** copies own enumerables | ✅                     | ✅                  |
+| `error.stack`                                                                                           | ✅ inside the string   | ❌                  |
+| `JSON.stringify(error)`, `{ ...error }`                                                                 | ❌                     | ✅                  |
+
+Recognizing an `Error` is not enough on its own: extracting `name`, `message` and
+`stack` is what preserves the report, and copying the own enumerables is a separate
+step that preserves `code` and `issues`. A serializer that does only the second is
+the third row — `code` and `issues` and no report at all — so if you build the log
+record by hand, add `message` explicitly.
+
+**Which representation the sink sees is decided by your logging call, and that call
+is library-specific.** These are measured, not assumed:
+
+```typescript
+console.error('configuration invalid', error) // report, code and issues
+pino.error({ err: error }, 'configuration invalid') // report, code and issues
+pino.error('configuration invalid', error) // the error is dropped entirely
+
+// @bymax-one/nest-logger 1.2.7 and 1.2.9: wrap it, explicitly
+nestLogger.error('BOOT_FAILED', new Error('bootstrap failed', { cause: error }))
+```
+
+Pino only applies error serialization when the error is the merging object or sits
+under `err`; passed as a trailing argument it is treated as an interpolation value,
+and nothing about the failure reaches the entry.
+
+> [!IMPORTANT]
+> **With `@bymax-one/nest-logger`, do not hand this error to the logger directly —
+> wrap it.** Its redactor fails on this error's frozen, non-writable `code` and
+> `issues` properties and drops the whole `err` field, leaving only
+> `_redactionFailed: true`. Measured on 1.2.7 and again on 1.2.9, with the same
+> controls each time: an error of identical shape that is _not_ frozen serializes
+> completely, so does an unfrozen error carrying a frozen `issues` array, and so
+> does this error as the `cause` of a plain wrapper. Wrapping is something you write:
+> a `catch` receives this error unchanged — the module rethrows the instance it caught
+> — so the workaround is an explicit `new Error(message, { cause: error })`, not a
+> side effect of catching. Reported upstream with the isolation; this block goes away
+> in the release that fixes it.
+
+Wrapping the error as the `cause` of an error you construct keeps all of it wherever the
+serializer walks the chain — measured against `@bymax-one/nest-logger` 1.2.7 and
+1.2.9, where a fifteen-issue report crosses the chain with `code`, every issue and
+the full multi-line `message` intact.
+
+Before any logger exists — which is where this failure usually lands, since a `catch`
+in `main.ts` runs before the logging module is registered — `console.error` is the
+reporter, and Node's inspector prints the stack and then appends the own enumerables.
+So `console.error(message, error)` shows the report, the `code` and the expanded
+`issues` list, while `console.error(message, error.stack)` shows the report alone.
+
+Losing the machine-readable half is easy to miss precisely because the report keeps
+arriving: `code` is what separates a configuration failure from any other boot
+failure, and `issues` is what an alert or a dashboard keys on per variable.
+
 ### Injection tokens
 
 `BYMAX_CONFIG` and `BYMAX_CONFIG_OPTIONS` are module-local `Symbol` tokens,

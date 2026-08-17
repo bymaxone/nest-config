@@ -33,8 +33,11 @@ as the GitHub Release body, so each released version needs a matching
   `message` intact.
 
   Those versions carry a caveat the README states in full: handed this error **directly**,
-  its redactor fails on the frozen, non-writable `code` and `issues` properties and drops
-  the whole `err` field, leaving `_redactionFailed: true` and no report at all. Isolated
+  its redactor drops the whole `err` field, leaving `_redactionFailed: true` and no report
+  at all. The trigger is `issues` rather than `code` — a frozen error whose locked
+  properties are all scalars serializes, minus its `stack`, because the redactor's clone
+  inherits the locked descriptors and can only fail to redefine a property whose value
+  changed, which an object does and an identical string does not. Isolated
   against an unfrozen error of identical shape, which serializes completely. Measured on
   1.2.7 and again on 1.2.9, so it is not a single bad release. Reported upstream with the
   isolation. Wrapping is unaffected, but it is something a consumer writes: a `catch`

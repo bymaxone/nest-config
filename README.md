@@ -341,34 +341,48 @@ what survives. `code` and `issues` are the **only two own enumerable properties*
 `BymaxConfigValidationError`; `name`, `message` and `stack` are non-enumerable, as
 on any `Error`. That splits the outcome three ways — all three measured:
 
-| What you log                            | The report (`message`) | `code` and `issues` |
-| --------------------------------------- | ---------------------- | ------------------- |
-| `error` (the object)                    | ✅                     | ✅                  |
-| `error.stack`                           | ✅ inside the string   | ❌                  |
-| `JSON.stringify(error)`, `{ ...error }` | ❌                     | ✅                  |
+| Which representation reaches the sink                      | The report (`message`) | `code` and `issues` |
+| ---------------------------------------------------------- | ---------------------- | ------------------- |
+| the error object, read by a serializer that handles errors | ✅                     | ✅                  |
+| `error.stack`                                              | ✅ inside the string   | ❌                  |
+| `JSON.stringify(error)`, `{ ...error }`                    | ❌                     | ✅                  |
+
+The third row is the one worth remembering: a serializer that only copies own
+enumerables produces `code` and `issues` and no report at all, so if you build the
+log record by hand, add `message` explicitly.
+
+**Which representation the sink sees is decided by your logging call, and that call
+is library-specific.** These are measured, not assumed:
 
 ```typescript
-logger.error('configuration invalid', error) // keeps everything
-logger.error('configuration invalid', error.stack) // loses code and issues
+console.error('configuration invalid', error) // report, code and issues
+pino.error({ err: error }, 'configuration invalid') // report, code and issues
+pino.error('configuration invalid', error) // the error is dropped entirely
 ```
 
-The object form works because every serializer that handles errors — Pino, the Nest
-logger, `console.error` — reads `name`, `message` and `stack` explicitly and then
-copies the own enumerables. A serializer that only copies own enumerables is the
-third row: `JSON.stringify` on this error yields `code` and `issues` and no report
-at all, so if you build the log record yourself, add `message` explicitly.
+Pino only applies error serialization when the error is the merging object or sits
+under `err`; passed as a trailing argument it is treated as an interpolation value,
+and nothing about the failure reaches the entry.
 
-Wrapping the error as a `cause` keeps all of it, wherever the serializer walks the
-chain the same way — measured against `@bymax-one/nest-logger` 1.2.7, where a
-fifteen-issue report crosses the chain with `code`, every issue and the full
+> [!IMPORTANT]
+> **With `@bymax-one/nest-logger` 1.2.7, do not hand this error to the logger
+> directly — wrap it.** Its redactor fails on this error's frozen, non-writable
+> `code` and `issues` properties and drops the whole `err` field, leaving only
+> `_redactionFailed: true`. Isolated against that version: an error of identical
+> shape that is _not_ frozen serializes completely, and so does this error when it
+> is the `cause` of a plain wrapper, which is the form a bootstrap `catch` produces
+> anyway. Reported upstream; a later version is expected to serialize it directly.
+
+Wrapping the error as the `cause` of a bootstrap error keeps all of it wherever the
+serializer walks the chain — measured against `@bymax-one/nest-logger` 1.2.7, where
+a fifteen-issue report crosses the chain with `code`, every issue and the full
 multi-line `message` intact.
 
-The same split holds before any logger exists, which is where this failure usually
-lands: a `catch` in `main.ts` runs before the logging module is registered, so it
-reports through `console.error`. Node's inspector prints the stack and then appends
-the own enumerables, so `console.error(message, error)` shows the report, the `code`
-and the expanded `issues` list, while `console.error(message, error.stack)` shows
-the report alone.
+Before any logger exists — which is where this failure usually lands, since a `catch`
+in `main.ts` runs before the logging module is registered — `console.error` is the
+reporter, and Node's inspector prints the stack and then appends the own enumerables.
+So `console.error(message, error)` shows the report, the `code` and the expanded
+`issues` list, while `console.error(message, error.stack)` shows the report alone.
 
 Losing the machine-readable half is easy to miss precisely because the report keeps
 arriving: `code` is what separates a configuration failure from any other boot

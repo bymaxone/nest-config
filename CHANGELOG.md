@@ -18,10 +18,12 @@ as the GitHub Release body, so each released version needs a matching
   hands you, which left the choice at the call site with no way to know the cost. `code` and
   `issues` are the only two own enumerable properties of `BymaxConfigValidationError`,
   while `name`, `message` and `stack` are non-enumerable as on any `Error`. That splits the
-  outcome three ways: the error object keeps everything, because every serializer that
-  handles errors reads the standard fields and then copies own enumerables; `error.stack`
-  keeps the report and drops `code` and `issues`; and a plain `JSON.stringify(error)` keeps
-  `code` and `issues` and drops the report. The machine-readable half is the easy one to
+  outcome three ways by representation: an error object read by a serializer that handles
+  errors keeps everything; `error.stack` keeps the report and drops `code` and `issues`;
+  and a plain `JSON.stringify(error)` keeps `code` and `issues` and drops the report.
+  Which representation reaches the sink is decided by the logging call, and that call is
+  library-specific — Pino serializes an error only as the merging object or under `err`,
+  and drops it entirely when it is passed as a trailing argument. The machine-readable half is the easy one to
   lose, precisely because the report keeps arriving — `code` separates a configuration
   failure from any other boot failure, and `issues` is what an alert keys on per variable.
 
@@ -29,6 +31,12 @@ as the GitHub Release body, so each released version needs a matching
   chain the same way. Measured against `@bymax-one/nest-logger` 1.2.7 rather than
   assumed: a fifteen-issue report crosses the chain with every issue and the full multi-line
   `message` intact.
+
+  That version carries a caveat the README states in full: handed this error **directly**,
+  its redactor fails on the frozen, non-writable `code` and `issues` properties and drops
+  the whole `err` field, leaving `_redactionFailed: true` and no report at all. Isolated
+  against an unfrozen error of identical shape, which serializes completely. Reported
+  upstream; wrapping — the form a bootstrap `catch` produces anyway — is unaffected.
 
   The rule also covers the call site where this failure usually lands: a `catch` in
   `main.ts` runs before any logging module is registered, so it reports through

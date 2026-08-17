@@ -11,6 +11,26 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Documentation
+
+- **How to report the failure is documented, because the two obvious ways are not
+  equivalent.** `onValidationError` said what the hook is and nothing about logging what it
+  hands you, which left the choice at the call site with no way to know the cost. `code` and
+  `issues` are the only two own enumerable properties of `BymaxConfigValidationError`: a
+  structured logger that copies own enumerables keeps both, while `error.stack` keeps
+  neither. The aggregated report lives in `message` and survives either way, so what the
+  stack-string form drops is the machine-readable half — `code`, which separates a
+  configuration failure from any other boot failure, and `issues`, which an alert or a
+  dashboard keys on per variable.
+
+  Wrapping the error as a `cause` also keeps both, wherever the logger's serializer walks the
+  chain copying own enumerables. Measured against `@bymax-one/nest-logger` 1.2.7 rather than
+  assumed: a fifteen-issue report crosses the chain with every issue and the full multi-line
+  `message` intact.
+
+  The same fact is now stated on `BymaxConfigValidationError` itself, so it reaches a
+  consumer through the published types and not only through the README.
+
 ## [1.1.2] - 2026-08-14
 
 **Documentation only.** `dist/` is byte-identical to `1.1.1`, verified by hashing every file in

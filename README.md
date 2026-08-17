@@ -327,6 +327,31 @@ export interface ConfigIssue {
 error's own `code`) and `ConfigIssueCode` (each issue's `code`); see the
 error catalog below for every value.
 
+### Reporting the failure
+
+`onValidationError` receives `ReadonlyArray<ConfigIssue>` — four string fields per
+issue, value-free and JSON-serializable. Log it as structured data: there is no
+error to unwrap and, for the descriptions this package generates, nothing to redact.
+
+If you also log the thrown error from a bootstrap `catch`, pass the error object
+rather than its stack string. `code` and `issues` are the **only two own enumerable
+properties** of `BymaxConfigValidationError`, so a structured logger that copies own
+enumerables keeps both, while a stack string carries neither:
+
+```typescript
+logger.error('configuration invalid', error) // keeps code and issues
+logger.error('configuration invalid', error.stack) // keeps neither
+```
+
+Wrapping the error as a `cause` keeps them too, wherever the logger's serializer
+walks the chain copying own enumerables — measured against `@bymax-one/nest-logger`
+1.2.7, where a fifteen-issue report survives the chain intact.
+
+`message` is the aggregated report itself, so the operator-facing text survives
+either way. What the stack-string form drops is the machine-readable half: `code`
+distinguishes a configuration failure from any other boot failure, and `issues`
+is what an alert or a dashboard keys on per variable.
+
 ### Injection tokens
 
 `BYMAX_CONFIG` and `BYMAX_CONFIG_OPTIONS` are module-local `Symbol` tokens,

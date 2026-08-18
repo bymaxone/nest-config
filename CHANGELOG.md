@@ -13,7 +13,7 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [1.1.3] - 2026-08-18
 
-**Documentation.** The runtime bundles are byte-identical to `1.1.2`. Four files differ: the
+**Documentation.** The runtime bundles are byte-identical to `1.1.2`. Five files differ: the
 two `./internal` declaration files, by the JSDoc noted below; `README.md` and `CHANGELOG.md`;
 and `package.json`, by its `version` field alone. Verified by hashing every file in the
 published `1.1.2` tarball against this build.

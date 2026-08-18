@@ -52,7 +52,7 @@ published `1.1.2` tarball against this build.
   **Fixed upstream in `1.3.0`**, measured against the published package rather than taken on
   report: a real failure logged directly now arrives with `type, message, stack, code,
 issues`, the full issue array and the multi-line report intact, and this error is left
-  untouched. Below that version the workaround stands, and it is something a consumer
+  untouched. On an affected version the workaround stands, and it is something a consumer
   writes: a `catch` receives this error unchanged, since the module rethrows the instance it
   caught, so wrapping is an explicit `new Error(message, { cause: error })`.
 

@@ -394,8 +394,9 @@ and nothing about the failure reaches the entry.
 > Wrapping is something you write: a `catch` receives this error unchanged — the module
 > rethrows the instance it caught — so the workaround is an explicit
 > `new Error(message, { cause: error })`, not a side effect of catching. Reported upstream,
-> where a fix is open in review and unreleased; this block goes away with the release that
-> carries it.
+> where the fix is merged and awaiting a release — `1.2.9` is still the published latest, so
+> the caveat holds for every version installable today. This block goes away with the
+> release that carries the fix.
 
 Wrapping the error as the `cause` of an error you construct keeps all of it wherever the
 serializer walks the chain — measured against `@bymax-one/nest-logger` 1.2.7 and

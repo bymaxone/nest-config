@@ -11,6 +11,12 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-08-18
+
+**Documentation.** The runtime bundles are byte-identical to `1.1.2`; the two `./internal`
+declaration files differ, by the JSDoc noted below, and so do `README.md` and
+`CHANGELOG.md`. Verified by hashing every file against the published `1.1.2` tarball.
+
 ### Documentation
 
 - **How to report the failure is documented, because the two obvious ways are not
@@ -310,4 +316,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.1.0]: https://github.com/bymaxone/nest-config/compare/v1.0.3...v1.1.0
 [1.1.1]: https://github.com/bymaxone/nest-config/compare/v1.1.0...v1.1.1
 [1.1.2]: https://github.com/bymaxone/nest-config/compare/v1.1.1...v1.1.2
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.1.2...HEAD
+[1.1.3]: https://github.com/bymaxone/nest-config/compare/v1.1.2...v1.1.3
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.1.3...HEAD

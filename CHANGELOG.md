@@ -13,9 +13,10 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [1.1.3] - 2026-08-18
 
-**Documentation.** The runtime bundles are byte-identical to `1.1.2`; the two `./internal`
-declaration files differ, by the JSDoc noted below, and so do `README.md` and
-`CHANGELOG.md`. Verified by hashing every file against the published `1.1.2` tarball.
+**Documentation.** The runtime bundles are byte-identical to `1.1.2`. Four files differ: the
+two `./internal` declaration files, by the JSDoc noted below; `README.md` and `CHANGELOG.md`;
+and `package.json`, by its `version` field alone. Verified by hashing every file in the
+published `1.1.2` tarball against this build.
 
 ### Documentation
 
@@ -38,7 +39,7 @@ declaration files differ, by the JSDoc noted below, and so do `README.md` and
   than assumed: a fifteen-issue report crosses the chain with every issue and the full multi-line
   `message` intact.
 
-  Versions 1.2.7 through 1.2.9 carry a defect the README states in full: handed this error
+  Versions 1.2.6 through 1.2.9 carry a defect the README states in full: handed this error
   **directly**, the redactor dropped the whole `err` field, leaving `_redactionFailed: true`
   and no report at all. The trigger was `issues` rather than `code`, and the property
   definition rather than freezing: this error is not frozen — it defines `code` and `issues`

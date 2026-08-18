@@ -361,7 +361,7 @@ console.error('configuration invalid', error) // report, code and issues
 pino.error({ err: error }, 'configuration invalid') // report, code and issues
 pino.error('configuration invalid', error) // the error is dropped entirely
 
-// @bymax-one/nest-logger below 1.3.0: wrap it, explicitly (see the note below)
+// @bymax-one/nest-logger 1.2.6-1.2.9: wrap it, explicitly (see the note below)
 nestLogger.error('BOOT_FAILED', new Error('bootstrap failed', { cause: error }))
 ```
 
@@ -370,7 +370,7 @@ under `err`; passed as a trailing argument it is treated as an interpolation val
 and nothing about the failure reaches the entry.
 
 > [!NOTE]
-> **`@bymax-one/nest-logger` before 1.3.0 dropped this error when it was logged
+> **`@bymax-one/nest-logger` 1.2.6 through 1.2.9 dropped this error when it was logged
 > directly.** Its redactor left `_redactionFailed: true` and no `err` field at all —
 > no report, no `code`, no `issues`. The trigger was the definition rather than any
 > freezing: this error defines `code` and `issues` as non-writable, non-configurable
@@ -380,8 +380,10 @@ and nothing about the failure reaches the entry.
 >
 > Fixed in **1.3.0**, measured rather than taken on report: a real failure logged
 > directly now arrives with `type, message, stack, code, issues`, the full issue array
-> and the report intact, and this error is left untouched. Affected versions are 1.2.7
-> through 1.2.9; on those, wrap it — a `catch` receives this error unchanged, since the
+> and the report intact, and this error is left untouched. Measured affected: 1.2.6, 1.2.7
+> and 1.2.9 — 1.2.8 was never published, and on 1.2.2 and earlier this call shape does not
+> attach the error at all, so the defect does not arise there in this form. On an affected
+> version, wrap it — a `catch` receives this error unchanged, since the
 > module rethrows the instance it caught, so wrapping is an explicit
 > `new Error(message, { cause: error })` rather than a side effect of catching. A
 > lockfile pinned below 1.3.0 does not pick the fix up from an ordinary install, so the

@@ -361,7 +361,7 @@ console.error('configuration invalid', error) // report, code and issues
 pino.error({ err: error }, 'configuration invalid') // report, code and issues
 pino.error('configuration invalid', error) // the error is dropped entirely
 
-// @bymax-one/nest-logger 1.2.7 and 1.2.9: wrap it, explicitly
+// @bymax-one/nest-logger below 1.3.0: wrap it, explicitly (see the note below)
 nestLogger.error('BOOT_FAILED', new Error('bootstrap failed', { cause: error }))
 ```
 
@@ -369,34 +369,23 @@ Pino only applies error serialization when the error is the merging object or si
 under `err`; passed as a trailing argument it is treated as an interpolation value,
 and nothing about the failure reaches the entry.
 
-> [!IMPORTANT]
-> **With `@bymax-one/nest-logger`, do not hand this error to the logger directly —
-> wrap it.** Its redactor drops the whole `err` field and leaves only
-> `_redactionFailed: true`. Measured on 1.2.7 and again on 1.2.9.
+> [!NOTE]
+> **`@bymax-one/nest-logger` before 1.3.0 dropped this error when it was logged
+> directly.** Its redactor left `_redactionFailed: true` and no `err` field at all —
+> no report, no `code`, no `issues`. The trigger was the definition rather than any
+> freezing: this error defines `code` and `issues` as non-writable, non-configurable
+> own properties, and the redactor's clone inherited those descriptors, so rewriting
+> the object-valued one with a walked copy failed. A locked scalar was unaffected,
+> which is why `code` alone never reproduced it.
 >
-> The trigger is `issues`, and what matters is how it is defined rather than that
-> anything is frozen — this error is not: it defines `code` and `issues` as
-> non-writable, non-configurable own properties and freezes the issue list, while the
-> instance itself stays extensible. Four controls, same result on both versions:
->
-> | the error carries                                 | outcome    |
-> | ------------------------------------------------- | ---------- |
-> | a **locked** object property (`issues`)           | dropped    |
-> | a **locked** scalar property (`code`)             | serializes |
-> | the same object assigned normally                 | serializes |
-> | the same object, itself frozen, assigned normally | serializes |
->
-> A locked scalar survives because redefining it with an identical string changes
-> nothing; a locked object does not, because the redactor's clone inherits the locked
-> descriptors and the walked value is a fresh structural copy — and redefining a
-> non-configurable property fails exactly when the value differs.
->
-> Wrapping is something you write: a `catch` receives this error unchanged — the module
-> rethrows the instance it caught — so the workaround is an explicit
-> `new Error(message, { cause: error })`, not a side effect of catching. Reported upstream,
-> where the fix is merged and awaiting a release — `1.2.9` is still the published latest, so
-> the caveat holds for every version installable today. This block goes away with the
-> release that carries the fix.
+> Fixed in **1.3.0**, measured rather than taken on report: a real failure logged
+> directly now arrives with `type, message, stack, code, issues`, the full issue array
+> and the report intact, and this error is left untouched. Affected versions are 1.2.7
+> through 1.2.9; on those, wrap it — a `catch` receives this error unchanged, since the
+> module rethrows the instance it caught, so wrapping is an explicit
+> `new Error(message, { cause: error })` rather than a side effect of catching. A
+> lockfile pinned below 1.3.0 does not pick the fix up from an ordinary install, so the
+> update has to be deliberate.
 
 Wrapping the error as the `cause` of an error you construct keeps all of it wherever the
 serializer walks the chain — measured against `@bymax-one/nest-logger` 1.2.7 and

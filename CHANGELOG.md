@@ -38,20 +38,22 @@ declaration files differ, by the JSDoc noted below, and so do `README.md` and
   than assumed: a fifteen-issue report crosses the chain with every issue and the full multi-line
   `message` intact.
 
-  Those versions carry a caveat the README states in full: handed this error **directly**,
-  its redactor drops the whole `err` field, leaving `_redactionFailed: true` and no report
-  at all. The trigger is `issues` rather than `code`, and it is the property definition
-  rather than freezing: this error is not frozen — it defines `code` and `issues` as
-  non-writable, non-configurable own properties and freezes the issue list, while the
-  instance stays extensible. A locked scalar serializes, the same object assigned normally
-  serializes, the object frozen but assigned normally serializes, and only the locked
-  object property fails — the redactor's clone inherits the locked descriptors, and
-  redefining a non-configurable property fails exactly when the value differs, which a
-  structurally copied object does and an identical string does not. Measured on
-  1.2.7 and again on 1.2.9, so it is not a single bad release. Reported upstream with the
-  isolation. Wrapping is unaffected, but it is something a consumer writes: a `catch`
-  receives this error unchanged, since the module rethrows the instance it caught, so the
-  workaround is an explicit `new Error(message, { cause: error })`.
+  Versions 1.2.7 through 1.2.9 carry a defect the README states in full: handed this error
+  **directly**, the redactor dropped the whole `err` field, leaving `_redactionFailed: true`
+  and no report at all. The trigger was `issues` rather than `code`, and the property
+  definition rather than freezing: this error is not frozen — it defines `code` and `issues`
+  as non-writable, non-configurable own properties and freezes the issue list, while the
+  instance stays extensible. Only the locked object property failed, because the redactor's
+  clone inherited the locked descriptors and redefining a non-configurable property fails
+  exactly when the value differs, which a structurally copied object does and an identical
+  string does not.
+
+  **Fixed upstream in `1.3.0`**, measured against the published package rather than taken on
+  report: a real failure logged directly now arrives with `type, message, stack, code,
+issues`, the full issue array and the multi-line report intact, and this error is left
+  untouched. Below that version the workaround stands, and it is something a consumer
+  writes: a `catch` receives this error unchanged, since the module rethrows the instance it
+  caught, so wrapping is an explicit `new Error(message, { cause: error })`.
 
   The rule also covers the call site where this failure usually lands: a `catch` in
   `main.ts` runs before any logging module is registered, so it reports through

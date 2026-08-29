@@ -11,6 +11,42 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Added
+
+- **A namespace can declare itself open, so `strict` is usable next to a library that
+  reads its own environment.** `strict` claims a declared namespace's entire variable
+  prefix: a namespace named `otel` rejects the OpenTelemetry SDK's own
+  `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_TRACES_SAMPLER`, and one named `redis` rejects a
+  `REDIS_PORT` only a compose file reads. A prefix matching no declared namespace
+  (`POSTGRES_*` with no `postgres` namespace) is never inspected, so the failure lands
+  hardest exactly where a schema shares a prefix with another program — which is the common
+  case. `OTEL_` is an open standard; a consumer cannot rename around it.
+
+  `z.object({ ... }).meta({ open: true })` on the namespace waives unknown-key detection
+  for the remainder of that prefix. The waiver is narrow by construction: declared leaves
+  stay bound and validated (an open `otel` still reads and coerces `OTEL_ENABLED`), it
+  applies per namespace rather than per schema, and a more specific closed namespace still
+  claims its own variables (`otelExporter` beside an open `otel` still reports
+  `OTEL_EXPORTER_TYPO`). Only the literal `true` opens a namespace.
+
+  **The cost is stated rather than designed away:** an open namespace cannot distinguish a
+  foreign variable from a misspelled local one, so a typo of `OTEL_ENABLED` passes and the
+  leaf falls back to its default. The two cases are indistinguishable by name. Open the
+  namespaces whose prefix genuinely belongs to another program, and leave the rest closed.
+
+  Filtering the foreign names out of `source` is not an equivalent workaround and is worse
+  in a way that is easy to miss: removing `OTEL_*` from the source also unbinds the declared
+  `OTEL_ENABLED`, whose `.default()` then manufactures a plausible value while the variable
+  silently stops being read.
+
+### Documentation
+
+- **`strict` now documents what it claims before you enable it.** The option read as an
+  unambiguous improvement and gave no warning that a declared namespace claims its whole
+  prefix — the behaviour was measured by a consumer only after enabling it broke a boot on
+  five correct variables. The API reference gains a `Strict mode and shared prefixes`
+  section covering the claim, the open-namespace opt-out, and its cost.
+
 ## [1.1.3] - 2026-08-18
 
 **Documentation.** The runtime bundles are byte-identical to `1.1.2`. Five files differ: the

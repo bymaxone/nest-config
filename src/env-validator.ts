@@ -27,6 +27,8 @@ export interface EnvValidationOptions {
   /**
    * When true, source variables that match a declared namespace prefix but no
    * declared leaf produce BYMAX_CONFIG_UNKNOWN_KEY issues. Defaults to false.
+   * A namespace that declared `meta({ open: true })` is exempt for the rest of
+   * its prefix; its own declared leaves are still bound and validated.
    */
   readonly strict?: boolean
 }
@@ -273,9 +275,14 @@ function longestMatchingPrefix(
  *
  * The namespace-prefix gate is mandatory: unrelated process variables (such as
  * `PATH` or `HOME`) never match a declared prefix and are therefore ignored, so
- * strict mode reports only variables that look like configuration.
+ * strict mode reports only variables that look like configuration. A namespace
+ * that declared `meta({ open: true })` waives the check for the remainder of
+ * its prefix, which is how a schema shares a prefix with a library that reads
+ * its own variables. Its declared leaves stay bound and validated: the waiver is
+ * applied only after a declared name has already been excluded, so it can reach
+ * an undeclared variable and nothing else.
  *
- * @param prefixes - The declared namespace prefixes.
+ * @param prefixes - The declared namespace prefixes and their open flags.
  * @param bindings - The leaf-to-variable bindings, used to skip declared names.
  * @param source - The source values keyed by variable name.
  * @returns One BYMAX_CONFIG_UNKNOWN_KEY issue per unrecognized prefixed variable.
@@ -293,6 +300,10 @@ function detectUnknownKeys(
     if (source.get(key) === undefined) continue
     const match = longestMatchingPrefix(prefixes, key)
     if (match === undefined) continue
+    // The namespace declared itself open: the rest of its prefix belongs to a
+    // library or tool that reads those variables natively, so an undeclared one
+    // is not evidence of an operator mistake.
+    if (match.open) continue
     issues.push({
       path: match.namespace,
       variable: key,
@@ -317,7 +328,8 @@ function detectUnknownKeys(
  * either returns the typed, default-applied, coerced output or throws a
  * BymaxConfigValidationError listing every violation at once. With `strict`,
  * unrecognized prefixed variables are aggregated alongside missing and invalid
- * issues. No description this function generates contains a raw source value;
+ * issues, except under a namespace that declared `meta({ open: true })`. No
+ * description this function generates contains a raw source value;
  * a message written by the schema author is passed through as written.
  *
  * @typeParam TShape - The two-level schema shape.

@@ -2,12 +2,15 @@
  * @fileoverview Deterministic mapping between nested config paths and flat
  * environment variable names. Each leaf resolves to exactly one variable:
  * SCREAMING_SNAKE_CASE of the joined path (`database.url` reads `DATABASE_URL`),
- * unless the leaf declares a `meta({ env })` override, which wins. This is an
- * internal module consumed by the validator; it is not part of the public API.
+ * unless the leaf declares a `meta({ env })` override, which wins. It also
+ * resolves the shared prefix of each namespace and whether that namespace
+ * declared `meta({ open: true })`, the two facts strict unknown-key detection
+ * runs on. This is an internal module consumed by the validator; it is not part
+ * of the public API.
  * @layer Utility
  */
 
-import type { EnvSchema, EnvShape } from './types'
+import type { EnvNamespace, EnvSchema, EnvShape } from './types'
 
 /**
  * The resolved binding between one config leaf and its source variable name.
@@ -27,6 +30,11 @@ export interface NamespacePrefix {
   readonly namespace: string
   /** Shared SCREAMING_SNAKE_CASE prefix including the separator, e.g. `DATABASE_`. */
   readonly prefix: string
+  /**
+   * Whether the namespace declared `meta({ open: true })`, waiving strict
+   * unknown-key detection for the rest of its prefix.
+   */
+  readonly open: boolean
 }
 
 /**
@@ -66,6 +74,21 @@ function toScreamingSnake(segment: string): string {
 function readEnvOverride(leaf: { meta(): { env?: unknown } | undefined }): string | undefined {
   const override = leaf.meta()?.env
   return typeof override === 'string' && override.length > 0 ? override : undefined
+}
+
+/**
+ * Read a namespace's `meta({ open: true })` opt-out of strict detection.
+ *
+ * Only the literal `true` opens a namespace. Metadata carrying no `open` key,
+ * or an `open` of another type, leaves detection in force: the flag waives a
+ * safety check, so it is granted on an unambiguous declaration and never
+ * inferred from a merely truthy value.
+ *
+ * @param namespace - The namespace schema whose metadata may carry the flag.
+ * @returns True when the namespace waives strict unknown-key detection.
+ */
+function readOpenFlag(namespace: EnvNamespace): boolean {
+  return namespace.meta()?.open === true
 }
 
 /**
@@ -116,6 +139,8 @@ export function resolveSourceNames<TShape extends EnvShape = EnvShape>(
  * prefix (`database` yields `DATABASE_`). Strict validation uses these prefixes
  * to recognize variables that look like config for a namespace but match no
  * declared leaf, so unrelated process variables are never reported as issues.
+ * Each entry also carries the namespace's `meta({ open: true })` opt-out, which
+ * waives that detection for the rest of the prefix.
  *
  * @typeParam TShape - The two-level shape the schema was composed from.
  * @param schema - A schema produced by `defineEnv`.
@@ -124,14 +149,15 @@ export function resolveSourceNames<TShape extends EnvShape = EnvShape>(
  * ```typescript
  * const schema = defineEnv({ database: z.object({ url: z.url() }) });
  * resolveNamespacePrefixes(schema);
- * // => [{ namespace: 'database', prefix: 'DATABASE_' }]
+ * // => [{ namespace: 'database', prefix: 'DATABASE_', open: false }]
  * ```
  */
 export function resolveNamespacePrefixes<TShape extends EnvShape = EnvShape>(
   schema: EnvSchema<TShape>
 ): readonly NamespacePrefix[] {
-  return Object.keys(schema.shape).map((namespace) => ({
+  return Object.entries(schema.shape).map(([namespace, namespaceSchema]) => ({
     namespace,
-    prefix: `${toScreamingSnake(namespace)}_`
+    prefix: `${toScreamingSnake(namespace)}_`,
+    open: readOpenFlag(namespaceSchema)
   }))
 }

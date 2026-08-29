@@ -14,7 +14,7 @@
   <a href="https://www.npmjs.com/package/@bymax-one/nest-config"><img src="https://img.shields.io/npm/dm/@bymax-one/nest-config?style=flat-square&colorA=000000&colorB=000000" alt="npm downloads" /></a>
   <a href="https://github.com/bymaxone/nest-config/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/bymaxone/nest-config/ci.yml?branch=main&style=flat-square&colorA=000000&label=CI" alt="CI status" /></a>
   <a href="https://github.com/bymaxone/nest-config/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/coverage-100%25-brightgreen?style=flat-square&colorA=000000" alt="coverage" /></a>
-  <a href="https://github.com/bymaxone/nest-config/blob/main/docs/mutation_testing_results.md"><img src="https://img.shields.io/badge/mutation-99.61%25-brightgreen?style=flat-square&colorA=000000" alt="mutation score" /></a>
+  <a href="https://github.com/bymaxone/nest-config/blob/main/docs/mutation_testing_results.md"><img src="https://img.shields.io/badge/mutation-99.62%25-brightgreen?style=flat-square&colorA=000000" alt="mutation score" /></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/bymaxone/nest-config"><img src="https://api.scorecard.dev/projects/github.com/bymaxone/nest-config/badge?style=flat-square" alt="OpenSSF Scorecard" /></a>
   <a href="https://github.com/bymaxone/nest-config/blob/main/LICENSE"><img src="https://img.shields.io/github/license/bymaxone/nest-config?style=flat-square&colorA=000000&colorB=000000" alt="license" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" /></a>
@@ -258,6 +258,20 @@ database: z.object({
 })
 ```
 
+A namespace can declare itself **open**, which waives strict unknown-key
+detection for the rest of its prefix. Use it when the prefix is shared with
+another program that reads its own variables — see
+[Strict mode and shared prefixes](#strict-mode-and-shared-prefixes):
+
+```typescript
+// OTEL_ENABLED is read and validated; every other OTEL_* variable belongs to
+// the OpenTelemetry SDK, which reads it natively.
+otel: z.object({ enabled: z.stringbool().default(false) }).meta({ open: true })
+```
+
+Only the literal `true` opens a namespace. Any other value, and any metadata
+without the key, leaves detection in force.
+
 ### `BymaxConfigModule`
 
 | Method                  | Signature                                                         |
@@ -267,12 +281,12 @@ database: z.object({
 
 `BymaxConfigModuleOptions`:
 
-| Field               | Type                                           | Required | Notes                                                                                                                               |
-| ------------------- | ---------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `schema`            | `EnvSchema`                                    | yes      | Produced by `defineEnv`.                                                                                                            |
-| `source`            | `Record<string, string \| undefined>`          | no       | Defaults to `process.env` in the provider factory. Injectable for tests.                                                            |
-| `onValidationError` | `(issues: ReadonlyArray<ConfigIssue>) => void` | no       | Observability hook invoked before the fail-fast throw. Cannot suppress the failure.                                                 |
-| `strict`            | `boolean`                                      | no       | When true, source variables matching a namespace prefix but no declared leaf raise `BYMAX_CONFIG_UNKNOWN_KEY`. Defaults to `false`. |
+| Field               | Type                                           | Required | Notes                                                                                                                                                                                                                            |
+| ------------------- | ---------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema`            | `EnvSchema`                                    | yes      | Produced by `defineEnv`.                                                                                                                                                                                                         |
+| `source`            | `Record<string, string \| undefined>`          | no       | Defaults to `process.env` in the provider factory. Injectable for tests.                                                                                                                                                         |
+| `onValidationError` | `(issues: ReadonlyArray<ConfigIssue>) => void` | no       | Observability hook invoked before the fail-fast throw. Cannot suppress the failure.                                                                                                                                              |
+| `strict`            | `boolean`                                      | no       | When true, source variables matching a namespace prefix but no declared leaf raise `BYMAX_CONFIG_UNKNOWN_KEY`. Defaults to `false`. Read [Strict mode and shared prefixes](#strict-mode-and-shared-prefixes) before enabling it. |
 
 `forRootAsync` resolves the source through another provider, for example a
 secrets-manager client composed with `process.env`:
@@ -292,6 +306,53 @@ BymaxConfigModule.forRootAsync({
 
 `isGlobal` defaults to `true` and can be set to `false` through the standard
 extras when an application intentionally scopes configuration to a submodule.
+
+#### Strict mode and shared prefixes
+
+**A declared namespace claims its entire variable prefix.** Under `strict`, any
+source variable starting with that prefix and matching no declared leaf fails
+the boot — including variables this application never reads because _another
+program_ reads them. A namespace named `otel` claims `OTEL_*`, so the
+OpenTelemetry SDK's own `OTEL_EXPORTER_OTLP_ENDPOINT` and `OTEL_TRACES_SAMPLER`
+are rejected; a namespace named `redis` claims `REDIS_*`, so a `REDIS_PORT` that
+only a compose file reads is rejected too. A prefix matching no declared
+namespace at all (`POSTGRES_*` with no `postgres` namespace) is never inspected,
+which is why the failure lands hardest on schemas that share a prefix with a
+library or a tool — the common case, not the edge one.
+
+Declare such a namespace **open** to waive the check for the remainder of its
+prefix:
+
+```typescript
+export const envSchema = defineEnv({
+  // OTEL_ENABLED is declared, read and validated. Every other OTEL_* variable
+  // is the SDK's, and strict leaves it alone.
+  otel: z.object({ enabled: z.stringbool().default(false) }).meta({ open: true }),
+  database: z.object({ url: z.url() })
+})
+```
+
+What the waiver does and does not do:
+
+- **Declared leaves stay bound.** `OTEL_ENABLED` is still read, coerced and
+  validated. Opening a namespace waives unknown-key detection only; it never
+  weakens the validation the schema does perform.
+- **The waiver is per namespace.** A stray `DATABASE_TYPO` is still reported
+  while `otel` is open. One open namespace does not disable strict mode.
+- **The most specific namespace wins.** If a schema declares both `otel` (open)
+  and `otelExporter` (closed), `OTEL_EXPORTER_TYPO` belongs to `otelExporter`
+  and is still reported.
+
+**The cost, stated plainly:** an open namespace cannot tell a foreign variable
+from a misspelled local one. Under an open `otel`, a typo of `OTEL_ENABLED`
+passes silently and the leaf falls back to its default. No design removes this —
+the two cases are indistinguishable by name — so open the namespaces whose
+prefix genuinely belongs to someone else, and leave the rest closed.
+
+> Filtering the foreign names out of `source` instead is **not** equivalent, and
+> is worse in a way that is easy to miss: removing `OTEL_*` from the source also
+> unbinds the declared `OTEL_ENABLED`, whose `.default()` then manufactures a
+> plausible value while the variable silently stops being read.
 
 ### `ConfigService<TConfig>`
 
@@ -672,6 +733,10 @@ standard is Jest.
 4. **No multi-source precedence.** One source record per module
    registration. Precedence between layers (defaults, env, secrets) is the
    caller's composition (`{ ...a, ...b }`), kept explicit on purpose.
+5. **An open namespace cannot detect a typo in its own prefix.** A foreign
+   variable and a misspelled local one are indistinguishable by name, so
+   `meta({ open: true })` accepts both. See
+   [Strict mode and shared prefixes](#strict-mode-and-shared-prefixes).
 
 ## 🤝 Contributing
 

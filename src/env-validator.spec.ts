@@ -445,6 +445,136 @@ describe('validateEnv strict mode', () => {
   })
 })
 
+describe('validateEnv strict mode with an open namespace', () => {
+  const openSchema = defineEnv({
+    // Shares the OTEL_ prefix with an OpenTelemetry SDK that reads its own
+    // variables natively, so the namespace waives detection for the rest.
+    otel: z.object({ enabled: z.coerce.boolean().default(false) }).meta({ open: true }),
+    database: z.object({ url: z.url() })
+  })
+
+  it('ignores undeclared variables under the open namespace prefix', () => {
+    /**
+     * Prefix waiver.
+     *
+     * The variables another program reads under a shared prefix must not fail
+     * the boot, which is the whole point of declaring the namespace open.
+     */
+    const config = validateEnv(
+      openSchema,
+      {
+        DATABASE_URL: 'https://db.example.com',
+        OTEL_EXPORTER_OTLP_ENDPOINT: 'http://collector:4318',
+        OTEL_TRACES_SAMPLER: 'parentbased_always_on'
+      },
+      { strict: true }
+    )
+
+    expect(config.database.url).toBe('https://db.example.com')
+  })
+
+  it('keeps a declared leaf of an open namespace bound to its variable', () => {
+    /**
+     * Declared leaves survive the waiver.
+     *
+     * Opening a namespace must waive only unknown-key detection. Its declared
+     * leaves keep reading their variables, so the value is the one the source
+     * carries rather than the schema default. This is the property a source
+     * filter cannot provide: filtering the OTEL_ prefix out of the source also
+     * unbinds OTEL_ENABLED, and the default then manufactures a plausible
+     * value while the variable silently stops being read.
+     */
+    const config = validateEnv(
+      openSchema,
+      {
+        DATABASE_URL: 'https://db.example.com',
+        OTEL_ENABLED: 'true',
+        OTEL_EXPORTER_OTLP_ENDPOINT: 'http://collector:4318'
+      },
+      { strict: true }
+    )
+
+    expect(config.otel.enabled).toBe(true)
+  })
+
+  it('still reports an invalid value on a declared leaf of an open namespace', () => {
+    /**
+     * Validation is untouched.
+     *
+     * The waiver covers undeclared names only; a declared leaf whose value
+     * fails its schema must still fail the boot, so opening a namespace never
+     * weakens the validation it does perform.
+     */
+    const strictSchema = defineEnv({
+      otel: z.object({ port: z.coerce.number().int().max(65535) }).meta({ open: true })
+    })
+    const error = captureError(strictSchema, { OTEL_PORT: '70000' }, { strict: true })
+    const issues = issuesByVariable(error)
+
+    expect(issues.get('OTEL_PORT')?.code).toBe(ConfigErrorCode.INVALID)
+  })
+
+  it('keeps detection in force for a closed namespace declared alongside', () => {
+    /**
+     * Waiver scope.
+     *
+     * The flag is per namespace, not per schema: a stray variable under a
+     * sibling namespace that did not declare itself open must still be
+     * reported, or one open namespace would disable strict mode everywhere.
+     */
+    const error = captureError(
+      openSchema,
+      {
+        DATABASE_URL: 'https://db.example.com',
+        DATABASE_TYPO: 'oops',
+        OTEL_EXPORTER_OTLP_ENDPOINT: 'http://collector:4318'
+      },
+      { strict: true }
+    )
+    const issues = issuesByVariable(error)
+
+    expect(issues.get('DATABASE_TYPO')?.code).toBe(ConfigErrorCode.UNKNOWN_KEY)
+    expect(issues.has('OTEL_EXPORTER_OTLP_ENDPOINT')).toBe(false)
+  })
+
+  it('reports a stray variable under a closed namespace nested inside an open prefix', () => {
+    /**
+     * Longest-prefix match wins over the waiver.
+     *
+     * When a closed namespace declares a longer prefix inside an open one
+     * (`otelExporter` under `otel`), the more specific namespace claims the
+     * variable and still reports it, so opening a broad prefix does not
+     * silently open every narrower namespace beneath it.
+     */
+    const nestedSchema = defineEnv({
+      otel: z.object({ enabled: z.coerce.boolean().default(false) }).meta({ open: true }),
+      otelExporter: z.object({ timeoutMs: z.coerce.number().int().default(10_000) })
+    })
+    const error = captureError(nestedSchema, { OTEL_EXPORTER_TYPO: 'oops' }, { strict: true })
+    const issues = issuesByVariable(error)
+
+    expect(issues.get('OTEL_EXPORTER_TYPO')?.path).toBe('otelExporter')
+  })
+
+  it('accepts a typo under an open namespace, the documented cost of the waiver', () => {
+    /**
+     * The hole the waiver opens, pinned deliberately.
+     *
+     * A foreign variable is indistinguishable from a misspelled local one, so
+     * OTEL_ENABLD passes and `otel.enabled` falls back to its default. This
+     * test exists so the trade-off is a stated contract rather than a surprise,
+     * and so a future change that closes it fails visibly here.
+     */
+    const config = validateEnv(
+      openSchema,
+      { DATABASE_URL: 'https://db.example.com', OTEL_ENABLD: 'true' },
+      { strict: true }
+    )
+
+    expect(config.otel.enabled).toBe(false)
+  })
+})
+
 describe('validateEnv authored custom messages', () => {
   const storageSchema = defineEnv({
     storage: z

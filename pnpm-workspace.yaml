@@ -4,6 +4,11 @@
 # this map. Without an entry, `pnpm install` exits with ERR_PNPM_IGNORED_BUILDS
 # rather than warning.
 allowBuilds:
+  # Optional native dependency of jest-haste-map, used only to speed up
+  # `jest --watch`. Jest falls back to its own polling watcher without it, and
+  # no pipeline job runs watch mode, so the native build buys nothing here and
+  # is denied like any other unreviewed build script.
+  '@parcel/watcher': false
   esbuild: true
   unrs-resolver: true
 

@@ -2,7 +2,8 @@ import js from '@eslint/js'
 import tsPlugin from '@typescript-eslint/eslint-plugin'
 import tsParser from '@typescript-eslint/parser'
 import prettierConfig from 'eslint-config-prettier'
-import importPlugin from 'eslint-plugin-import'
+import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript'
+import { createNodeResolver, importX } from 'eslint-plugin-import-x'
 import prettier from 'eslint-plugin-prettier'
 import security from 'eslint-plugin-security'
 import globals from 'globals'
@@ -52,20 +53,33 @@ export default [
     },
     plugins: {
       '@typescript-eslint': tsPlugin,
-      import: importPlugin,
+      'import-x': importX,
       prettier,
       security
     },
     settings: {
-      'import/resolver': {
-        typescript: {
+      // The dependency parser is separate from the resolver, and both are
+      // required. The resolver answers where a specifier points; the parser
+      // answers what that file exports. A graph rule opens each resolved
+      // dependency and parses it itself, skipping in silence any extension it
+      // cannot map to a parser -- so without this mapping `no-cycle`, `named`
+      // and `no-unused-modules` report nothing on a TypeScript project while
+      // `--print-config` still shows them enabled.
+      'import-x/parsers': {
+        '@typescript-eslint/parser': ['.ts']
+      },
+      // An ordered array of resolver factories, not the named object of the
+      // legacy `import-x/resolver` key. import-x ships only the node resolver,
+      // so eslint-import-resolver-typescript stays required.
+      'import-x/resolver-next': [
+        createTypeScriptImportResolver({
           alwaysTryTypes: true,
           project: './tsconfig.json'
-        },
-        node: {
+        }),
+        createNodeResolver({
           extensions: ['.js', '.ts']
-        }
-      }
+        })
+      ]
     },
     rules: {
       // TypeScript, strict: zero `any`, explicit return types on exports.
@@ -112,7 +126,7 @@ export default [
       'security/detect-possible-timing-attacks': 'error',
 
       // Import ordering: node: -> external -> internal -> parent/sibling
-      'import/order': [
+      'import-x/order': [
         'error',
         {
           groups: ['builtin', 'external', 'internal', ['parent', 'sibling'], 'index'],
@@ -131,8 +145,8 @@ export default [
           }
         }
       ],
-      'import/no-cycle': 'error',
-      'import/no-self-import': 'error',
+      'import-x/no-cycle': 'error',
+      'import-x/no-self-import': 'error',
 
       // Prettier reads from .prettierrc; no inline options to avoid conflicts.
       'prettier/prettier': 'warn'

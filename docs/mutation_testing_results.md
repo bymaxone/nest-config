@@ -1,6 +1,6 @@
 # Mutation Testing Results: @bymax-one/nest-config
 
-> **Last run:** 2026-08-14
+> **Last run:** 2026-08-29
 > **Command:** `pnpm mutation` (Stryker 9, jest runner, `coverageAnalysis: perTest`, `ignoreStatic: true`, `break: 95`)
 > **Report:** [`../reports/mutation/mutation.html`](../reports/mutation/mutation.html)
 > **Plan:** [`mutation_testing_plan.md`](./mutation_testing_plan.md)
@@ -9,19 +9,19 @@
 
 | Metric                                                 | Value                     |
 | ------------------------------------------------------ | ------------------------- |
-| **Global mutation score**                              | **99.61 %**               |
+| **Global mutation score**                              | **99.62 %**               |
 | Break threshold (`thresholds.break`)                   | 95 % -> **PASS (exit 0)** |
 | Aspirational target (`thresholds.high`)                | 99 % -> **reached**       |
-| Killed                                                 | 254                       |
+| Killed                                                 | 259                       |
 | Survived (equivalent, and unable to carry a directive) | 1                         |
 | Timeout (counts as detected)                           | 0                         |
-| Type-invalid mutants (checker-discarded, excluded)     | 171                       |
+| Type-invalid mutants (checker-discarded, excluded)     | 174                       |
 
-Score = `killed / (killed + survived)` = `254 / 255` = **99.61 %**, up from **95.74 %** and a
+Score = `killed / (killed + survived)` = `259 / 260` = **99.62 %**, up from **95.74 %** and a
 **89.11 %** baseline. `pnpm mutation` exits green against `break: 95`, and now also clears the
 `high: 99` target.
 
-Two moves produced that number, and they are different in kind.
+Three moves produced that number, and they are different in kind.
 
 **95.74 % -> 99.59 % was not new tests.** The eleven equivalents were already argued here and
 left to survive. Ten of them now carry their reason as an inline directive, so Stryker excludes
@@ -33,6 +33,10 @@ before or after.
 `env-validator.ts`: 14 that count toward the score, all killed, and 3 the type checker discards
 (the type-invalid total moves 168 -> 171). So the denominator grew by 14 while the survivor count
 held at one. Nothing was silenced to get there — see the dated re-run at the end.
+
+**99.61 % -> 99.62 % is the open-namespace opt-out, again denominator growth.** The feature
+added 5 counted mutants, all killed, while the type-invalid total moved 171 -> 174. The survivor
+count held at one. See the dated re-run at the end.
 
 ## Approach to equivalents: documented in the source
 
@@ -85,7 +89,7 @@ non-equivalent survivors:
 | `testing/placeholder-synthesizer.ts` | 100.00 % | 0 (1 silenced)         |
 | `env-validator.ts`                   | 100.00 % | 0 (5 silenced)         |
 | `deep-freeze.ts`                     | 100.00 % | 0 (4 silenced)         |
-| `source-mapping.ts`                  | 93.33 %  | 1 (cannot be silenced) |
+| `source-mapping.ts`                  | 94.74 %  | 1 (cannot be silenced) |
 
 `config.module-definition.ts`, `config.options.ts`, `config.tokens.ts`,
 `define-env.ts`, `types.ts`, and `testing/config-testing.module.ts` produce only
@@ -237,6 +241,40 @@ survivor count did not change. `env-validator.ts` — the file the
 release changed — scores **100.00 %** with **0 survivors**, including the whitespace-collapsing
 regex and the reserved-default comparison, which the new tests kill by asserting the rendered
 report line rather than the issue object.
+
+The single counted survivor is unchanged: the acronym regex in `toScreamingSnake`
+(`source-mapping.ts`), argued above and left in the denominator because a directive cannot
+attach inside a method chain.
+
+---
+
+## Re-run — 2026-08-29
+
+Measured as the gate for the open-namespace strict opt-out (`meta({ open: true })` on a
+namespace), on `feat/open-namespace-strict-opt-out`.
+
+| Metric             | Value           |
+| ------------------ | --------------- |
+| **Mutation score** | **99.62 %**     |
+| Killed             | 259             |
+| Surviving mutants  | 1               |
+| Break threshold    | 95 % -> PASS    |
+| High target        | 99 % -> reached |
+
+The score moved 99.61 % -> 99.62 % by denominator growth, not by silencing: the change added 5
+counted mutants, all killed, while the type-invalid total moved 171 -> 174. Both touched files
+are covered — `env-validator.ts` stays at **100.00 %**, and `source-mapping.ts` rises
+93.33 % -> 94.74 % (18 killed of 19 counted) because its denominator grew while its single
+survivor did not move.
+
+Read from the report rather than inferred, the five sit on the two new lines. `if (match.open)
+continue` in `detectUnknownKeys` carries one counted `ConditionalExpression` (a second is
+type-invalid and discarded); the suite constrains it from both sides, since a namespace declared
+open must skip `OTEL_EXPORTER_OTLP_ENDPOINT` while a closed one declared beside it must still
+report `DATABASE_TYPO`. `readOpenFlag`'s `meta()?.open === true` carries the other four — two
+`ConditionalExpression`, one `EqualityOperator` and one `BooleanLiteral` — killed by the pair of
+tests that open a namespace on the literal `true` and leave it closed on the string `'true'`,
+which is what pins the flag to the literal rather than to truthiness.
 
 The single counted survivor is unchanged: the acronym regex in `toScreamingSnake`
 (`source-mapping.ts`), argued above and left in the denominator because a directive cannot

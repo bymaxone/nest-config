@@ -48,6 +48,12 @@ export interface BymaxConfigModuleOptions<TSchema extends EnvSchema = EnvSchema>
   /**
    * When true, source variables that match a declared namespace prefix but no
    * declared leaf produce `BYMAX_CONFIG_UNKNOWN_KEY` issues. Defaults to false.
+   *
+   * The prefix is claimed whole, so a namespace sharing its prefix with another
+   * program (`OTEL_` with an OpenTelemetry SDK, `REDIS_` with a compose file)
+   * would reject that program's variables. Declare such a namespace
+   * `meta({ open: true })` to waive the check for the rest of its prefix while
+   * its own leaves stay bound and validated.
    */
   readonly strict?: boolean
 }

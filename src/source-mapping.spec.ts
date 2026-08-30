@@ -4,8 +4,9 @@
  * Layer: unit.
  * Goal: prove the derivation from nested config path to SCREAMING_SNAKE_CASE
  * variable name (single word, camelCase, numeric suffix), that a meta({ env })
- * override wins over derivation, and that the full mapping table for a
- * representative schema is stable.
+ * override wins over derivation, that a namespace's meta({ open: true })
+ * opt-out is resolved onto its prefix entry, and that the full mapping table
+ * for a representative schema is stable.
  * Mocks: none.
  */
 
@@ -138,9 +139,62 @@ describe('resolveNamespacePrefixes derivation', () => {
     })
 
     expect(resolveNamespacePrefixes(schema)).toEqual([
-      { namespace: 'server', prefix: 'SERVER_' },
-      { namespace: 'database', prefix: 'DATABASE_' },
-      { namespace: 'oauth2', prefix: 'OAUTH2_' }
+      { namespace: 'server', prefix: 'SERVER_', open: false },
+      { namespace: 'database', prefix: 'DATABASE_', open: false },
+      { namespace: 'oauth2', prefix: 'OAUTH2_', open: false }
+    ])
+  })
+
+  it('reports open true for a namespace declared meta({ open: true })', () => {
+    /**
+     * Open-namespace opt-out.
+     *
+     * A namespace that shares its prefix with another program declares itself
+     * open; the resolved entry must carry the flag so strict detection can
+     * waive the rest of that prefix.
+     */
+    const schema = defineEnv({
+      otel: z.object({ enabled: z.coerce.boolean().default(false) }).meta({ open: true }),
+      database: z.object({ url: z.url() })
+    })
+
+    expect(resolveNamespacePrefixes(schema)).toEqual([
+      { namespace: 'otel', prefix: 'OTEL_', open: true },
+      { namespace: 'database', prefix: 'DATABASE_', open: false }
+    ])
+  })
+
+  it('leaves a namespace closed when its metadata omits the open key', () => {
+    /**
+     * Unrelated metadata.
+     *
+     * Metadata is a general-purpose Zod facility; carrying a description or any
+     * other key must not open a namespace, or an unrelated annotation would
+     * silently disable a safety check.
+     */
+    const schema = defineEnv({
+      database: z.object({ url: z.url() }).meta({ description: 'primary store' })
+    })
+
+    expect(resolveNamespacePrefixes(schema)).toEqual([
+      { namespace: 'database', prefix: 'DATABASE_', open: false }
+    ])
+  })
+
+  it('leaves a namespace closed when open is truthy but not the literal true', () => {
+    /**
+     * Strict flag reading.
+     *
+     * The flag waives a safety check, so it is granted only on an unambiguous
+     * `true`. A truthy value of another type (here the string 'true') must not
+     * be read as intent to open the namespace.
+     */
+    const schema = defineEnv({
+      database: z.object({ url: z.url() }).meta({ open: 'true' })
+    })
+
+    expect(resolveNamespacePrefixes(schema)).toEqual([
+      { namespace: 'database', prefix: 'DATABASE_', open: false }
     ])
   })
 })

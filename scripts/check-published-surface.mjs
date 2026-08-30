@@ -407,7 +407,9 @@ function checkChangelog() {
   } catch {
     // No network or no remote — the local tags below are then all there is.
   }
-  let released = []
+  // Declared without a value: the try below either assigns it or the catch
+  // returns, so an initialiser would be a store nothing ever reads.
+  let released
   try {
     released = execFileSync('git', ['tag', '--list', 'v*.*.*'], { cwd: ROOT, encoding: 'utf8' })
       .split('\n')

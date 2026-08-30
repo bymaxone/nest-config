@@ -48,6 +48,13 @@ jobs:
       - uses: bymaxone/.github/.github/actions/setup-node-pnpm@v1
       - name: Mutation directives parse and carry their reason
         run: pnpm check:mutants
+      - name: Import-graph rules can see the module graph
+        # A graph rule resolves a dependency and then parses it separately, and
+        # it skips in silence any extension it cannot map to a parser. So the
+        # rule reports nothing on a TypeScript project while `--print-config`
+        # still shows it enabled -- which is how a cycle gate stays green on a
+        # real cycle. This makes one and requires the lint to reject it.
+        run: pnpm check:lint-graph
       - name: Build all subpaths
         run: pnpm build
       - name: Verify build output integrity

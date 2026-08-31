@@ -189,7 +189,7 @@ to act on — it asks for history to be rewritten.
 
 ## Where this repository narrows a shared rule
 
-The block above holds across every Bymax repository. What follows is the sharper form five of its
+The block above holds across every Bymax repository. What follows is the sharper form four of its
 rules take here, plus the one thing about this library a reviewer cannot infer from the tree.
 
 ### The public surface is `src/index.ts`, and `./internal` is not it
@@ -206,23 +206,6 @@ breaking change is **wrong** — `resolveSourceNames`, `createValidatedConfig` a
 barrel (`NamespacePrefix`, `resolveNamespacePrefixes`) is module-private and freer still. Adding a
 name to `src/index.ts` is the real finding: it is new public surface, it is permanent, and it is
 raised with the maintainer before a version number is written rather than absorbed into a release.
-
-### The 50-line limit is the `it()` callback, not the `describe()` group
-
-`describe` is a grouping construct, not a unit of work: it holds a shared fixture and the cases that
-read it. Measuring it against the function limit flags the file's structure rather than anything a
-change did, and it does so retroactively — the pre-existing groups in `src/env-validator.spec.ts`
-run to 89, 149 and 189 lines, so the reading produces findings on suites nobody touched.
-
-The unit that has to stay small is the `it()` callback, and it does: the largest in
-`src/env-validator.spec.ts` is 40 lines, and every case added with the open-namespace opt-out is
-between 16 and 29. One is genuinely over — the inline-snapshot contract test in
-`src/source-mapping.spec.ts`, at 60 lines — and it is over because the snapshot is the assertion.
-
-**Safe path**, and it is the shared rule's own: extract by responsibility. A new behaviour gets its
-own `describe` beside the existing ones, which is what growth looks like here; splitting a cohesive
-group into sub-groups to reach a line count is the extraction-by-line-count the shared rule names as
-the wrong move.
 
 ### A `// Stryker disable` directive is not a suppression
 

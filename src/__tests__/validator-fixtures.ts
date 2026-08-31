@@ -17,6 +17,14 @@ import { validateEnv } from '../env-validator'
 import { BymaxConfigValidationError } from '../errors'
 import type { ConfigIssue } from '../errors'
 
+/**
+ * The representative schema the validator specs are written against.
+ *
+ * Covers the shapes whose interaction the specs need: a namespace whose leaves
+ * all carry defaults, one that mixes a required leaf with a defaulted one, and
+ * one holding a `meta({ env })` override, so a spec can reach a missing, an
+ * invalid and a renamed variable from a single fixture.
+ */
 export const appSchema = defineEnv({
   server: z.object({
     port: z.coerce.number().int().min(1).max(65535).default(3000),
@@ -32,6 +40,13 @@ export const appSchema = defineEnv({
   })
 })
 
+/**
+ * The smallest source that satisfies {@link appSchema}.
+ *
+ * Carries only the leaves with no default, so a spec adds the one variable it is
+ * about and every other value is the schema's own — which keeps a failure
+ * attributable to the variable under test rather than to the fixture.
+ */
 export const validSource = {
   DATABASE_URL: 'https://db.example.com',
   AUTH_JWT_SECRET: 'k'.repeat(40),

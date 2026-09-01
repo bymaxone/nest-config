@@ -28,3 +28,11 @@ overrides:
   'fast-uri': '^3.1.4'
   'protobufjs': '^7.6.5'
   'qs': '^6.15.2'
+  # GHSA-73wf-gq98-2v4g and GHSA-c83g-rgw3-j3cx (both CVSS 7.5) — reachable only
+  # through Stryker's Babel instrumenter, so development-scoped and never in the
+  # published package. Patched rather than ignored, on the same reasoning as the
+  # entries above: an ignore entry is a standing exception a later reader has to
+  # re-audit, while a floor stops applying the moment nothing resolves below it.
+  # Nothing caps it — @babel/helper-compilation-targets asks for ^4.24.0 and
+  # update-browserslist-db for >= 4.21.0.
+  'browserslist': '^4.28.7'

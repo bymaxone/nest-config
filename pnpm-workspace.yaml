@@ -4,10 +4,31 @@
 # this map. Without an entry, `pnpm install` exits with ERR_PNPM_IGNORED_BUILDS
 # rather than warning.
 allowBuilds:
-  # Optional native dependency of jest-haste-map, used only to speed up
-  # `jest --watch`. Jest falls back to its own polling watcher without it, and
-  # no pipeline job runs watch mode, so the native build buys nothing here and
-  # is denied like any other unreviewed build script.
+  # Reached through jest-haste-map, which declares it under `dependencies` rather
+  # than `optionalDependencies`, so it arrives with jest rather than being chosen
+  # here.
+  #
+  # `false` is not the cautious half of a real choice, it is the only value that
+  # does anything. The package's install script is `node scripts/build-from-source.js`,
+  # whose body runs only when `npm_config_build_from_source === 'true'`, so under
+  # an ordinary install it is a no-op and `true` would compile nothing. What
+  # `false` buys is pnpm treating the package as reviewed instead of failing the
+  # install with ERR_PNPM_IGNORED_BUILDS.
+  #
+  # So with that variable unset — every install this repository and its pipeline
+  # perform — `false` and `true` are behaviourally identical, which is a stronger
+  # statement than "denying is safer": there is no trade-off to weigh. The two
+  # diverge only for someone who deliberately sets
+  # `npm_config_build_from_source=true`, and denying that compile is the policy
+  # this entry exists to state.
+  #
+  # The binding does not come from the build in either case. `index.js` resolves
+  # `@parcel/watcher-${process.platform}-${process.arch}` first, one of twelve
+  # prebuilt packages, and reaches `./build/Release/watcher.node` only if that
+  # fails. On the twelve, requiring the module with no `build/` directory present
+  # returns subscribe, unsubscribe, writeSnapshot and getEventsSince. On any other
+  # target the require throws — under `true` as well, since the gated script
+  # builds nothing there during an ordinary install.
   '@parcel/watcher': false
   esbuild: true
   unrs-resolver: true

@@ -67,12 +67,12 @@ it is about.
 
 **Safe path**, by the kind of claim:
 
-| Claim about                         | Read this                                                                      |
-| ----------------------------------- | ------------------------------------------------------------------------------ |
-| A library's API **shape**           | `node_modules/<pkg>/dist/**/*.d.ts` in this tree                               |
-| A library's **runtime behaviour**   | that version's changelog entry, its documentation, or a test that exercises it |
-| Commit authorship, dates or history | `git log --format='%an <%ae> / %cn <%ce>' <sha>`                               |
-| What a file contains                | the file at the revision under review, not an earlier one                      |
+| Claim about                             | Read this                                                                      |
+| --------------------------------------- | ------------------------------------------------------------------------------ |
+| A library's API **shape**               | `node_modules/<pkg>/dist/**/*.d.ts` in this tree                               |
+| A library's **runtime behaviour**       | that version's changelog entry, its documentation, or a test that exercises it |
+| A commit's author or committer identity | out of scope: it is not text a change introduces                               |
+| What a file contains                    | the file at the revision under review, not an earlier one                      |
 
 The first two rows are separate on purpose, and the rule below says why: a field can stay optional
 in the published type while becoming mandatory in behaviour. A `.d.ts` settles what a signature
@@ -137,11 +137,32 @@ A failing gate means the code is wrong, the type is wrong, or the rule is wrong.
 whichever it is. Changing a rule's configuration with a stated reason is legitimate; scattering
 per-call-site silencers is not.
 
+### A key built from more than one field keeps its boundaries
+
+A key or digest derived from **two or more variable fields** must not let a field's content move the
+boundary between them. `${tenantId}:${recipient}` makes `('a:b','c')` and `('a','b:c')` one key,
+which no digest strength repairs, and one tenant's lookup then resolves another's record. Rejecting
+empty fields does not fix it, and neither does a caller that validates its input — the property has
+to hold in the construction. A fixed prefix beside a single field is not this shape.
+
+**Safe path:** encode each field so it cannot contain the delimiter, or hash each to a fixed width.
+Any other composition needs an argument that every boundary is recoverable, and one bounded field
+does not rescue two free ones beside it. Then assert it in a test: where the property holds only
+because of the values in play, the next one added takes it away and nothing says so.
+
 ### Comments state constraints, never history
 
 A comment must read as true for whoever opens the file next. Flag any comment that narrates what a
 previous version did, names a phase, task, ticket or review round, or explains a change rather than
 the code. **Safe path:** state the constraint that still holds, and let `git log` carry the history.
+
+Evidence for a constraint is not history, and how the evidence was obtained does not decide which it
+is. The test is whether the fact still binds the next reader. A measurement that predicts what they
+will hit if they take the other path — what the alternative did when it was tried, what the cost is
+in numbers — belongs beside the constraint it supports, whether it came from a deliberate trial or
+from something breaking. What ages is the part that cannot recur for them: what a previous version
+of this code did, a version number, a registry state, a review round, a failure that has since been
+fixed. Flag those; keep the measurement.
 
 ### Size and layering
 
@@ -177,13 +198,15 @@ everything else. A `docs/` language other than English is a repository-owner dec
 narrowings, not a convention a contributor may introduce.
 
 No commit, pull request, comment or code may attribute authorship to an AI assistant or coding tool,
-in any form. **This governs text a change introduces** — a trailer, a "generated with" line, a
+in any form. **Only text the change introduces is in scope** — a trailer, a "generated with" line, a
 signature in a comment or a description.
 
-Git's own author and committer fields are set by the contributor's git configuration rather than by
-anything in the diff. Before reporting one as a violation, read it:
-`git log -1 --format='%an <%ae> / %cn <%ce>' <sha>`. The claim is trivially checkable and expensive
-to act on — it asks for history to be rewritten.
+A commit's author and committer fields are not that: they come from the contributor's git
+configuration rather than from the diff, and a review reading the diff cannot see them. Never report
+an identity field, and never present a command's reconstructed output as evidence for one. Measured:
+eight P1 findings in a single day across four pull requests, each naming a commit SHA that does not
+exist in the repository it was reported against and quoting `git log` output no review had run. What
+each one asked for was a force-push rewriting published history.
 
 <!-- shared:end -->
 

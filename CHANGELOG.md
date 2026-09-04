@@ -11,6 +11,8 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-04
+
 ### Added
 
 - **A namespace can declare itself open, so `strict` is usable next to a library that
@@ -372,4 +374,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.1.1]: https://github.com/bymaxone/nest-config/compare/v1.1.0...v1.1.1
 [1.1.2]: https://github.com/bymaxone/nest-config/compare/v1.1.1...v1.1.2
 [1.1.3]: https://github.com/bymaxone/nest-config/compare/v1.1.2...v1.1.3
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.1.3...HEAD
+[1.2.0]: https://github.com/bymaxone/nest-config/compare/v1.1.3...v1.2.0
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.0...HEAD

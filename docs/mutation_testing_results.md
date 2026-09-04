@@ -1,7 +1,7 @@
 # Mutation Testing Results: @bymax-one/nest-config
 
-> **Last run:** 2026-08-29
-> **Command:** `pnpm mutation` (Stryker 9, jest runner, `coverageAnalysis: perTest`, `ignoreStatic: true`, `break: 95`)
+> **Last run:** 2026-09-04
+> **Command:** `pnpm mutation:full` (Stryker 9, jest runner, `coverageAnalysis: perTest`, `ignoreStatic: true`, `break: 95`) — the cold command, which the release gate requires; `pnpm mutation` reuses stored verdicts and cannot establish it
 > **Report:** [`../reports/mutation/mutation.html`](../reports/mutation/mutation.html)
 > **Plan:** [`mutation_testing_plan.md`](./mutation_testing_plan.md)
 
@@ -279,3 +279,68 @@ which is what pins the flag to the literal rather than to truthiness.
 The single counted survivor is unchanged: the acronym regex in `toScreamingSnake`
 (`source-mapping.ts`), argued above and left in the denominator because a directive cannot
 attach inside a method chain.
+
+---
+
+## Re-run — 2026-09-04
+
+The release gate for `v1.2.0`. Command: **`pnpm mutation:full`** — cold, with
+`reports/stryker-incremental.json` (1502091 bytes) deleted before the run, so every
+mutant was executed rather than replayed. Measured on the tree that gets tagged: no
+file under `src/` differs between this run and the tagged commit.
+
+An earlier attempt used `pnpm mutation` and finished in 59 seconds. It reported the
+same score and could not clear this gate: `incremental: true` meant it reused stored
+verdicts, and the bar asks for the survivor's argument to have been checked by
+_executing_ the mutant. Recording the command beside the score is what makes the
+difference legible — a score without one is not evidence, and duration does not
+substitute, since this cold run took 3m02s against incremental runs of 3m06s and 59s.
+
+| Metric                       | Value           |
+| ---------------------------- | --------------- |
+| **Mutation score**           | **99.62 %**     |
+| Killed                       | 259             |
+| Surviving mutants            | 1               |
+| Timeout                      | 0               |
+| Break threshold              | 95 % -> PASS    |
+| High target                  | 99 % -> reached |
+| Ignored (equivalents)        | 37              |
+| CompileError (type-invalid)  | 174             |
+| RuntimeError (unadjudicated) | **0**           |
+
+The last three are listed separately because collapsing them would hide what they
+are. `CompileError` is the type checker discarding a mutant and is a property of the
+toolchain. `Ignored` is a set of human decisions that can rot — each carries an
+inline reason, and `pnpm check:mutants` fails the build when a directive parses
+without one, so the reason is enforced rather than trusted. `RuntimeError` is a
+mutant the harness could not adjudicate at all, and there are none here.
+
+Unchanged in every respect from the previous run, which is the result the release
+needed: the ESLint 10 migration, three dependency waves and a test-file split moved
+no production source, and the mutant set moved with it. Every file scores 100.00
+except `source-mapping.ts` at 94.74 — 18 killed of 19 — for the single documented
+survivor, the acronym-quantifier regex argued above.
+
+The gate this clears is stated in `CONTRIBUTING.md`: 100%, or every survivor a
+documented, re-verified equivalent. One survivor, argued here, and the argument
+checked by running the mutant rather than reading it. A survivor that appeared
+without such an argument would block the release regardless of the percentage.
+
+Two things measured alongside it, because a score alone does not establish either.
+
+**The score is not bounded by double fidelity here.** A clean score cannot detect an
+over-permissive fake, since the mutant that would expose one dies against the same
+fake that hides it. The suite carries three `jest.fn()`, all in
+`config.providers.spec.ts` for `onValidationError` — a caller-supplied callback the
+code _invokes_, not a collaborator whose fabricated response the code consumes, so
+there is no faked behaviour able to hide a defect. The assertions discriminate on
+the argument rather than the call: `toHaveBeenCalledWith` pins the exact issue list
+taken from the real thrown error. Every other spec declares `Mocks: none`.
+
+**Run duration is not a stable figure, and it does not identify the command.** The
+cold run took **3m02s**, against a recorded 6-minute cold figure and incremental
+runs of 3m06s and 59s on this same tree; sibling repositories measured spreads near
+2x on an identical command. So elapsed time neither predicts the next run nor tells
+you whether the last one was cold — only the script invoked and the presence of
+`reports/stryker-incremental.json` do. Schedule against the outlier and finish
+early; a duration read off one run is not a budget, and it is not evidence.

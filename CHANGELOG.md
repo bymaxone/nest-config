@@ -39,6 +39,22 @@ as the GitHub Release body, so each released version needs a matching
   `OTEL_ENABLED`, whose `.default()` then manufactures a plausible value while the variable
   silently stops being read.
 
+### Security
+
+- **Development-only advisories cleared; the published package was never affected.** Eight
+  advisories landed against transitive development dependencies across this cycle:
+  `browserslist` (GHSA-73wf-gq98-2v4g, GHSA-c83g-rgw3-j3cx, CVSS 7.5 each), `fast-uri`
+  (GHSA-5jgf-p345-68v8, GHSA-jqff-g426-hqxp — host confusion; GHSA-f65p-4m7j-42xc,
+  GHSA-fph4-wmhf-6fwf — server-side request forgery; CVSS 7.5 each) and `qs`
+  (GHSA-4mjr-xmp4-gh2g, GHSA-x5fp-wj9c-mxmx, CVSS 6.3 each). All three are reached through
+  the mutation-testing and commit-tooling chains, none is a runtime dependency, and this
+  package ships `dist` alone — so no consumer resolved a vulnerable version through it.
+
+  Recorded here rather than omitted as internal because a consumer reading an advisory feed
+  needs to know whether a library in their tree pulled one in, and "it did not" is an answer
+  only the maintainer can give. The floors now sit above every affected range and the
+  lockfile resolves `browserslist@4.28.8`, `fast-uri@3.1.6` and `qs@6.16.0`.
+
 ### Documentation
 
 - **`strict` now documents what it claims before you enable it.** The option read as an

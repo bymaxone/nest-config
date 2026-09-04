@@ -46,9 +46,12 @@ overrides:
   'brace-expansion@2': '^2.1.3'
   'brace-expansion@5': '^5.0.8'
   'esbuild': '^0.28.1'
-  # GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf and
-  # GHSA-jqff-g426-hqxp (CVSS 7.5 each) — host confusion from skipped IDN
-  # canonicalisation, affecting >= 3.1.3 < 3.1.6.
+  # Four advisories, CVSS 7.5 each, in two classes, all fixed in 3.1.6. Host
+  # confusion: GHSA-5jgf-p345-68v8 (skipped IDN canonicalisation on
+  # scheme-relative references) and GHSA-jqff-g426-hqxp (percent-encoded scheme
+  # normalisation). Server-side request forgery: GHSA-f65p-4m7j-42xc (malformed
+  # IPv6 normalisation) and GHSA-fph4-wmhf-6fwf (repeated hostname
+  # percent-decoding). Their lower bounds differ; the floor covers all four.
   #
   # The floor sits above the advisory range rather than merely admitting a fixed
   # version, and that distinction is the whole of the protection: a caret that

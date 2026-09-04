@@ -1,7 +1,7 @@
 # Mutation Testing Results: @bymax-one/nest-config
 
 > **Last run:** 2026-09-04
-> **Command:** `pnpm mutation` (Stryker 9, jest runner, `coverageAnalysis: perTest`, `ignoreStatic: true`, `break: 95`)
+> **Command:** `pnpm mutation:full` (Stryker 9, jest runner, `coverageAnalysis: perTest`, `ignoreStatic: true`, `break: 95`) — the cold command, which the release gate requires; `pnpm mutation` reuses stored verdicts and cannot establish it
 > **Report:** [`../reports/mutation/mutation.html`](../reports/mutation/mutation.html)
 > **Plan:** [`mutation_testing_plan.md`](./mutation_testing_plan.md)
 
@@ -284,16 +284,36 @@ attach inside a method chain.
 
 ## Re-run — 2026-09-04
 
-The release gate for `v1.2.0`, measured on the tree that gets tagged: no file under
-`src/` differs between this run and the tagged commit.
+The release gate for `v1.2.0`. Command: **`pnpm mutation:full`** — cold, with
+`reports/stryker-incremental.json` (1502091 bytes) deleted before the run, so every
+mutant was executed rather than replayed. Measured on the tree that gets tagged: no
+file under `src/` differs between this run and the tagged commit.
 
-| Metric             | Value           |
-| ------------------ | --------------- |
-| **Mutation score** | **99.62 %**     |
-| Killed             | 259             |
-| Surviving mutants  | 1               |
-| Break threshold    | 95 % -> PASS    |
-| High target        | 99 % -> reached |
+An earlier attempt used `pnpm mutation` and finished in 59 seconds. It reported the
+same score and could not clear this gate: `incremental: true` meant it reused stored
+verdicts, and the bar asks for the survivor's argument to have been checked by
+_executing_ the mutant. Recording the command beside the score is what makes the
+difference legible — a score without one is not evidence, and duration does not
+substitute, since this cold run took 3m02s against incremental runs of 3m06s and 59s.
+
+| Metric                       | Value           |
+| ---------------------------- | --------------- |
+| **Mutation score**           | **99.62 %**     |
+| Killed                       | 259             |
+| Surviving mutants            | 1               |
+| Timeout                      | 0               |
+| Break threshold              | 95 % -> PASS    |
+| High target                  | 99 % -> reached |
+| Ignored (equivalents)        | 37              |
+| CompileError (type-invalid)  | 174             |
+| RuntimeError (unadjudicated) | **0**           |
+
+The last three are listed separately because collapsing them would hide what they
+are. `CompileError` is the type checker discarding a mutant and is a property of the
+toolchain. `Ignored` is a set of human decisions that can rot — each carries an
+inline reason, and `pnpm check:mutants` fails the build when a directive parses
+without one, so the reason is enforced rather than trusted. `RuntimeError` is a
+mutant the harness could not adjudicate at all, and there are none here.
 
 Unchanged in every respect from the previous run, which is the result the release
 needed: the ESLint 10 migration, three dependency waves and a test-file split moved
@@ -317,8 +337,10 @@ there is no faked behaviour able to hide a defect. The assertions discriminate o
 the argument rather than the call: `toHaveBeenCalledWith` pins the exact issue list
 taken from the real thrown error. Every other spec declares `Mocks: none`.
 
-**Run duration is not a stable figure on a shared machine.** This run took 59
-seconds against a previous incremental 3m06s and a recorded 6-minute cold figure,
-and sibling repositories measured spreads near 2x on an identical command and tree.
-Schedule against the outlier and finish early; a duration read off one run is not a
-budget.
+**Run duration is not a stable figure, and it does not identify the command.** The
+cold run took **3m02s**, against a recorded 6-minute cold figure and incremental
+runs of 3m06s and 59s on this same tree; sibling repositories measured spreads near
+2x on an identical command. So elapsed time neither predicts the next run nor tells
+you whether the last one was cold — only the script invoked and the presence of
+`reports/stryker-incremental.json` do. Schedule against the outlier and finish
+early; a duration read off one run is not a budget, and it is not evidence.

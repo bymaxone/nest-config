@@ -83,9 +83,16 @@ require a public repository; this repository is public, so those jobs run.
 
 Go-live is a deliberate, manual sequence performed by a maintainer:
 
-1. **Verify the gates locally.** `pnpm mutation`, `pnpm prepublishOnly`,
+1. **Verify the gates locally.** `pnpm mutation:full`, `pnpm prepublishOnly`,
    `pnpm build && pnpm test:e2e`, and `pnpm publish --dry-run` (confirm the
    tarball packs only `dist/`, `LICENSE`, `README.md`, and `CHANGELOG.md`).
+
+   **`mutation:full`, not `mutation`.** `stryker.config.json` sets
+   `incremental: true`, so `pnpm mutation` may reuse stored verdicts instead of
+   executing a mutant — and a reused verdict for a static mutant can be stale.
+   `mutation:full` deletes `reports/stryker-incremental.json` first, so every
+   mutant runs. An incremental run cannot establish the bar below, because the
+   bar is about mutants having been _executed_.
 
    The release bar for mutation is **100%, or every survivor a documented,
    re-verified equivalent** — not a percentage. `break: 95` in

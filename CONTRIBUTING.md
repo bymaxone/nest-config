@@ -83,10 +83,26 @@ require a public repository; this repository is public, so those jobs run.
 
 Go-live is a deliberate, manual sequence performed by a maintainer:
 
-1. **Verify the gates locally.** `pnpm mutation` (score at or above the break
-   threshold of 95), `pnpm prepublishOnly`, `pnpm build && pnpm test:e2e`, and
-   `pnpm publish --dry-run` (confirm the tarball packs only `dist/`, `LICENSE`,
-   `README.md`, and `CHANGELOG.md`).
+1. **Verify the gates locally.** `pnpm mutation`, `pnpm prepublishOnly`,
+   `pnpm build && pnpm test:e2e`, and `pnpm publish --dry-run` (confirm the
+   tarball packs only `dist/`, `LICENSE`, `README.md`, and `CHANGELOG.md`).
+
+   The release bar for mutation is **100%, or every survivor a documented,
+   re-verified equivalent** — not a percentage. `break: 95` in
+   `stryker.config.json` is the floor CI enforces on a branch; it is not what
+   clears a release.
+
+   A survivor qualifies only if `docs/mutation_testing_results.md` argues why no
+   test can observe a behavioural difference, and that argument was checked by
+   **running the mutant**, not by reading it. A survivor that is merely plausible
+   blocks the release like any other.
+
+   The distinction matters because the alternative readings are both worse. A
+   literal 100% would eventually force disabling a killable mutant to reach a
+   number, which this repository forbids and the results doc records as a
+   standing rule. A lower percentage would tolerate a real coverage gap, which is
+   exactly what the gate exists to catch.
+
 2. **Confirm the version.** `package.json` `version` and the top dated
    `CHANGELOG.md` heading must both read the version being released.
 3. **Confirm the repository is public.** Provenance publishing and the CodeQL,

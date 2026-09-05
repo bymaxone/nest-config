@@ -45,8 +45,27 @@ All of the following must pass:
 - **Build**: tsup produces ESM + CJS + `.d.ts` for every subpath
 - **Size**: every subpath stays within the budget in `scripts/check-size.mjs`
 
-Mutation testing (`pnpm mutation`) is a release gate, run manually before
+Mutation testing (`pnpm mutation:full`) is a release gate, run manually before
 tagging a version, never on every PR.
+
+### Three checks always report `SKIPPED`, and none of them is a path filter
+
+A pull request's rollup shows `ci / Format check`, `ci / Build` and
+`ci / Mutation testing` as `SKIPPED` on **every** run, whatever the diff touches.
+That is deliberate, and it is worth knowing because `SKIPPED` renders as a
+non-failure rather than as something visibly different from a pass.
+
+| Check              | Why it never runs                       | What covers it instead                                                            |
+| ------------------ | --------------------------------------- | --------------------------------------------------------------------------------- |
+| `Format check`     | No `format:check` script exists         | `prettier/prettier` inside ESLint, plus lint-staged on commit                     |
+| `Build`            | `run-build: false` to the reusable      | The `verify` job here — build, output integrity across every subpath, size budget |
+| `Mutation testing` | Push to `main` and manual dispatch only | The release gate, run cold before tagging                                         |
+
+There is no `paths` or `paths-ignore` filter anywhere in `ci.yml`, so nothing is
+skipped _because of_ which files a change touches — the same three skip on a
+one-line README edit and on a rewrite of `src/`. In particular `scripts/` is
+linted (`pnpm lint` covers `src` and `scripts`) and executed, since `verify` runs
+`pnpm check:mutants`.
 
 ## Commits, Conventional Commits
 

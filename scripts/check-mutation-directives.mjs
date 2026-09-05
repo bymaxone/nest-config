@@ -29,6 +29,10 @@
  * The mutator list is read from the installed Stryker. It lives behind an internal
  * path, so a failure to load it downgrades that single check to a notice rather than
  * failing the build on a Stryker upgrade.
+ *
+ * The list is version-specific and is read from the Stryker installed in the tree under
+ * inspection: `CallExpression` exists in instrumenter 10 and not in 9, so the same
+ * directive is valid in one repository and silences nothing in another.
  */
 
 import { readdirSync, readFileSync, statSync } from 'node:fs'
@@ -66,7 +70,12 @@ const TOOL_DIRECTIVE_RE =
  */
 async function loadMutatorNames() {
   try {
-    const require = createRequire(import.meta.url)
+    // Resolved from the tree being inspected, not from this file. The two differ the
+    // moment the script is run against another checkout, and then the mutator list
+    // comes from the wrong Stryker: a directive naming a mutator its own Stryker has
+    // and this one does not is reported as silencing nothing, which is a false
+    // positive of the most expensive kind -- acting on it deletes a working directive.
+    const require = createRequire(join(process.cwd(), 'package.json'))
     // The instrumenter is a transitive dependency, so under pnpm's strict layout it is
     // reachable from `core`'s own directory rather than from this package's root. `paths`
     // entries are directories to start the `node_modules` walk from, hence the `dirname`.

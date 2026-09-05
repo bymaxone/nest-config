@@ -343,11 +343,55 @@ What the waiver does and does not do:
   and `otelExporter` (closed), `OTEL_EXPORTER_TYPO` belongs to `otelExporter`
   and is still reported.
 
+#### Where prefixed variables come from that a search will not find
+
+Before enabling `strict`, know that grepping your repository for a prefix does not
+enumerate what reaches `process.env`. Two sources are invisible to that search, and
+both were found by adopters rather than by reading manifests.
+
+**A container's own `environment:` block.** Compose assigns variables to the
+container with no `${...}` on the host side to give them away:
+
+```yaml
+services:
+  app:
+    environment:
+      REDIS_PASSWORD: ${STACK_REDIS_PASSWORD:-}
+```
+
+`REDIS_PASSWORD` lands in the application's environment. Searching for `${REDIS_`
+finds nothing, because the interpolated name is the _other_ one.
+
+This one fails on the default path rather than only when someone opts in, and the
+reason is worth stating: **Compose assigns an unset interpolation the empty string,
+not absent.** Validation skips a variable whose value is `undefined` — an absent
+variable is the schema's business, not strict mode's — and `''` is not `undefined`.
+So the boot fails even when nobody set a password. That is deliberate: a validator
+that ignored empty strings would also ignore a real misconfiguration that sets one.
+
+**Kubernetes service links, which appear in no file at all.** With
+`enableServiceLinks` at its default, a pod receives Docker-link-compatible
+variables for every Service in its namespace. A Service named `redis` supplies
+`REDIS_PORT`, `REDIS_SERVICE_HOST`, `REDIS_SERVICE_PORT` and the
+`REDIS_PORT_6379_TCP*` family — all inside a closed `redis` namespace, none
+declared, none written down anywhere you can search. Under `strict` that is a crash
+loop in production over variables the application never reads, and it will not have
+appeared in CI.
+
+Set `enableServiceLinks: false` on the pod spec, or open the namespace. Managed
+add-ons injecting names like `REDIS_PUBLIC_URL` or `DATABASE_URL_UNPOOLED` are the
+same family.
+
 **The cost, stated plainly:** an open namespace cannot tell a foreign variable
-from a misspelled local one. Under an open `otel`, a typo of `OTEL_ENABLED`
-passes silently and the leaf falls back to its default. No design removes this —
-the two cases are indistinguishable by name — so open the namespaces whose
-prefix genuinely belongs to someone else, and leave the rest closed.
+from a misspelled local one. No design removes this — the two cases are
+indistinguishable by name — so open the namespaces whose prefix genuinely belongs
+to someone else, and leave the rest closed.
+
+The sharpest form of that cost is worth seeing before you accept it. The typo can
+be in the open namespace's **own** declared variable: write `OTEL_ENABLE` instead
+of `OTEL_ENABLED` and it is waived like any other unclaimed name, the leaf falls
+back to its default, and the feature you meant to switch on stays off with nothing
+reported. A closed namespace would have named that variable and refused to boot.
 
 > Filtering the foreign names out of `source` instead is **not** equivalent, and
 > is worse in a way that is easy to miss: removing `OTEL_*` from the source also

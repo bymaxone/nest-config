@@ -343,11 +343,13 @@ What the waiver does and does not do:
   and `otelExporter` (closed), `OTEL_EXPORTER_TYPO` belongs to `otelExporter`
   and is still reported.
 
-#### Where prefixed variables come from that a search will not find
+#### Where prefixed variables come from that a sweep will miss
 
-Before enabling `strict`, know that grepping your repository for a prefix does not
-enumerate what reaches `process.env`. Two sources are invisible to that search, and
-both were found by adopters rather than by reading manifests.
+Before enabling `strict`, know that reading your own repository does not enumerate
+what reaches `process.env`. Two sources defeat a migration sweep in different ways
+— one because the search you would naturally run is the wrong one, the other
+because there is nothing to search — and both were found by adopters rather than
+by reading manifests.
 
 **A container's own `environment:` block.** Compose assigns variables to the
 container with no `${...}` on the host side to give them away:

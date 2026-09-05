@@ -304,16 +304,34 @@ substitute, since this cold run took 3m02s against incremental runs of 3m06s and
 | Timeout                      | 0               |
 | Break threshold              | 95 % -> PASS    |
 | High target                  | 99 % -> reached |
-| Ignored (equivalents)        | 37              |
+| Ignored — `ignoreStatic`     | 19              |
+| Ignored — directive          | 18              |
 | CompileError (type-invalid)  | 174             |
 | RuntimeError (unadjudicated) | **0**           |
 
 The last three are listed separately because collapsing them would hide what they
 are. `CompileError` is the type checker discarding a mutant and is a property of the
-toolchain. `Ignored` is a set of human decisions that can rot — each carries an
-inline reason, and `pnpm check:mutants` fails the build when a directive parses
-without one, so the reason is enforced rather than trusted. `RuntimeError` is a
-mutant the harness could not adjudicate at all, and there are none here.
+toolchain. `RuntimeError` is a mutant the harness could not adjudicate at all, and
+there are none here.
+
+**`Ignored` is two categories wearing one label, and only one of them is a human
+decision.** 19 are static mutants dropped by `ignoreStatic: true` — a configuration
+property, closer to `CompileError` than to a judgement, and outside what
+`pnpm check:mutants` can see. The other 18 come from four `// Stryker disable`
+directives, each carrying an inline reason the check fails the build without.
+Counting them together would credit a config flag with the scrutiny the directives
+get.
+
+**Neither kind is executed, and the directive kind can rot.** An ignored mutant is
+excluded before the run, so a cold run does not re-adjudicate it: if a later test
+change makes one of those 18 killable, the directive keeps suppressing it and
+nothing reports the drift. `check:mutants` enforces that a reason exists and
+reaches the report; it cannot tell whether the reason is still true. So
+"re-verified by running the mutant" in the release gate means the argument was
+checked by execution **when it was written** — recorded in the entries above —
+rather than re-checked on every release. Re-establishing it means removing the
+directive and running, which is a deliberate audit rather than something a gate
+performs.
 
 Unchanged in every respect from the previous run, which is the result the release
 needed: the ESLint 10 migration, three dependency waves and a test-file split moved

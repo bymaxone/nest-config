@@ -104,6 +104,14 @@ Go-live is a deliberate, manual sequence performed by a maintainer:
    **running the mutant**, not by reading it. A survivor that is merely plausible
    blocks the release like any other.
 
+   **The bar reaches survivors, not ignored mutants.** A mutant suppressed by a
+   `// Stryker disable` directive is excluded before the run, so no release
+   re-adjudicates it: if a later test change makes it killable, the directive
+   keeps suppressing it and nothing reports the drift. `check:mutants` enforces
+   that each directive carries a reason; it cannot tell whether the reason is
+   still true. Auditing that means removing a directive and running — a
+   deliberate act, not something this gate performs.
+
    The distinction matters because the alternative readings are both worse. A
    literal 100% would eventually force disabling a killable mutant to reach a
    number, which this repository forbids and the results doc records as a

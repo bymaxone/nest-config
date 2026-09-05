@@ -11,6 +11,23 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Documentation
+
+- **`strict` names the two prefixed-variable sources a search will not find.** Both came
+  from an adopter enabling it in a real deployment. A container's own `environment:` block
+  assigns a variable whose host-side name is a different one, so a search over
+  interpolations misses it — and it fails on the default path, because Compose assigns an
+  unset interpolation the empty string rather than absent, and validation skips only
+  `undefined`. Kubernetes service links appear in no file at all: at the default
+  `enableServiceLinks`, a Service named `redis` supplies `REDIS_PORT`,
+  `REDIS_SERVICE_HOST`, `REDIS_SERVICE_PORT` and the `REDIS_PORT_6379_TCP*` family into a
+  closed `redis` namespace — a crash loop in production that never appears in CI.
+
+  The cost of an open namespace is also stated in its sharpest form rather than its
+  general one: the typo it cannot catch may be in that namespace's own declared variable,
+  so `OTEL_ENABLE` is waived, the leaf falls back to its default, and the feature stays
+  off with nothing reported.
+
 ## [1.2.0] - 2026-09-04
 
 ### Added

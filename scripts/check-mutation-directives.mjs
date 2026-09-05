@@ -31,8 +31,9 @@
  * failing the build on a Stryker upgrade.
  *
  * The list is version-specific and is read from the Stryker installed in the tree under
- * inspection: `CallExpression` exists in instrumenter 10 and not in 9, so the same
- * directive is valid in one repository and silences nothing in another.
+ * inspection. Instrumenter releases add and rename mutators, so the same directive can be
+ * valid in one repository and silence nothing in another; only that tree's own Stryker
+ * can say which.
  */
 
 import { readdirSync, readFileSync, statSync } from 'node:fs'

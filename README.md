@@ -359,8 +359,11 @@ services:
       REDIS_PASSWORD: ${STACK_REDIS_PASSWORD:-}
 ```
 
-`REDIS_PASSWORD` lands in the application's environment. Searching for `${REDIS_`
-finds nothing, because the interpolated name is the _other_ one.
+`REDIS_PASSWORD` lands in the application's environment. A repository-wide search
+for the prefix does find this line — but the search a migration actually reaches
+for is over interpolations, `${REDIS_`, and that one finds nothing, because the
+interpolated name is the _other_ one. The variable the container receives and the
+variable the host supplies are different names on the same line.
 
 This one fails on the default path rather than only when someone opts in, and the
 reason is worth stating: **Compose assigns an unset interpolation the empty string,

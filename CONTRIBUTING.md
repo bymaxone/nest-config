@@ -119,6 +119,21 @@ Go-live is a deliberate, manual sequence performed by a maintainer:
 4. **Tag from `main`.** Push an annotated `vX.Y.Z` tag matching the manifest
    version. The tag push triggers `release.yml`, which verifies the tag against
    `package.json`, re-runs the release gates, and publishes with provenance.
-5. **Post-publish smoke.** In a scratch directory outside the repository, install
-   the freshly published version alongside the NestJS 11 peers and boot a minimal
-   fixture to confirm the shipped artifact resolves and starts.
+5. **Post-publish verification.** Booting a fixture proves the package starts. It
+   does not connect what the registry serves to the build the gates measured, and
+   every gate above runs against a local build. Two checks close that gap.
+
+   **Compare the published tarball against a local pack**, under distinct
+   filenames — `npm pack @bymax-one/nest-config@<version>` and `npm pack` from the
+   repository, then `diff -r` the unpacked trees. Distinct names matter: packing
+   into the same directory overwrites the download, and the comparison then reads
+   a tarball against itself and reports success.
+
+   **Then a throwaway consumer installing from the registry**, not from a local
+   path: typecheck it under `--module nodenext --strict`, and import from all
+   three subpaths in ESM and CommonJS. Confirm `ConfigService` from the package
+   root is the same object as from `./internal` — a copied class is a different
+   injection token, and that is the property no source-level gate can see.
+
+   Read the exit code rather than chaining `&& echo` onto a pipeline; a `tail`
+   succeeding says nothing about the `tsc` before it.

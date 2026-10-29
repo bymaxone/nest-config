@@ -8,15 +8,15 @@ and triage them ahead of feature work.
 
 ## Supported versions
 
-Security patches are issued for the most recent minor on the active `1.x` line.
+Security patches are issued only for the latest minor release.
 
 | Version | Status                          |
 | ------- | ------------------------------- |
-| `1.0.x` | Active, receives security fixes |
-| `< 1.0` | End-of-life                     |
+| `1.2.x` | Active, receives security fixes |
+| `< 1.2` | Unsupported, upgrade            |
 
-If you are stuck on an older version and need a backport, open a private
-advisory (see below) and we will discuss feasibility on a case-by-case basis.
+Earlier versions receive no fixes and no backports. If you are on one, upgrade
+to the latest `1.2.x` release.
 
 ## Reporting a vulnerability
 
@@ -38,7 +38,7 @@ A useful report contains:
 
 - A clear description of the vulnerability and its impact (confidentiality,
   integrity, availability)
-- Step-by-step reproduction against the latest `0.x` release
+- Step-by-step reproduction against the latest `1.2.x` release
 - The affected subpath (`.` or `./testing`)
 - A suggested fix or mitigation, if you have one
 - Whether you would like to be credited in the published advisory, and how
@@ -80,7 +80,7 @@ The following classes are explicitly in scope:
 
 These are not vulnerabilities in `@bymax-one/nest-config` itself:
 
-- Issues only reproducible in versions older than `1.0.0`
+- Issues only reproducible in versions older than the latest `1.2.x` release
 - Misconfigurations in the consuming application, such as logging the typed
   config object's contents directly instead of through the package's error
   reporting path

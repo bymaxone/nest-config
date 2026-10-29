@@ -265,3 +265,7 @@ without either `meta({ open: true })` on that namespace or a stated reason for c
 whole. The trade-off the flag makes — an open namespace cannot tell a foreign variable from a
 misspelled local one — is documented under **Strict mode and shared prefixes** in `README.md`, and
 a review that proposes closing that hole should read it first.
+
+## Session memory (Obsidian vault)
+
+Lessons from earlier sessions live outside the repository, in the owner's Obsidian vault at `~/Documents/MyApps/obsidian/Brain/`, when it is present on this machine. Before a task, find this repository's hub under `02 - Areas/`: the table in `02 - Areas/Bymax/Bymax.md` maps each Bymax repository to its folder; for any other repository, search `02 - Areas/` for the repository name. Read the hub with its `Learnings.md` and `Decisions.md`, and the relevant stack notes under `03 - Resources/`. When the vault and the code disagree, the code wins. Record each non-obvious gotcha, root cause or decision in the hub as the vault's `_meta/conventions.md` describes; a repository without a hub gets one from `_meta/templates/project-hub.md`.

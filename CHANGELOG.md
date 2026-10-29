@@ -14,9 +14,9 @@ as the GitHub Release body, so each released version needs a matching
 ### Documentation
 
 - **Support policy: only the latest minor receives security fixes, and the Discussions
-  link is gone.** `SECURITY.md` supports `1.2.x` alone; earlier versions get no fix and no
+  link is gone.** `SECURITY.md` supports the latest minor alone; earlier versions get no fix and no
   backport, and the guidance is to upgrade. The issue-template chooser no longer links to
-  Discussions, which is disabled; the security contact by e-mail remains.
+  Discussions; the security contact by e-mail remains.
 
 - **`strict` names the two prefixed-variable sources a search will not find.** Both came
   from an adopter enabling it in a real deployment. A container's own `environment:` block

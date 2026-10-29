@@ -8,7 +8,7 @@ and triage them ahead of feature work.
 
 ## Supported versions
 
-Security patches are issued only for the latest minor release, currently `1.2.x`.
+Security patches are issued only for the latest minor release.
 
 | Version | Status                          |
 | ------- | ------------------------------- |

@@ -76,8 +76,8 @@ jobs:
     timeout-minutes: 15
 
     # Scorecard publishes SARIF to the Security tab and mints an OIDC token for
-    # the public scorecard.dev viewer; neither works on a private repository
-    # without GitHub Advanced Security, so it stays inactive until the repo is public.
+    # the public scorecard.dev viewer; neither works on a non-public (private or
+    # internal) repository without GitHub Advanced Security, so it stays inactive until the repo is public.
     needs: visibility
     if: ${{ needs.visibility.outputs.public == 'true' }}
 

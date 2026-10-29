@@ -1,10 +1,13 @@
 /**
  * @fileoverview Deterministic placeholder synthesizer for the testing subpath.
  * Walks a two-level `defineEnv` schema and produces a complete flat source
- * record whose values satisfy every declared constraint (string min/max/exact
- * lengths, url and email formats, integer ranges, enum membership, booleans)
- * without inventing meaningful secrets: placeholders are obvious repeated filler
- * or fixed tokens. Defaulted and optional leaves are omitted so the schema
+ * record whose values satisfy every declared constraint that any value can
+ * satisfy (string min/max/exact lengths, url and email formats, integer ranges,
+ * enum membership, booleans). A constraint no value can meet, such as a url
+ * `max` below the shortest valid URL or an empty integer window, gets the nearest
+ * value and is rejected by validation with the variable named. Placeholders
+ * never invent meaningful secrets: they are obvious repeated filler or fixed
+ * tokens. Defaulted and optional leaves are omitted so the schema
  * decides their value; nullable leaves are unwrapped to a concrete value. The
  * walk reads only Zod v4 schema internals (`_zod.def`) and never touches
  * `process.env`, a clock, or any source of randomness, so two runs are
@@ -253,8 +256,8 @@ function selectNumber(bounds: {
   if (lower !== undefined && upper !== undefined) {
     if (integer) {
       // Derive the admissible integer window from the (possibly fractional)
-      // bounds, respecting exclusivity, so the chosen integer is always inside
-      // the range: gt(0).max(1) -> [1,1]; min(1.1).max(2.2) -> [2,2].
+      // bounds, respecting exclusivity, so the chosen integer is inside the
+      // range whenever that window is non-empty: gt(0).max(1) -> [1,1]; min(1.1).max(2.2) -> [2,2].
       const lo = bounds.lowerExclusive ? Math.floor(lower) + 1 : Math.ceil(lower)
       const hi = bounds.upperExclusive ? Math.ceil(upper) - 1 : Math.floor(upper)
       return Math.floor((lo + hi) / 2)

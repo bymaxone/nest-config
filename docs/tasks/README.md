@@ -1,6 +1,6 @@
 # Development Tasks: @bymax-one/nest-config
 
-> **Last updated:** 2026-07-06
+> **Last updated:** 2026-07-16
 > **Source roadmap:** [`../development_plan.md`](../development_plan.md) · **Spec:** [`../technical_specification.md`](../technical_specification.md)
 
 Tasks live **one file per phase** in this folder (`phase-NN-<slug>.md`). Each phase file is self-contained: context, rules-of-phase, reference docs, a task index, the tasks (each with an executable 4-backtick **Agent prompt**), and a completion log.

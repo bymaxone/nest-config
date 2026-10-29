@@ -67,8 +67,8 @@ as the GitHub Release body, so each released version needs a matching
   GHSA-fph4-wmhf-6fwf — server-side request forgery; CVSS 7.5 each) and `qs`
   (GHSA-4mjr-xmp4-gh2g, GHSA-x5fp-wj9c-mxmx, CVSS 6.3 each). All three are reached through
   the mutation-testing and commit-tooling chains, none is a runtime dependency, and the
-  package's only runtime code is `dist` (beside `LICENSE`, `README.md`, `CHANGELOG.md` and the
-  manifest) — so no consumer resolved a vulnerable version through it.
+  package ships only `dist` as runtime code — so no consumer resolved a vulnerable version
+  through it.
 
   Recorded here rather than omitted as internal because a consumer reading an advisory feed
   needs to know whether a library in their tree pulled one in, and "it did not" is an answer

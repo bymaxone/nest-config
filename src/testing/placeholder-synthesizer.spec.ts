@@ -231,8 +231,8 @@ describe('synthesizePlaceholderSource', () => {
   })
 
   it('extends the placeholder URL to satisfy a minimum length', () => {
-    // Scenario: a url().min(n) longer than the base placeholder is padded on the
-    // path while staying a valid URL.
+    // Scenario: a url().min(n) longer than the base placeholder is padded in the
+    // host while staying a valid URL.
     const schema = defineEnv({ api: z.object({ endpoint: z.url().min(40) }) })
     const source = synthesizePlaceholderSource(schema)
     const endpoint = required(source, 'API_ENDPOINT')

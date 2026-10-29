@@ -64,8 +64,9 @@ non-failure rather than as something visibly different from a pass.
 There is no `paths` or `paths-ignore` filter anywhere in `ci.yml`, so nothing is
 skipped _because of_ which files a change touches — the same three skip on a
 one-line README edit and on a rewrite of `src/`. In particular `scripts/` is
-linted (`pnpm lint` covers `src` and `scripts`) and executed, since `verify` runs
-`pnpm check:mutants`.
+linted (`pnpm lint` covers `src` and `scripts`), but not every script runs in
+`ci.yml`. `check-published-surface.mjs` runs only through `prepublishOnly` and `dogfood-smoke-test.mjs` only in
+`release.yml`, so a change to either is linted and not executed by a pull request.
 
 ## Commits, Conventional Commits
 

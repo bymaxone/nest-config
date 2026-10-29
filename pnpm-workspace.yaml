@@ -62,9 +62,10 @@ overrides:
   'fast-uri': '^3.1.9'
   'protobufjs': '^7.6.5'
   # GHSA-4mjr-xmp4-gh2g and GHSA-x5fp-wj9c-mxmx (CVSS 6.3 each) — denial of
-  # service through an attacker-controlled isBuffer, affecting >= 2.2.5 < 6.16.0.
-  # Floored above the range on the same reasoning as fast-uri above.
-  'qs': '^6.16.0'
+  # service through an attacker-controlled isBuffer, affecting >= 2.2.5 < 6.16.0 —
+  # and GHSA-6pq8-jhm2-2vcw (CVSS 6.3), fixed in 6.16.1. Floored above the ranges
+  # on the same reasoning as fast-uri above.
+  'qs': '^6.16.1'
   # GHSA-73wf-gq98-2v4g and GHSA-c83g-rgw3-j3cx (both CVSS 7.5) — reachable only
   # through Stryker's Babel instrumenter, so development-scoped and never in the
   # published package. Patched rather than ignored, on the same reasoning as the

@@ -126,7 +126,7 @@
     "ts-node": "^10.9.2",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "zod": "^4.0.0"
+    "zod": "^4.6.7"
   },
   "keywords": [
     "nestjs",

@@ -125,7 +125,7 @@ pnpm add @bymax-one/nest-config @nestjs/common @nestjs/core reflect-metadata zod
 | `@nestjs/common`   | `^11.0.16` |
 | `@nestjs/core`     | `^11.1.18` |
 | `reflect-metadata` | `^0.2.0`   |
-| `zod`              | `^4.0.0`   |
+| `zod`              | `^4.6.6`   |
 
 ## 🚀 Quick Start
 

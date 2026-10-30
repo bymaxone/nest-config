@@ -11,6 +11,15 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Security
+
+- **The `zod` peer range now starts at `4.6.6`, the first release without
+  GHSA-mrhx-c7xc-m3w5** (high: memory exhaustion while validating oversized constrained
+  collections). The range `^4.0.0` declared installs below it as supported, and the
+  advisory applies to them in an application that validates untrusted collection input
+  through its own schemas. **Apply to a derived backend:** raise `zod` to `4.6.6` or later
+  (`pnpm up zod`); an install below it is outside the declared peer range.
+
 ### Documentation
 
 - **Support policy: only the latest minor receives security fixes, and the Discussions

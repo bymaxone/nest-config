@@ -197,9 +197,9 @@ aggregated report, never one violation at a time:
 ```
 BymaxConfigValidationError: environment validation failed (3 issues)
 
-  DATABASE_URL          missing required value (expected: url)
-  AUTH_JWT_SECRET        too short (expected: string, minimum 32 characters)
-  SERVER_PORT            invalid value (expected: integer between 1 and 65535)
+  DATABASE_URL          missing required value
+  AUTH_JWT_SECRET       too short (expected: string, minimum 32 characters)
+  SERVER_PORT           out of range (expected: number <= 65535)
 
 Fix the variables above and restart the process.
 ```
@@ -536,7 +536,7 @@ export class RawConfigConsumer {
 `EnvSchema`, `EnvShape`, `EnvOutput`, `EnvLeaf`, and `EnvNamespace` type the
 two-level schema shape produced by `defineEnv`; `Path<T>` and `PathValue<T, P>`
 are the template-literal utilities behind `ConfigService.get`'s compile-time
-dot-path inference, limited to the two-level namespace convention. All five
+dot-path inference, limited to the two-level namespace convention. All of them
 are exported for advanced generic code (custom decorators, typed wrappers)
 that needs to reference the schema shape directly.
 
@@ -621,7 +621,7 @@ guaranteed to be printed, logged, and pasted into an issue. That shapes the whol
 Every message this library generates states the _expected_ constraint — the type, the
 allowed enum options taken from the schema, the bound — and never the received value.
 `env-validator` and `report-formatter` each say so in their own contracts, and
-property-based tests hold them to it. The messages you write yourself are the exception,
+sentinel-secret tests hold them to it. The messages you write yourself are the exception,
 covered below.
 
 ### The service does not serialize its configuration
@@ -686,11 +686,11 @@ report.
 
 - **Runtime:** Node.js 24+
 - **Framework:** NestJS 11 (`ConfigurableModuleBuilder`, `@Global()`, `Symbol()` tokens)
-- **Validation:** Zod `^4` (peer) — the schema language, the coercion and the error source
+- **Validation:** Zod `^4.6.6` (peer) — the schema language, the coercion and the error source
 - **Build:** tsup — ESM + CJS per subpath, with `.d.ts` _and_ `.d.cts` declarations,
   and one shared `./internal` bundle so the module and its testing entry point hold
   a single class identity
-- **Tests:** Jest, including property-based tests over the report formatter + Stryker (mutation)
+- **Tests:** Jest, including sentinel-secret tests over the validator and the report formatter, + Stryker (mutation)
 - **TypeScript:** 5.x strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), zero `any`
 
 ---
@@ -701,7 +701,7 @@ Configuration decides whether a process may start at all, so the suite is held t
 beyond "the tests pass".
 
 - ✅ **100% line coverage** — statements, branches, functions and lines, enforced as a gate
-- ✅ **99.61% mutation score** — verified with [Stryker](https://stryker-mutator.io/) at
+- ✅ **99.62% mutation score** — verified with [Stryker](https://stryker-mutator.io/) at
   `break: 95`; ten provable equivalents carry their reason inline, and the one survivor left
   is an equivalent no directive can reach, so it stays counted rather than silenced
   ([report](./docs/mutation_testing_results.md))
@@ -755,7 +755,7 @@ import { envSchema } from './config/env.schema'
 import { FeatureProvider } from './feature.provider'
 
 const moduleRef = await Test.createTestingModule({
-  imports: [configTestingModule(envSchema, { server: { port: 0 } })],
+  imports: [configTestingModule(envSchema, { server: { port: 8080 } })],
   providers: [FeatureProvider]
 }).compile()
 ```

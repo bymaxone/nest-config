@@ -206,6 +206,9 @@ BymaxConfigValidationError: environment validation failed (3 issues)
 Fix the variables above and restart the process.
 ```
 
+The report has one line per variable: when a leaf fails several rules, the line shows the first
+one Zod lists, and fixing it can reveal the next on the following start.
+
 In a message this package generates, raw values are never printed — not
 truncated, not masked, absent. That is a hard guarantee, verified by tests. The
 one exception is a message you write yourself, described next.
@@ -257,6 +260,11 @@ rewriting, cloning, or wrapping them, so coercion and defaults stay explicit
 consumer choices. Leaves use `z.coerce.*` because the source arrives as
 strings (the shape of `process.env`).
 
+Two things follow from that. `z.coerce.boolean()` is `Boolean(value)`: any non-empty string,
+including `'false'`, becomes `true`, so use `z.stringbool()` for a flag. And a variable set to the
+empty string is present, not missing: `z.string()` accepts it and `z.coerce.number()` turns it into
+`0`, so add `.min(1)` or a bound where empty should fail.
+
 A leaf can override its derived variable name through schema metadata when a
 legacy name must be preserved:
 
@@ -285,6 +293,9 @@ otel: z.object({ enabled: z.stringbool().default(false) }).meta({ open: true })
 
 Only the literal `true` opens a namespace. Any other value, and any metadata
 without the key, leaves detection in force.
+
+Write `.meta({ open: true })` last: methods that build a new object schema, such as `.strict()`,
+`.extend()` or `.pick()`, drop the metadata and close the namespace again.
 
 ### `BymaxConfigModule`
 
@@ -316,6 +327,21 @@ BymaxConfigModule.forRootAsync({
   }),
   inject: [SecretsProvider]
 })
+```
+
+`forRootAsync` takes Nest's configurable-module options: `useFactory` with
+`inject` and `imports`, shown above; `useClass`, a class whose `create()` returns the options; and
+`useExisting`, which reuses a provider that is already registered (import its module through
+`imports`):
+
+```typescript
+class ConfigOptionsFactory {
+  public create(): { schema: typeof envSchema; source: Record<string, string | undefined> } {
+    return { schema: envSchema, source: { ...process.env } }
+  }
+}
+
+BymaxConfigModule.forRootAsync({ useClass: ConfigOptionsFactory })
 ```
 
 `isGlobal` defaults to `true` and can be set to `false` through the standard
@@ -431,6 +457,10 @@ Because validation completed at bootstrap, `get` never throws for a declared
 path: every leaf either passed validation, received its default, or the
 process did not start.
 
+The class is named `ConfigService`, as the one in `@nestjs/config` is; a backend that imports both
+aliases one of them: `import { ConfigService as BymaxConfigService } from '@bymax-one/nest-config'`.
+`has` is `value !== undefined`, so an absent optional leaf is `false` and a `null` is `true`.
+
 ### `BymaxConfigValidationError` and `ConfigIssue`
 
 ```typescript
@@ -537,9 +567,10 @@ failure, and `issues` is what an alert or a dashboard keys on per variable.
 
 ### Injection tokens
 
-`BYMAX_CONFIG` and `BYMAX_CONFIG_OPTIONS` are module-local `Symbol` tokens,
-exported for advanced factory-style wiring that needs the raw frozen config
-or the resolved options directly instead of going through `ConfigService`:
+`BYMAX_CONFIG` is a `Symbol` token for the raw frozen config, exported by the module for advanced
+factory-style wiring that does not go through `ConfigService`. `BYMAX_CONFIG_OPTIONS` is the token of
+the module's own options: it is provided inside the module only, so a provider in another module
+cannot inject it, and the options it holds include the raw `source` record. Do not build on it.
 
 ```typescript
 import { Inject, Injectable } from '@nestjs/common'
@@ -819,6 +850,25 @@ values elsewhere), applies selective overrides, then runs the exact
 production pipeline (validate, freeze), so a test exercises the same code
 path a running application does.
 
+```typescript
+// Leaves createTestConfig fills without an override:
+defineEnv({
+  text: z.object({ a: z.string().min(8), b: z.email(), c: z.url(), d: z.uuid() }),
+  time: z.object({
+    at: z.iso.datetime(),
+    on: z.iso.date(),
+    clock: z.iso.time(),
+    when: z.coerce.date()
+  }),
+  scalar: z.object({
+    n: z.coerce.number().int().min(1),
+    flag: z.stringbool(),
+    kind: z.enum(['a', 'b']),
+    fixed: z.literal('x')
+  })
+})
+```
+
 A leaf no placeholder can be known to satisfy, such as a
 `z.string().regex(...)` or a `.refine(...)` rule, makes the helper throw a
 `BymaxConfigValidationError` whose issue says `no placeholder satisfies this leaf` and names it
@@ -847,6 +897,13 @@ const moduleRef = await Test.createTestingModule({
   providers: [FeatureProvider]
 }).compile()
 ```
+
+Overrides mirror the `namespace.leaf` shape with every key optional and typed from the schema. Each value is converted with `String(value)` before validation, so give
+a leaf what its environment variable would hold; an object becomes `'[object Object]'`, and an override
+of `undefined` is ignored, so a defaulted leaf cannot be unset. Neither helper takes `strict`, a
+custom `source`, a hook or `isGlobal`: `configTestingModule` registers the module globally, and a
+failure case (a missing variable, a strict violation) is built with
+`BymaxConfigModule.forRoot({ schema, source, strict: true })` and a source you write.
 
 Placeholder synthesis never fabricates values that could accidentally pass a
 secret-strength constraint; length and format constraints are honored. The

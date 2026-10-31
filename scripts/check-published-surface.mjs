@@ -598,7 +598,8 @@ function scaffoldConsumer() {
       null,
       2
     )}\n`
-  ) // The names a snippet uses without introducing them, typed for real so a call
+  )
+  // The names a snippet uses without introducing them, typed for real so a call
   // made through one is checked instead of silently resolving to `any`.
   copyFileSync(join(ROOT, 'scripts', 'readme-prelude.d.ts'), join(GATE_DIR, 'prelude.d.ts'))
 }

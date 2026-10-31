@@ -67,15 +67,33 @@ function toScreamingSnake(segment: string): string {
   )
 }
 
+/** A schema node as far as the override walk needs it: its metadata and what it wraps. */
+interface OverrideNode {
+  meta(): { env?: unknown } | undefined
+  readonly _zod: { readonly def: { readonly innerType?: OverrideNode; readonly in?: OverrideNode } }
+}
+
 /**
  * Read a leaf's `meta({ env })` override when it is a usable string.
+ *
+ * Zod stores metadata per schema node. A check method such as `.min` or `.refine` keeps
+ * it on the node, but `.default`, `.optional`, `.nullable`, `.nonoptional`, `.readonly`,
+ * `.catch`, `.prefault`, `.transform` and `.pipe` build a new node around the old one,
+ * and that node carries none. The walk therefore starts at the outermost node and goes
+ * inward through `innerType`, or `in` for a pipe, so where `meta` was written does not
+ * change the answer. The outermost usable override wins; an empty or non-string value is
+ * skipped rather than ending the walk.
  *
  * @param leaf - The leaf schema whose metadata may carry an `env` override.
  * @returns The override variable name, or `undefined` to fall back to derivation.
  */
-function readEnvOverride(leaf: { meta(): { env?: unknown } | undefined }): string | undefined {
-  const override = leaf.meta()?.env
-  return typeof override === 'string' && override.length > 0 ? override : undefined
+function readEnvOverride(leaf: OverrideNode): string | undefined {
+  for (let node: OverrideNode | undefined = leaf; node !== undefined;) {
+    const override = node.meta()?.env
+    if (typeof override === 'string' && override.length > 0) return override
+    node = node._zod.def.innerType ?? node._zod.def.in
+  }
+  return undefined
 }
 
 /**

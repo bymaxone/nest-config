@@ -67,7 +67,7 @@ Every backend repeats the same bootstrap chore: read the environment, coerce str
 2. **Fail fast, fail complete.** A misconfigured process must not boot. All violations are reported together in one aggregated error, so an operator fixes the environment in one round trip instead of one variable at a time.
 3. **Never echo values.** Validation errors report variable names, paths, and constraint descriptions only. Raw values never appear in the error output, so secrets cannot leak into logs or crash reports.
 4. **Typed end to end.** The configuration type is inferred from the schema. `get('database.url')` returns `string`, `get('server.port')` returns `number`, with no casts and no `any` anywhere in the chain.
-5. **Immutable by construction.** The validated object is deep-frozen before it enters the DI container. Configuration is a fact about the process, not a mutable bag.
+5. **Immutable by construction.** Plain objects and arrays in the validated object are deep-frozen before it enters the DI container. Configuration is a fact about the process, not a mutable bag. A `Date`, `Map` or `Set` leaf is frozen as an object but keeps its own mutators.
 6. **The environment is injectable.** The raw source defaults to `process.env` but is a plain injectable record, so tests validate any input without touching the real environment.
 7. **Configuration over convention.** Everything goes through `forRoot`/`forRootAsync`. No file discovery, no magic paths, no hidden precedence rules.
 8. **Zero runtime dependencies.** `dependencies` is empty; `zod` and the NestJS platform are peer dependencies controlled by the consumer.
@@ -122,7 +122,7 @@ This package is the only member of the family that touches the environment, and 
 
 1. **`forRoot` / `forRootAsync`** receives `BymaxConfigModuleOptions` (schema, optional source, optional error hook).
 2. **Validation** runs inside the provider factory for `BYMAX_CONFIG`, which NestJS resolves during application bootstrap, before any consumer provider is instantiated.
-3. **On failure**, `BymaxConfigValidationError` is thrown. Module resolution aborts, `NestFactory.create` rejects, and the process exits before binding a port. The optional `onValidationError` hook runs first (for custom reporting), then the error propagates; the hook cannot swallow the failure.
+3. **On failure**, `BymaxConfigValidationError` is thrown. Module resolution aborts, `NestFactory.create` rejects, and the process exits before binding a port. The optional `onValidationError` hook runs first (for custom reporting) and is awaited if it returns a promise, then the error propagates; the hook cannot swallow the failure, and an error it throws or rejects with is attached to the propagated error as its `cause`.
 4. **On success**, the parsed output is deep-frozen and registered under the `BYMAX_CONFIG` token. `ConfigService` wraps it for path-based access.
 
 ### 2.3 Dependency Injection Tokens
@@ -252,9 +252,10 @@ export interface BymaxConfigModuleOptions<TSchema extends EnvSchema = EnvSchema>
 
   /**
    * Observability hook invoked with the structured issue list before the
-   * validation error is thrown. Cannot suppress the failure.
+   * validation error is thrown. A promise it returns is awaited. Cannot suppress the
+   * failure: the validation error still propagates, with the hook's own error as `cause`.
    */
-  onValidationError?: (issues: ReadonlyArray<ConfigIssue>) => void
+  onValidationError?: (issues: ReadonlyArray<ConfigIssue>) => unknown
 
   /**
    * When true, source variables that match the schema's namespace prefixes

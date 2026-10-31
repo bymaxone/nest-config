@@ -470,6 +470,157 @@ Fix the variables above and restart the process."
   })
 })
 
+describe('validateEnv issues that name no leaf', () => {
+  const storageRule = (ctx: z.core.ParsePayload<{ enabled: string; endpoint: string }>): void => {
+    if (ctx.value.enabled !== 'true' || ctx.value.endpoint.length > 0) return
+    ctx.issues.push({
+      code: 'custom',
+      input: ctx.value,
+      message: 'STORAGE_ENDPOINT is required when STORAGE_ENABLED is true.'
+    })
+  }
+  const storageSchema = defineEnv({
+    storage: z
+      .object({ enabled: z.string().default('false'), endpoint: z.string().default('') })
+      .check(storageRule)
+  })
+
+  it('reports a namespace rule that carries no leaf path against the namespace', () => {
+    /**
+     * A rule written with `.check` on a namespace and no `path` has no leaf to point at.
+     * It is reported against the namespace, never as an empty report ("(0 issues)", which
+     * says that something is wrong and nothing else): the namespace's variable prefix is
+     * in the variable column and the author's message is untouched.
+     */
+    const error = captureError(storageSchema, { STORAGE_ENABLED: 'true' })
+
+    expect(error.issues).toEqual([
+      {
+        path: 'storage',
+        variable: 'STORAGE_*',
+        code: ConfigErrorCode.INVALID,
+        message: 'STORAGE_ENDPOINT is required when STORAGE_ENABLED is true.'
+      }
+    ])
+    expect(error.message).toContain('(1 issue)')
+    expect(error.message).toContain(
+      'STORAGE_*             STORAGE_ENDPOINT is required when STORAGE_ENABLED is true.'
+    )
+  })
+
+  it('never fails with an empty report for a rule on the schema as a whole', () => {
+    /**
+     * The same hole one level up: a rule on the whole schema has no namespace either.
+     * It is reported as an issue of the schema, never as zero issues.
+     */
+    const wholeSchema = defineEnv({ a: z.object({ x: z.string().default('x') }) }).check((ctx) => {
+      ctx.issues.push({
+        code: 'custom',
+        input: ctx.value,
+        message: 'the schema as a whole is wrong'
+      })
+    })
+
+    const error = captureError(wholeSchema, {})
+
+    expect(error.issues).toEqual([
+      {
+        path: '',
+        variable: '(schema)',
+        code: ConfigErrorCode.INVALID,
+        message: 'the schema as a whole is wrong'
+      }
+    ])
+  })
+
+  it('lists leaf issues first, then namespace issues in declaration order', () => {
+    /**
+     * One report, two kinds of issue. Leaf issues follow the declared leaves, then the
+     * namespace-level ones in the order their namespaces were declared, so the output
+     * does not depend on which rule Zod happened to report first. The failing leaf sits
+     * in the last namespace: Zod does not run a namespace's own rule once one of its
+     * leaves has failed.
+     */
+    const mixed = defineEnv({
+      first: z.object({ a: z.string().default('a') }).check((ctx) => {
+        ctx.issues.push({ code: 'custom', input: ctx.value, message: 'first namespace rule' })
+      }),
+      second: z.object({ b: z.string().default('b') }).check((ctx) => {
+        ctx.issues.push({ code: 'custom', input: ctx.value, message: 'second namespace rule' })
+      }),
+      third: z.object({ c: z.string() })
+    })
+
+    const error = captureError(mixed, {})
+
+    expect(error.issues.map((issue) => `${issue.variable} ${issue.message}`)).toEqual([
+      'THIRD_C missing required value',
+      'FIRST_* first namespace rule',
+      'SECOND_* second namespace rule'
+    ])
+  })
+
+  it('reports a rule whose path names no declared leaf against the namespace', () => {
+    /**
+     * A path of `['storage', 'nope']` points inside the namespace at a name that is not
+     * one of its leaves. It is the namespace's issue, not a dropped one.
+     */
+    const stray = defineEnv({
+      storage: z.object({ enabled: z.string().default('false') }).check((ctx) => {
+        ctx.issues.push({
+          code: 'custom',
+          input: ctx.value,
+          path: ['nope'],
+          message: 'points at a leaf that does not exist'
+        })
+      })
+    })
+
+    const error = captureError(stray, {})
+
+    expect(error.issues).toEqual([
+      {
+        path: 'storage',
+        variable: 'STORAGE_*',
+        code: ConfigErrorCode.INVALID,
+        message: 'points at a leaf that does not exist'
+      }
+    ])
+  })
+
+  it('reports only the first issue of a namespace', () => {
+    /** One rule reports two issues on a namespace: one issue per namespace, as one per leaf. */
+    const twice = defineEnv({
+      s: z.object({ a: z.string().default('a') }).check((ctx) => {
+        ctx.issues.push({ code: 'custom', input: ctx.value, message: 'rule one' })
+        ctx.issues.push({ code: 'custom', input: ctx.value, message: 'rule two' })
+      })
+    })
+
+    const error = captureError(twice, {})
+
+    expect(error.issues.map((issue) => issue.message)).toEqual(['rule one'])
+  })
+
+  it('describes a namespace issue that carries no message of its own', () => {
+    /**
+     * A namespace rule that pushes an issue without a message gets Zod's default text,
+     * which is not the author's. It reads as the generic description, like a leaf does.
+     */
+    const silent = defineEnv({
+      s: z.object({ a: z.string().default('a') }).check((ctx) => {
+        ctx.issues.push({ code: 'custom', input: ctx.value })
+      })
+    })
+
+    const error = captureError(silent, {})
+
+    expect(error.issues).toEqual([
+      { path: 's', variable: 'S_*', code: ConfigErrorCode.INVALID, message: 'invalid value' }
+    ])
+  })
+})
+
 describe('validateEnv value-free guarantee', () => {
   it('never leaks a sentinel secret into the error message, issues, or serialization', () => {
     /**

@@ -37,6 +37,14 @@ const DEFAULT_STRING_LENGTH = 1
 /** Fixed, coercible placeholder for boolean leaves. */
 const PLACEHOLDER_BOOLEAN = 'true'
 
+/** A valid RFC 9562 UUID: version 4, variant 8, every other digit zero. */
+const PLACEHOLDER_UUID = '00000000-0000-4000-8000-000000000000'
+
+/** Fixed placeholders for the ISO date and time formats and for a date leaf. */
+const PLACEHOLDER_DATETIME = '2000-01-01T00:00:00.000Z'
+const PLACEHOLDER_DATE = '2000-01-01'
+const PLACEHOLDER_TIME = '00:00:00'
+
 /**
  * Typed view over a single Zod v4 check definition.
  *
@@ -47,6 +55,7 @@ const PLACEHOLDER_BOOLEAN = 'true'
  */
 interface CheckDefinition {
   readonly check: string
+  readonly format: string
   readonly minimum: number
   readonly maximum: number
   readonly length: number
@@ -62,15 +71,18 @@ interface CheckWrapper {
 /**
  * Typed view over the Zod v4 leaf definition the synthesizer reads.
  *
- * `innerType` and `entries` exist only on wrapper and enum leaves respectively
- * and are read only under those branches; `format` and `checks` are genuinely
- * optional (a plain string declares neither).
+ * `innerType`, `in`, `out`, `values` and `entries` exist only on wrapper, pipe,
+ * literal and enum leaves respectively and are read only under those branches;
+ * `format` and `checks` are genuinely optional (a plain string declares neither).
  */
 interface LeafDefinition {
   readonly type: string
   readonly format?: string
   readonly checks?: readonly CheckWrapper[]
   readonly innerType: EnvLeaf
+  readonly in: EnvLeaf
+  readonly out: EnvLeaf
+  readonly values: readonly unknown[]
   readonly entries: Readonly<Record<string, string | number>>
 }
 
@@ -226,6 +238,29 @@ function synthesizePlainString(lengths: { min: number; max: number; exact?: numb
 }
 
 /**
+ * The format a string leaf validates: Zod 4 records it on the leaf itself for `z.email()`,
+ * `z.uuid()` and the `z.iso.*` leaves, and as a `string_format` check for `z.string().email()`
+ * and the other methods of a plain string.
+ *
+ * @param def - The string leaf definition.
+ * @returns The format name, or `undefined` for a string with none.
+ */
+function formatOf(def: LeafDefinition): string | undefined {
+  const declared = checksOf(def)
+    .map((wrapper) => wrapper._zod.def)
+    .find((check) => check.check === 'string_format')
+  return def.format ?? declared?.format
+}
+
+/** Placeholders for the string formats whose valid values do not depend on a length. */
+const FIXED_FORMATS: ReadonlyMap<string, string> = new Map([
+  ['uuid', PLACEHOLDER_UUID],
+  ['datetime', PLACEHOLDER_DATETIME],
+  ['date', PLACEHOLDER_DATE],
+  ['time', PLACEHOLDER_TIME]
+])
+
+/**
  * Synthesize a placeholder for a string leaf, respecting its format and lengths.
  *
  * @param def - The string leaf definition.
@@ -233,9 +268,11 @@ function synthesizePlainString(lengths: { min: number; max: number; exact?: numb
  */
 function synthesizeString(def: LeafDefinition): string {
   const lengths = readStringLengths(def)
-  if (def.format === 'url') return synthesizeUrl(lengths)
-  if (def.format === 'email') return synthesizeEmail(lengths)
-  return synthesizePlainString(lengths)
+  const format = formatOf(def)
+  if (format === 'url') return synthesizeUrl(lengths)
+  if (format === 'email') return synthesizeEmail(lengths)
+  const fixed = format === undefined ? undefined : FIXED_FORMATS.get(format)
+  return fixed ?? synthesizePlainString(lengths)
 }
 
 /**
@@ -318,12 +355,31 @@ function synthesizeEnum(def: LeafDefinition): string {
 }
 
 /**
+ * Peel the `optional` layers off a leaf. `nonoptional` exists to undo them, so a value
+ * has to be synthesized for what they wrap, and an `optional` left in place would omit it.
+ *
+ * @param leaf - The leaf a `nonoptional` wraps.
+ * @returns The first leaf below the `optional` layers, or the leaf itself when it has none.
+ */
+function withoutOptional(leaf: EnvLeaf): EnvLeaf {
+  const def = readDef(leaf)
+  return def.type === 'optional' ? withoutOptional(def.innerType) : leaf
+}
+
+/**
  * Synthesize a placeholder value for one leaf, or omit it.
  *
- * Defaulted and optional leaves are omitted (returning `undefined`) so the
- * schema resolves their value; nullable leaves recurse into the inner type so a
- * present value is supplied. Leaf kinds beyond the documented set fall back to a
- * generic filler rather than aborting the walk.
+ * Defaulted, prefaulted, caught and optional leaves are omitted (returning
+ * `undefined`) so the schema resolves their value; nullable and readonly leaves recurse
+ * into the inner type, and a nonoptional leaf into what lies below its optional layers,
+ * so a present value is supplied. A pipe, which is what `z.stringbool()` and a
+ * `transform` are, is synthesized from the side that reads the string. A date and the string
+ * formats have fixed samples, and a literal gets the string form of its first value, which
+ * only a string literal can validate: every environment value is a string, so a bare numeric
+ * or boolean literal is unsatisfiable from any source. Leaf kinds beyond that set, and
+ * rules no sample can be known to satisfy (a regex, a `refine`), fall back to a generic
+ * filler rather than aborting the walk; the testing helpers then ask for an override for
+ * the leaf that fails.
  *
  * @param leaf - The leaf schema to synthesize.
  * @returns The placeholder string, or `undefined` to omit the leaf.
@@ -332,16 +388,29 @@ function synthesizeLeaf(leaf: EnvLeaf): string | undefined {
   const def = readDef(leaf)
   switch (def.type) {
     case 'default':
+    case 'prefault':
+    case 'catch':
     case 'optional':
       return undefined
     case 'nullable':
+    case 'readonly':
       return synthesizeLeaf(def.innerType)
+    case 'nonoptional':
+      return synthesizeLeaf(withoutOptional(def.innerType))
+    case 'pipe':
+      return readDef(def.out).type === 'boolean' && readDef(def.in).type === 'string'
+        ? PLACEHOLDER_BOOLEAN
+        : synthesizeLeaf(def.in)
     case 'string':
       return synthesizeString(def)
     case 'number':
       return synthesizeNumber(def)
     case 'boolean':
       return PLACEHOLDER_BOOLEAN
+    case 'date':
+      return PLACEHOLDER_DATETIME
+    case 'literal':
+      return String(def.values[0])
     case 'enum':
       return synthesizeEnum(def)
     default:

@@ -10,7 +10,7 @@
  * @layer Utility
  */
 
-import { createValidatedConfig } from '@bymax-one/nest-config/internal'
+import { BymaxConfigValidationError, createValidatedConfig } from '@bymax-one/nest-config/internal'
 import { resolveSourceNames } from '@bymax-one/nest-config/internal'
 import type { EnvOutput, EnvSchema, EnvShape } from '@bymax-one/nest-config/internal'
 
@@ -71,13 +71,16 @@ function flattenOverrides(overrides: OverrideRecord): ReadonlyMap<string, unknow
 function applyOverrides<TShape extends EnvShape>(
   schema: EnvSchema<TShape>,
   base: Record<string, string>,
-  overrides: ConfigOverrides<TShape> | undefined
+  overrides: ConfigOverrides<TShape> | undefined,
+  overridden: Set<string>
 ): Record<string, string> {
   const flat = flattenOverrides((overrides ?? {}) as OverrideRecord)
   const entries = new Map(Object.entries(base))
   for (const binding of resolveSourceNames(schema)) {
     const value = flat.get(binding.path)
-    if (value !== undefined) entries.set(binding.variable, String(value))
+    if (value === undefined) continue
+    entries.set(binding.variable, String(value))
+    overridden.add(binding.variable)
   }
   // Null-prototype record so a meta({ env }) override named `__proto__` stays a
   // plain data key (consistent with the synthesizer) and cannot mutate a prototype.
@@ -87,22 +90,62 @@ function applyOverrides<TShape extends EnvShape>(
 }
 
 /**
- * Build the flat test source for a schema by synthesizing and overlaying.
+ * Rewrite the issues of leaves the caller did not override.
+ *
+ * Every leaf the caller left alone received a synthesized sample, so an issue on one of
+ * them is not the caller's mistake: no sample fits what the schema asks, as with a regex
+ * or a `refine` rule. The message says that and names the leaf to override; an issue on
+ * a leaf the caller did override keeps its own description. So does an issue that names no
+ * leaf (a rule on a namespace or on the whole schema, whose path has no `.`): there is no
+ * leaf to point at, and the rule may as well have failed on a value the caller supplied.
+ *
+ * @param error - The validation error of the synthesized source.
+ * @param overridden - The variables the caller supplied a value for.
+ * @returns A validation error whose unsatisfied-leaf issues carry the guidance.
+ */
+function explainUnsatisfiedLeaves(
+  error: BymaxConfigValidationError,
+  overridden: ReadonlySet<string>
+): BymaxConfigValidationError {
+  return new BymaxConfigValidationError(
+    error.issues.map((issue) =>
+      !issue.path.includes('.') || overridden.has(issue.variable)
+        ? issue
+        : {
+            ...issue,
+            message: `no placeholder satisfies this leaf (${issue.message}); pass an override for ${issue.path}`
+          }
+    )
+  )
+}
+
+/**
+ * Synthesize and overlay a source for a schema, and validate it.
  *
  * Shared by {@link createTestConfig} and the testing module so both feed the
- * production registration path a source built the exact same way. Internal to
- * the subpath; it is not re-exported from the testing barrel.
+ * production registration path a source built the exact same way, and both fail the
+ * same way when a leaf has no sample. Internal to the subpath; it is not re-exported
+ * from the testing barrel.
  *
  * @typeParam TShape - The two-level schema shape.
  * @param schema - A schema produced by `defineEnv`.
  * @param overrides - Optional selective nested partial overrides.
- * @returns The synthesized source with overrides applied.
+ * @returns The synthesized source with overrides applied, and the config it validates to.
+ * @throws {BymaxConfigValidationError} When the source does not satisfy the schema.
  */
-export function buildTestSource<TShape extends EnvShape>(
+export function prepareTestConfig<TShape extends EnvShape>(
   schema: EnvSchema<TShape>,
   overrides?: ConfigOverrides<TShape>
-): Record<string, string> {
-  return applyOverrides(schema, synthesizePlaceholderSource(schema), overrides)
+): { readonly source: Record<string, string>; readonly config: Readonly<EnvOutput<TShape>> } {
+  const overridden = new Set<string>()
+  const source = applyOverrides(schema, synthesizePlaceholderSource(schema), overrides, overridden)
+  try {
+    return { source, config: createValidatedConfig({ schema, source }) }
+  } catch (error) {
+    throw error instanceof BymaxConfigValidationError
+      ? explainUnsatisfiedLeaves(error, overridden)
+      : error
+  }
 }
 
 /**
@@ -118,7 +161,8 @@ export function buildTestSource<TShape extends EnvShape>(
  * @param schema - A schema produced by `defineEnv`.
  * @param overrides - Optional selective nested partial overrides.
  * @returns The validated, deep-frozen configuration typed by the schema.
- * @throws {BymaxConfigValidationError} When an override violates a constraint.
+ * @throws {BymaxConfigValidationError} When an override violates a constraint, or when no
+ * placeholder satisfies a leaf: that issue says so and names the leaf to override.
  * @example
  * ```typescript
  * const config = createTestConfig(envSchema, {
@@ -131,5 +175,5 @@ export function createTestConfig<TShape extends EnvShape>(
   schema: EnvSchema<TShape>,
   overrides?: ConfigOverrides<TShape>
 ): Readonly<EnvOutput<TShape>> {
-  return createValidatedConfig({ schema, source: buildTestSource(schema, overrides) })
+  return prepareTestConfig(schema, overrides).config
 }

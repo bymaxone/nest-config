@@ -77,7 +77,7 @@ describe('BymaxConfigModuleOptions', () => {
       Expect<
         Equal<
           Options['onValidationError'],
-          ((issues: ReadonlyArray<ConfigIssue>) => void) | undefined
+          ((issues: ReadonlyArray<ConfigIssue>) => unknown) | undefined
         >
       >
     ]

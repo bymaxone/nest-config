@@ -75,8 +75,10 @@ minimal.
 
 ### 🔒 The Validated Object
 
-- ✅ **Immutable by construction** — deep-frozen before it enters the DI container;
-  configuration is a fact about the process, not a mutable bag
+- ✅ **Immutable by construction** — plain objects and arrays are deep-frozen before the
+  object enters the DI container; configuration is a fact about the process, not a mutable
+  bag (a `Date`, `Map` or `Set` leaf is frozen as an object but keeps its own mutators, see
+  [The validated object is frozen](#the-validated-object-is-frozen))
 - ✅ **Typed dot-path access** — `get('database.url')` is `string`, `get('server.port')` is
   `number`, with no casts and no `any` in the chain
 - ✅ **Injectable environment** — the raw source defaults to `process.env` but is a plain
@@ -237,6 +239,13 @@ that exact string is reserved — a schema that authors it verbatim reports
 custom error map) the default no longer matches, so the localized default is
 reported as written instead.
 
+A rule on a namespace as a whole, such as a `.check` that compares two of its leaves, names no
+leaf unless its issue sets a `path`. Without one it is reported against the namespace: the
+`path` is the namespace key, the variable column shows its prefix followed by `*`
+(`STORAGE_*`), and the message is the one the rule wrote. A rule on the whole schema is reported
+with the variable column `(schema)` and an empty `path`. Zod does not run a namespace's own rule
+once one of that namespace's leaves has failed, so such a rule appears once the leaves are valid.
+
 ## 📖 API Reference
 
 ### `defineEnv(shape)`
@@ -257,6 +266,11 @@ database: z.object({
   url: z.url().meta({ env: 'DB_CONNECTION_STRING' })
 })
 ```
+
+The override is found wherever `meta` sits in the chain: `z.string().meta({ env: 'LEGACY' }).default('x')`
+and `z.string().default('x').meta({ env: 'LEGACY' })` both read `LEGACY`. When more than one layer sets it, the outermost usable one wins, and an
+empty or non-string value is skipped. `resolveSourceNames` answers the same, because validation
+reads its variables through it.
 
 A namespace can declare itself **open**, which waives strict unknown-key
 detection for the rest of its prefix. Use it when the prefix is shared with
@@ -281,12 +295,12 @@ without the key, leaves detection in force.
 
 `BymaxConfigModuleOptions`:
 
-| Field               | Type                                           | Required | Notes                                                                                                                                                                                                                            |
-| ------------------- | ---------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `schema`            | `EnvSchema`                                    | yes      | Produced by `defineEnv`.                                                                                                                                                                                                         |
-| `source`            | `Record<string, string \| undefined>`          | no       | Defaults to `process.env` in the provider factory. Injectable for tests.                                                                                                                                                         |
-| `onValidationError` | `(issues: ReadonlyArray<ConfigIssue>) => void` | no       | Observability hook invoked before the fail-fast throw. Cannot suppress the failure.                                                                                                                                              |
-| `strict`            | `boolean`                                      | no       | When true, source variables matching a namespace prefix but no declared leaf raise `BYMAX_CONFIG_UNKNOWN_KEY`. Defaults to `false`. Read [Strict mode and shared prefixes](#strict-mode-and-shared-prefixes) before enabling it. |
+| Field               | Type                                              | Required | Notes                                                                                                                                                                                                                            |
+| ------------------- | ------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema`            | `EnvSchema`                                       | yes      | Produced by `defineEnv`.                                                                                                                                                                                                         |
+| `source`            | `Record<string, string \| undefined>`             | no       | Defaults to `process.env` in the provider factory. Injectable for tests.                                                                                                                                                         |
+| `onValidationError` | `(issues: ReadonlyArray<ConfigIssue>) => unknown` | no       | Observability hook invoked before the fail-fast throw; a promise it returns is awaited. Cannot suppress the failure.                                                                                                             |
+| `strict`            | `boolean`                                         | no       | When true, source variables matching a namespace prefix but no declared leaf raise `BYMAX_CONFIG_UNKNOWN_KEY`. Defaults to `false`. Read [Strict mode and shared prefixes](#strict-mode-and-shared-prefixes) before enabling it. |
 
 `forRootAsync` resolves the source through another provider, for example a
 secrets-manager client composed with `process.env`:
@@ -445,6 +459,13 @@ generates is value-free, so it can go straight into a log as structured data. Th
 exception is the one described above: a `custom` message written by your own schema
 is printed as written, so if one of yours interpolates a value, reviewing it before
 it reaches a log is the schema author's job, not this package's.
+
+The hook may be asynchronous: a promise it returns is awaited before the boot fails, so a
+report on its way to a log sink is not cut off by the process exiting. There is no timeout, so
+a hook that never settles holds the boot. If the hook throws or rejects, the boot still fails
+with the original validation error, unchanged in class, `code`, `issues` and `message`, and the
+hook's error is attached to it as `error.cause` (non-enumerable, so `code` and `issues` stay
+the only own enumerable properties).
 
 If you also log the thrown error from a bootstrap `catch`, how you pass it decides
 what survives. `code` and `issues` are the **only two own enumerable properties** of
@@ -697,8 +718,16 @@ does not serve one request.
 
 ### The validated object is frozen
 
-It is deep-frozen before it enters the container, so nothing in the running process
-rewrites configuration under a component that already read it.
+Plain objects and arrays are deep-frozen before the object enters the container, so nothing
+in the running process rewrites those values under a component that already read them.
+
+A `Date`, a `Map` or a `Set` leaf is frozen as an object but is **not** made immutable:
+`setTime`, `Map.prototype.set` and `Set.prototype.add` still work, because the state they
+change lives in internal slots that `Object.freeze` cannot reach, and the entries of a `Map` or
+`Set` are not visited. Wrapping them in a read-only proxy was measured and rejected: it fails
+`util.types.isDate`, reports `[object Object]` to `Object.prototype.toString`, cannot be given to
+`structuredClone`, and does not satisfy `assert.deepStrictEqual` against a real `Date`. Prefer a
+string or number leaf, or a `.transform` to a plain value, where immutability matters.
 
 ### Nothing is read from anywhere but the source you name
 
@@ -723,7 +752,7 @@ report.
 | Error messages | Expected constraint only — type, schema-declared enum options, bounds; never the received value. A `custom` message from your own schema is the exception: it prints as written |
 | Failure mode   | Refuse to start; the whole schema is validated before the context finishes building                                                                                             |
 | Aggregation    | Every failure reported at once, so a fix cycle is one restart rather than one per variable                                                                                      |
-| Immutability   | The validated result is frozen before it is provided                                                                                                                            |
+| Immutability   | Plain objects and arrays in the validated result are frozen before it is provided; a `Date`, `Map` or `Set` keeps its mutators                                                  |
 | Service state  | The root lives in a private field; serializing the injected service yields namespace names only                                                                                 |
 | Sources        | `process.env` only — no file, no network, no remote provider                                                                                                                    |
 | Type surface   | Dot paths checked against the schema at compile time; a typo is a build error, not a runtime `undefined`                                                                        |
@@ -789,6 +818,11 @@ source from the schema (defaults where declared, deterministic placeholder
 values elsewhere), applies selective overrides, then runs the exact
 production pipeline (validate, freeze), so a test exercises the same code
 path a running application does.
+
+A leaf no placeholder can be known to satisfy, such as a
+`z.string().regex(...)` or a `.refine(...)` rule, makes the helper throw a
+`BymaxConfigValidationError` whose issue says `no placeholder satisfies this leaf` and names it
+(`pass an override for region.code`); give that leaf an override and the helper builds.
 
 ```typescript
 import { createTestConfig } from '@bymax-one/nest-config/testing'

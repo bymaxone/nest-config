@@ -101,7 +101,7 @@ minimal.
 
 | Subpath      | Contents                                                                                                                                                                   |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.`          | `BymaxConfigModule`, `ConfigService`, `defineEnv`, the DI tokens, `BymaxConfigValidationError` and every option type                                                       |
+| `.`          | `BymaxConfigModule`, `ConfigService`, `defineEnv`, `resolveSourceNames`, the DI tokens, `BymaxConfigValidationError` and every option type                                 |
 | `./testing`  | `configTestingModule`, `createTestConfig` — a validated config for a test without booting the application's own                                                            |
 | `./internal` | The shared runtime both entry points build on. **Not public API**: it is in the `exports` map because it has to resolve at runtime, not because it is meant to be imported |
 
@@ -539,6 +539,55 @@ are the template-literal utilities behind `ConfigService.get`'s compile-time
 dot-path inference, limited to the two-level namespace convention. All of them
 are exported for advanced generic code (custom decorators, typed wrappers)
 that needs to reference the schema shape directly.
+
+### `resolveSourceNames(schema)`
+
+Lists the variable every leaf of a schema reads. It is the function validation itself
+resolves its variables through, so the list cannot drift from what `forRoot` reads.
+
+| Parameter | Type                         | Returns                    |
+| --------- | ---------------------------- | -------------------------- |
+| `schema`  | `EnvSchema` from `defineEnv` | `readonly SourceBinding[]` |
+
+`SourceBinding` is `{ path: string; variable: string }`: the leaf's dot path and the
+environment variable it reads. The list has one entry per declared leaf, in declaration
+order. A leaf reads its `meta({ env })` override when that is a non-empty string, and
+otherwise `NAMESPACE_LEAF` in SCREAMING_SNAKE_CASE, with a camelCase key split into words.
+It reads the schema only, never a source record, so it works on a schema exported as a
+value. For the Quick Start schema it returns `SERVER_PORT`, `SERVER_ENV`, `DATABASE_URL`,
+`REDIS_URL` and `LOG_LEVEL`.
+
+A test that keeps `.env.example` honest is the usual use:
+
+```typescript
+import { readFileSync } from 'node:fs'
+import { resolveSourceNames } from '@bymax-one/nest-config'
+import { envSchema } from './config/env.schema'
+
+it('documents every variable the schema reads in .env.example', () => {
+  const example = readFileSync('.env.example', 'utf8')
+  const documented = new Set(
+    example.split('\n').map((line) => /^#?\s*([A-Z][A-Z0-9_]*)=/.exec(line)?.[1])
+  )
+  const missing = resolveSourceNames(envSchema).filter(({ variable }) => !documented.has(variable))
+  expect(missing).toEqual([])
+})
+```
+
+#### What it does not tell you
+
+- **Declared is not required.** A leaf with a default, or an optional leaf, is listed like
+  any other. Whether it belongs in a template file is your policy; the list says only that
+  the schema reads it.
+- **Two paths can read one variable.** Names are derived from the keys, so `a.bC` and
+  `aB.c` both derive `A_B_C`, and `httpServer.port` and `HTTPServer.port` both derive
+  `HTTP_SERVER_PORT`. Every binding is returned and none is dropped; validation reads the
+  shared variable once for both leaves, and neither collision is reported.
+- **An open namespace changes nothing.** `meta({ open: true })` only waives strict
+  unknown-key detection, so the list is the same whether a namespace is open or closed. It
+  does not help to find variables in `.env.example` that no leaf reads.
+- **Two-level schemas only.** Deeper nesting validates but is outside this contract, as it
+  is for `Path` and `PathValue`.
 
 ## 🚨 Error Catalog
 

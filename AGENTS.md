@@ -219,9 +219,8 @@ compatibility guarantee. `src/index.ts` decides what is public; an export missin
 API even though `@bymax-one/nest-config/internal` imports it successfully.
 
 Two findings follow, in opposite directions. Treating a change to an `./internal`-only export as a
-breaking change is **wrong** — `resolveSourceNames`, `createValidatedConfig` and the
-`SourceBinding` shape are reachable there and are free to move, and a name that reaches neither
-barrel (`NamespacePrefix`, `resolveNamespacePrefixes`) is package-internal and freer still. Adding a name to `src/index.ts` is the real finding: it is new public surface, it is permanent, and it is
+breaking change is **wrong** — `createValidatedConfig` is reachable there and is free to move,
+and a name that reaches neither barrel (`NamespacePrefix`, `resolveNamespacePrefixes`) is package-internal and freer still. Adding a name to `src/index.ts` is the real finding: it is new public surface, it is permanent, and it is
 raised with the maintainer before a version number is written rather than absorbed into a release.
 
 ### A `// Stryker disable` directive is not a suppression

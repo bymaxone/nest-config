@@ -179,11 +179,11 @@ All tokens are `Symbol`s, never strings, and every constructor parameter and fac
 
 ### 3.2 Subpath Exports
 
-| Subpath      | Content                                             | Environment |
-| ------------ | --------------------------------------------------- | ----------- |
-| `.`          | Module, service, `defineEnv`, tokens, errors, types | Node server |
-| `./testing`  | `createTestConfig`, `configTestingModule`           | Test only   |
-| `./internal` | The shared runtime the two above are built on       | Not for use |
+| Subpath      | Content                                                                   | Environment |
+| ------------ | ------------------------------------------------------------------------- | ----------- |
+| `.`          | Module, service, `defineEnv`, `resolveSourceNames`, tokens, errors, types | Node server |
+| `./testing`  | `createTestConfig`, `configTestingModule`                                 | Test only   |
+| `./internal` | The shared runtime the two above are built on                             | Not for use |
 
 The first two are the public API. `./internal` is listed because it is a real subpath in the `exports` map, not because it is meant to be imported: it carries no compatibility promise, and everything it exposes is reachable from `.` or `./testing`.
 

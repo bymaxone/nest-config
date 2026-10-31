@@ -19,6 +19,7 @@ import { BymaxConfigModule } from './config.module'
 import { createValidatedConfig } from './config.providers'
 import { defineEnv } from './define-env'
 import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
+import { resolveSourceNames } from './source-mapping'
 
 const root = join(__dirname, '..')
 const readme = readFileSync(join(root, 'README.md'), 'utf8')
@@ -192,5 +193,40 @@ describe('README sample failure report', () => {
     }
 
     expect(report).toBe(sample)
+  })
+})
+
+/** The Quick Start schema the README shows, declared here because tsc keeps the sources under src/. */
+const quickStartSchema = defineEnv({
+  server: z.object({
+    port: z.coerce.number().int().min(1).max(65535).default(3000),
+    env: z.enum(['development', 'test', 'production']).default('development')
+  }),
+  database: z.object({ url: z.url() }),
+  redis: z.object({ url: z.url() }),
+  log: z.object({ level: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info') })
+})
+
+describe('README resolveSourceNames section', () => {
+  it('names the variables the Quick Start schema reads, in order', () => {
+    /**
+     * The section states what the helper returns for the Quick Start schema declared
+     * above. The documented list must be the function's actual output, so a change to
+     * the naming rules fails here.
+     */
+    const sentence = captured(
+      prose.replace(/\s+/g, ' '),
+      /For the Quick Start schema it returns ((?:`[A-Z_]+`(?:, | and )?)+)\./
+    )
+    const documented = Array.from(sentence.matchAll(/`([A-Z_]+)`/g), (match) => match[1])
+
+    expect(documented).toEqual(
+      resolveSourceNames(quickStartSchema).map((binding) => binding.variable)
+    )
+  })
+
+  it('lists the helper among the root entry point contents', () => {
+    /** The subpath table is where a reader learns what the root exports. */
+    expect(lineMatching(/^\| `\.` +\|/)).toContain('`resolveSourceNames`')
   })
 })

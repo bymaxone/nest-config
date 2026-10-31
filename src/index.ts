@@ -19,7 +19,8 @@ export {
   BymaxConfigValidationError,
   ConfigErrorCode,
   ConfigService,
-  defineEnv
+  defineEnv,
+  resolveSourceNames
 } from '@bymax-one/nest-config/internal'
 
 export type {
@@ -33,5 +34,6 @@ export type {
   EnvSchema,
   EnvShape,
   Path,
-  PathValue
+  PathValue,
+  SourceBinding
 } from '@bymax-one/nest-config/internal'

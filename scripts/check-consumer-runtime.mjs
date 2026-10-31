@@ -56,7 +56,8 @@ const ROOT_EXPORTS = [
   'BYMAX_CONFIG_OPTIONS',
   'BymaxConfigValidationError',
   'ConfigErrorCode',
-  'defineEnv'
+  'defineEnv',
+  'resolveSourceNames'
 ]
 
 /** Values the testing subpath must expose. */

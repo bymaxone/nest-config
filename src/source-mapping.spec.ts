@@ -6,13 +6,17 @@
  * variable name (single word, camelCase, numeric suffix), that a meta({ env })
  * override wins over derivation, that a namespace's meta({ open: true })
  * opt-out is resolved onto its prefix entry, and that the full mapping table
- * for a representative schema is stable.
+ * for a representative schema is stable, and that the function published from
+ * the package root is the one validation reads its variables through.
  * Mocks: none.
  */
 
+import { resolveSourceNames as publishedResolveSourceNames } from '@bymax-one/nest-config'
 import { z } from 'zod'
 
+import { createValidatedConfig } from './config.providers'
 import { defineEnv } from './define-env'
+import { BymaxConfigValidationError } from './errors'
 import { resolveNamespacePrefixes, resolveSourceNames } from './source-mapping'
 
 describe('resolveSourceNames derivation', () => {
@@ -257,5 +261,123 @@ describe('resolveSourceNames contract stability', () => {
   },
 ]
 `)
+  })
+})
+
+/** The variables a failed validation reports, or none when the source is accepted. */
+function reportedVariables(
+  schema: ReturnType<typeof defineEnv>,
+  source: Record<string, string>
+): string[] {
+  try {
+    createValidatedConfig({ schema, source })
+    return []
+  } catch (error) {
+    expect(error).toBeInstanceOf(BymaxConfigValidationError)
+    return (error as BymaxConfigValidationError).issues.map((issue) => issue.variable)
+  }
+}
+
+describe('resolveSourceNames as published from the package root', () => {
+  it('is the very function validation resolves its variables through', () => {
+    /**
+     * Same-function guarantee.
+     *
+     * The root entry re-exports the function the validator calls, so a list built
+     * by a consumer cannot drift from the variables validation reads.
+     */
+    expect(publishedResolveSourceNames).toBe(resolveSourceNames)
+  })
+
+  it('lists exactly the variables validation reads, one at a time', () => {
+    /**
+     * Read-set equivalence.
+     *
+     * With every listed variable present the source is accepted, and removing any
+     * single one makes validation report that variable and no other, so no listed
+     * name is unread and no read name is unlisted. The schema mixes a derived
+     * name, an acronym, a numeric suffix and a meta({ env }) override.
+     */
+    const schema = defineEnv({
+      database: z.object({ url: z.string(), poolSize: z.string() }),
+      httpServer: z.object({ http2Port: z.string() }),
+      legacy: z.object({ connection: z.string().meta({ env: 'DB_CONNECTION_STRING' }) })
+    })
+    const variables = publishedResolveSourceNames(schema).map((binding) => binding.variable)
+    const complete = Object.fromEntries(variables.map((variable) => [variable, 'x']))
+
+    expect(variables).toEqual([
+      'DATABASE_URL',
+      'DATABASE_POOL_SIZE',
+      'HTTP_SERVER_HTTP2_PORT',
+      'DB_CONNECTION_STRING'
+    ])
+    expect(reportedVariables(schema, complete)).toEqual([])
+    for (const variable of variables) {
+      const { [variable]: _removed, ...withoutIt } = complete
+      expect(reportedVariables(schema, withoutIt)).toEqual([variable])
+    }
+  })
+
+  it('lists defaulted and optional leaves like any other', () => {
+    /**
+     * Declared is not required.
+     *
+     * A leaf validation can do without is still a variable the schema reads, so it
+     * appears in the list; deciding whether it belongs in a template file is the
+     * caller's policy.
+     */
+    const schema = defineEnv({
+      server: z.object({
+        port: z.coerce.number().default(3000),
+        host: z.string().optional(),
+        name: z.string()
+      })
+    })
+
+    expect(publishedResolveSourceNames(schema).map((binding) => binding.variable)).toEqual([
+      'SERVER_PORT',
+      'SERVER_HOST',
+      'SERVER_NAME'
+    ])
+    expect(reportedVariables(schema, { SERVER_NAME: 'x' })).toEqual([])
+  })
+
+  it('is unchanged by opening a namespace', () => {
+    /**
+     * Open namespaces.
+     *
+     * meta({ open: true }) only waives strict unknown-key detection, so the list
+     * for an open namespace equals the list for the same namespace left closed.
+     */
+    const leaves = { enabled: z.string() }
+    const closed = defineEnv({ otel: z.object(leaves) })
+    const open = defineEnv({ otel: z.object(leaves).meta({ open: true }) })
+
+    expect(publishedResolveSourceNames(open)).toEqual(publishedResolveSourceNames(closed))
+  })
+
+  it('returns both bindings when two paths derive one variable', () => {
+    /**
+     * Collisions are neither detected nor deduplicated.
+     *
+     * a.bC and aB.c both derive A_B_C, and httpServer.port and HTTPServer.port both
+     * derive HTTP_SERVER_PORT. Every binding is returned, and validation reads the
+     * shared variable once for both leaves.
+     */
+    const schema = defineEnv({
+      a: z.object({ bC: z.string() }),
+      aB: z.object({ c: z.string() }),
+      httpServer: z.object({ port: z.string() }),
+      HTTPServer: z.object({ port: z.string() })
+    })
+
+    expect(publishedResolveSourceNames(schema)).toEqual([
+      { path: 'a.bC', variable: 'A_B_C' },
+      { path: 'aB.c', variable: 'A_B_C' },
+      { path: 'httpServer.port', variable: 'HTTP_SERVER_PORT' },
+      { path: 'HTTPServer.port', variable: 'HTTP_SERVER_PORT' }
+    ])
+    expect(reportedVariables(schema, { A_B_C: 'x', HTTP_SERVER_PORT: 'x' })).toEqual([])
   })
 })

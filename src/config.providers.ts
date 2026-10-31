@@ -2,10 +2,11 @@
  * @fileoverview The BYMAX_CONFIG provider factory: the fail-fast heart of the
  * module. It resolves the source (defaulting to `process.env`, using a custom
  * source verbatim), runs the single-pass validator, and on success returns the
- * deep-frozen typed config. On failure it invokes the observability hook
- * exactly once before rethrowing the aggregated error; the hook is
+ * deep-frozen typed config. On failure the factory runs the observability hook
+ * and waits for it, then rethrows the aggregated error; the hook is
  * observability only and can never suppress or replace the failure, so a
  * misconfigured process is stopped before any consumer provider is constructed.
+ * A failing hook is recorded as the `cause` of that same error.
  * @layer Provider
  */
 
@@ -16,44 +17,47 @@ import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { deepFreeze } from './deep-freeze'
 import { validateEnv } from './env-validator'
 import { BymaxConfigValidationError } from './errors'
-import type { ConfigIssue } from './errors'
 import type { EnvOutput, EnvSchema, EnvShape } from './types'
 
 /**
- * Invoke the observability hook without letting it change the outcome.
+ * Run the observability hook, wait for it, and keep its failure from changing the outcome.
  *
- * The hook receives the collected issue list for custom reporting. Any error
- * it raises is deliberately swallowed here so the original
- * {@link BymaxConfigValidationError} remains the propagated failure; this is an
- * intentional no-op on hook errors, not a dropped error path.
+ * The hook receives the collected issue list for custom reporting and may return a
+ * promise. Whatever it throws or rejects with is attached to the validation error as its
+ * non-enumerable `cause`, so the original {@link BymaxConfigValidationError} remains the
+ * propagated failure, with the same class, code, issues and message, and the hook's
+ * failure is still on record. Nothing here can reject.
  *
  * @param hook - The optional consumer-supplied reporting hook.
- * @param issues - The aggregated validation issues.
+ * @param error - The validation error whose issues the hook receives.
  */
-function reportIssues(
-  hook: ((issues: ReadonlyArray<ConfigIssue>) => void) | undefined,
-  issues: ReadonlyArray<ConfigIssue>
-): void {
+async function reportIssues(
+  hook: BymaxConfigModuleOptions['onValidationError'],
+  error: BymaxConfigValidationError
+): Promise<void> {
   if (hook === undefined) return
   try {
-    hook(issues)
-  } catch {
-    // A failing observability hook must never alter the fail-fast result; the
-    // original validation error is what reaches the caller.
+    await hook(error.issues)
+  } catch (hookError) {
+    Object.defineProperty(error, 'cause', {
+      value: hookError,
+      enumerable: false,
+      writable: false,
+      configurable: false
+    })
   }
 }
 
 /**
- * Validate the source against the schema, freeze the result, or fail fast.
+ * Validate the source against the schema, freeze the result, or throw.
  *
  * Resolves the source to the supplied record or `process.env`, runs exactly one
- * validation pass, and returns the deep-frozen typed output. On a validation
- * failure the hook runs once with the issues and the aggregated error is
- * rethrown unchanged, aborting module resolution before any consumer provider
- * is instantiated.
+ * validation pass, and returns the deep-frozen typed output. A validation failure is
+ * thrown as the aggregated error; the observability hook belongs to the provider factory,
+ * which can wait for it, and this synchronous function never calls it.
  *
  * @typeParam TShape - The two-level schema shape.
- * @param options - The resolved module options (schema, source, hook, strict).
+ * @param options - The resolved module options (schema, source, strict).
  * @returns The validated, deep-frozen configuration output.
  * @throws {BymaxConfigValidationError} When the source fails the schema.
  * @example
@@ -63,14 +67,31 @@ function reportIssues(
  * ```
  */
 export function createValidatedConfig<TShape extends EnvShape>(
-  options: Omit<BymaxConfigModuleOptions, 'schema'> & { readonly schema: EnvSchema<TShape> }
+  options: Omit<BymaxConfigModuleOptions, 'schema' | 'onValidationError'> & {
+    readonly schema: EnvSchema<TShape>
+  }
 ): Readonly<EnvOutput<TShape>> {
   const source = options.source ?? process.env
+  return deepFreeze(validateEnv(options.schema, source, { strict: options.strict === true }))
+}
+
+/**
+ * Validate for the module: the same result as {@link createValidatedConfig}, and on a
+ * validation failure the hook runs and is awaited before the aggregated error is rethrown,
+ * aborting module resolution before any consumer provider is instantiated.
+ *
+ * @param options - The resolved module options (schema, source, hook, strict).
+ * @returns The validated, deep-frozen configuration output.
+ * @throws {BymaxConfigValidationError} When the source fails the schema.
+ */
+async function provideValidatedConfig(
+  options: BymaxConfigModuleOptions
+): Promise<Readonly<EnvOutput<EnvShape>>> {
   try {
-    return deepFreeze(validateEnv(options.schema, source, { strict: options.strict === true }))
+    return createValidatedConfig(options)
   } catch (error) {
     if (error instanceof BymaxConfigValidationError) {
-      reportIssues(options.onValidationError, error.issues)
+      await reportIssues(options.onValidationError, error)
     }
     throw error
   }
@@ -83,6 +104,6 @@ export function createValidatedConfig<TShape extends EnvShape>(
  */
 export const bymaxConfigProvider: FactoryProvider = {
   provide: BYMAX_CONFIG,
-  useFactory: createValidatedConfig,
+  useFactory: provideValidatedConfig,
   inject: [BYMAX_CONFIG_OPTIONS]
 }

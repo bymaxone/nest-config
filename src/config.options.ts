@@ -37,13 +37,16 @@ export interface BymaxConfigModuleOptions<TSchema extends EnvSchema = EnvSchema>
 
   /**
    * Observability hook invoked once with the structured issue list immediately
-   * before the validation error is thrown. The issues are value-free on the
-   * terms stated by {@link ConfigIssue}: generated descriptions never carry a
-   * received value, while a schema author's own `custom` message is passed
-   * through as written. It is observability only and cannot suppress the
-   * failure: the error still propagates even when the hook itself throws.
+   * before the validation error is thrown. Its return value is ignored unless it is a
+   * promise, which the module waits for before the boot fails; there is no timeout, so a
+   * hook that never settles holds the boot. The issues are value-free on the terms stated by
+   * {@link ConfigIssue}: generated descriptions never carry a received value, while a
+   * schema author's own `custom` message is passed through as written. It is
+   * observability only and cannot suppress the failure: the validation error still
+   * propagates when the hook throws or rejects, and the hook's error is attached to it
+   * as its non-enumerable `cause`.
    */
-  readonly onValidationError?: (issues: ReadonlyArray<ConfigIssue>) => void
+  readonly onValidationError?: (issues: ReadonlyArray<ConfigIssue>) => unknown
 
   /**
    * When true, source variables that match a declared namespace prefix but no

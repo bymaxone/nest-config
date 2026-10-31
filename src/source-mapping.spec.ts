@@ -278,6 +278,92 @@ function reportedVariables(
   }
 }
 
+describe('resolveSourceNames metadata through wrappers', () => {
+  const placements: ReadonlyArray<readonly [string, () => z.ZodType]> = [
+    ['default', () => z.string().meta({ env: 'LEGACY_NAME' }).default('d')],
+    ['prefault', () => z.string().meta({ env: 'LEGACY_NAME' }).prefault('d')],
+    ['optional', () => z.string().meta({ env: 'LEGACY_NAME' }).optional()],
+    ['nullable', () => z.string().meta({ env: 'LEGACY_NAME' }).nullable()],
+    ['nonoptional', () => z.string().optional().meta({ env: 'LEGACY_NAME' }).nonoptional()],
+    ['readonly', () => z.string().meta({ env: 'LEGACY_NAME' }).readonly()],
+    ['catch', () => z.string().meta({ env: 'LEGACY_NAME' }).catch('d')],
+    [
+      'transform',
+      () =>
+        z
+          .string()
+          .meta({ env: 'LEGACY_NAME' })
+          .transform((value) => value)
+    ],
+    ['pipe', () => z.string().meta({ env: 'LEGACY_NAME' }).pipe(z.string())],
+    ['two wrappers', () => z.string().meta({ env: 'LEGACY_NAME' }).default('d').optional()]
+  ]
+
+  it.each(placements)('finds an override set before .%s()', (_wrapper, build) => {
+    /**
+     * Placement does not matter.
+     *
+     * A wrapper such as .default() builds a new schema node that carries no metadata of
+     * its own, so a meta({ env }) written before it used to be ignored without a word
+     * and the derived name was read instead. The override is read through every wrapper
+     * Zod offers, and a check method (.min, .refine) keeps it on the schema itself.
+     */
+    const schema = defineEnv({ legacy: z.object({ value: build() }) })
+
+    expect(resolveSourceNames(schema)).toEqual([{ path: 'legacy.value', variable: 'LEGACY_NAME' }])
+  })
+
+  it('lets the outermost override win over an inner one', () => {
+    /** Two overrides on one leaf: the one written last is the one the author means. */
+    const schema = defineEnv({
+      legacy: z.object({
+        value: z.string().meta({ env: 'INNER_NAME' }).default('d').meta({ env: 'OUTER_NAME' })
+      })
+    })
+
+    expect(resolveSourceNames(schema)).toEqual([{ path: 'legacy.value', variable: 'OUTER_NAME' }])
+  })
+
+  it('falls through an unusable outer override to an inner one', () => {
+    /** An empty or non-string outer value is ignored, so the walk goes on to the next. */
+    const schema = defineEnv({
+      legacy: z.object({
+        empty: z.string().meta({ env: 'INNER_EMPTY' }).default('d').meta({ env: '' }),
+        notString: z.string().meta({ env: 'INNER_NUMBER' }).default('d').meta({ env: 7 })
+      })
+    })
+
+    expect(resolveSourceNames(schema).map((binding) => binding.variable)).toEqual([
+      'INNER_EMPTY',
+      'INNER_NUMBER'
+    ])
+  })
+
+  it('derives the name when no layer carries an override', () => {
+    /** A wrapper chain with no metadata anywhere still derives the name from the path. */
+    const schema = defineEnv({ legacy: z.object({ value: z.string().default('d').optional() }) })
+
+    expect(resolveSourceNames(schema)).toEqual([{ path: 'legacy.value', variable: 'LEGACY_VALUE' }])
+  })
+
+  it('is the variable validation reads for an override set before a default', () => {
+    /**
+     * List and read agree. Validation resolves its variables through the same function,
+     * so a value supplied under the override name reaches the leaf instead of the default.
+     */
+    const schema = defineEnv({
+      legacy: z.object({ value: z.string().meta({ env: 'LEGACY_NAME' }).default('fallback') })
+    })
+
+    expect(
+      createValidatedConfig({ schema, source: { LEGACY_NAME: 'supplied' } }).legacy.value
+    ).toBe('supplied')
+    expect(
+      createValidatedConfig({ schema, source: { LEGACY_VALUE: 'ignored' } }).legacy.value
+    ).toBe('fallback')
+  })
+})
+
 describe('resolveSourceNames as published from the package root', () => {
   it('is the very function validation resolves its variables through', () => {
     /**

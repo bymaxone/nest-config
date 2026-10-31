@@ -13,7 +13,8 @@
 
 import { z } from 'zod'
 
-import { createValidatedConfig } from './config.providers'
+import type { BymaxConfigModuleOptions } from './config.options'
+import { bymaxConfigProvider, createValidatedConfig } from './config.providers'
 import { defineEnv } from './define-env'
 import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
 
@@ -100,85 +101,6 @@ describe('createValidatedConfig', () => {
     expect(config.server.port).toBe(7000)
   })
 
-  it('invokes the hook once with the issues, then throws the validation error', () => {
-    /**
-     * Fail-fast with observability.
-     *
-     * On failure the hook receives the exact structured issue list once, and the
-     * BymaxConfigValidationError still propagates: the hook observes, it does not
-     * decide the outcome.
-     */
-    const hook = jest.fn()
-
-    let thrown: unknown
-    try {
-      createValidatedConfig({ schema, source: {}, onValidationError: hook })
-    } catch (error) {
-      thrown = error
-    }
-
-    expect(thrown).toBeInstanceOf(BymaxConfigValidationError)
-    expect(hook).toHaveBeenCalledTimes(1)
-    expect(hook).toHaveBeenCalledWith((thrown as BymaxConfigValidationError).issues)
-  })
-
-  it('propagates the original error even when the hook throws', () => {
-    /**
-     * Hook cannot suppress or replace the failure.
-     *
-     * A throwing observability hook must not swallow, mask, or substitute the
-     * validation error; the original BymaxConfigValidationError still reaches the
-     * caller so a misconfigured process never boots.
-     */
-    const hook = jest.fn(() => {
-      throw new Error('hook exploded')
-    })
-
-    let thrown: unknown
-    try {
-      createValidatedConfig({ schema, source: {}, onValidationError: hook })
-    } catch (error) {
-      thrown = error
-    }
-
-    expect(thrown).toBeInstanceOf(BymaxConfigValidationError)
-    expect(hook).toHaveBeenCalledTimes(1)
-  })
-
-  it('propagates a non-validation error without invoking the hook', () => {
-    /**
-     * Non-validation failure bypasses observability.
-     *
-     * The hook exists to report validation issues; an unexpected error that is
-     * not a BymaxConfigValidationError (here a schema transform that throws)
-     * carries no issue list, so it must propagate untouched and leave the hook
-     * uncalled.
-     */
-    const throwingSchema = defineEnv({
-      server: z.object({
-        port: z.string().transform(() => {
-          throw new Error('transform failed')
-        })
-      })
-    })
-    const hook = jest.fn()
-
-    let thrown: unknown
-    try {
-      createValidatedConfig({
-        schema: throwingSchema,
-        source: { SERVER_PORT: 'x' },
-        onValidationError: hook
-      })
-    } catch (error) {
-      thrown = error
-    }
-
-    expect(thrown).toBeInstanceOf(Error)
-    expect(thrown).not.toBeInstanceOf(BymaxConfigValidationError)
-    expect(hook).not.toHaveBeenCalled()
-  })
-
   it('forwards the strict flag into the validator', () => {
     /**
      * Strict flag propagation.
@@ -203,5 +125,148 @@ describe('createValidatedConfig', () => {
       )
     ).toBe(true)
     expect(createValidatedConfig({ schema, source }).server.port).toBe(3000)
+  })
+})
+
+/** The factory the module registers for BYMAX_CONFIG, typed for a direct call. */
+const provide = bymaxConfigProvider.useFactory as (
+  options: BymaxConfigModuleOptions
+) => Promise<unknown>
+
+/** The error a failing provider rejects with, or the test fails. */
+async function rejection(options: BymaxConfigModuleOptions): Promise<BymaxConfigValidationError> {
+  try {
+    await provide(options)
+  } catch (error) {
+    expect(error).toBeInstanceOf(BymaxConfigValidationError)
+    return error as BymaxConfigValidationError
+  }
+  throw new Error('the provider was expected to reject')
+}
+
+describe('the BYMAX_CONFIG provider factory and the validation hook', () => {
+  it('resolves with the frozen config and never calls the hook on success', async () => {
+    /** The hook is for failures only. */
+    const hook = jest.fn()
+
+    const config = (await provide({
+      schema,
+      source: { SERVER_PORT: '8080' },
+      onValidationError: hook
+    })) as { server: { port: number } }
+
+    expect(config.server.port).toBe(8080)
+    expect(Object.isFrozen(config)).toBe(true)
+    expect(hook).not.toHaveBeenCalled()
+  })
+
+  it('invokes the hook once with the issues, then rejects with the validation error', async () => {
+    /**
+     * Fail-fast with observability.
+     *
+     * On failure the hook receives the exact structured issue list once, and the
+     * BymaxConfigValidationError still reaches the caller: the hook observes, it does not
+     * decide the outcome.
+     */
+    const hook = jest.fn()
+
+    const error = await rejection({ schema, source: {}, onValidationError: hook })
+
+    expect(hook).toHaveBeenCalledTimes(1)
+    expect(hook).toHaveBeenCalledWith(error.issues)
+    expect(error.cause).toBeUndefined()
+  })
+
+  it('waits for an asynchronous hook to finish before the boot fails', async () => {
+    /**
+     * The hook's work belongs to the boot path. An asynchronous hook that ships the
+     * issues to a log sink is awaited, so the process does not go on to fail, and exit,
+     * while the report is still in flight.
+     */
+    const order: string[] = []
+    const hook = jest.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      order.push('hook finished')
+    })
+
+    const pending = rejection({ schema, source: {}, onValidationError: hook })
+    void pending.then(() => order.push('boot failed'))
+    await pending
+
+    expect(order).toEqual(['hook finished', 'boot failed'])
+  })
+
+  it('keeps the validation error and records a rejecting hook as its cause', async () => {
+    /**
+     * A hook that rejects used to leave an unhandled rejection behind. The boot now
+     * fails with the original validation error, unchanged in class, code, issues and
+     * message, and the hook's error is attached as its `cause`, a non-enumerable property
+     * so that `code` and `issues` stay the only own enumerable ones.
+     */
+    const unhandled = jest.fn()
+    process.on('unhandledRejection', unhandled)
+    const hookError = new Error('hook exploded')
+    const control = await rejection({ schema, source: {} })
+
+    try {
+      const error = await rejection({
+        schema,
+        source: {},
+        onValidationError: async () => {
+          throw hookError
+        }
+      })
+      await new Promise((resolve) => setImmediate(resolve))
+
+      expect(error.cause).toBe(hookError)
+      expect(error.message).toBe(control.message)
+      expect(error.issues).toEqual(control.issues)
+      expect(error.code).toBe(ConfigErrorCode.VALIDATION)
+      expect(Object.keys(error).sort()).toEqual(['code', 'issues'])
+      expect(unhandled).not.toHaveBeenCalled()
+    } finally {
+      process.off('unhandledRejection', unhandled)
+    }
+  })
+
+  it('records a synchronously throwing hook as the cause as well', async () => {
+    /** Same contract for a hook that throws before returning, with any thrown value. */
+    const error = await rejection({
+      schema,
+      source: {},
+      onValidationError: () => {
+        throw 'plain string'
+      }
+    })
+
+    expect(error.cause).toBe('plain string')
+  })
+
+  it('propagates a non-validation error without invoking the hook', async () => {
+    /**
+     * Non-validation failure bypasses observability.
+     *
+     * The hook exists to report validation issues; an unexpected error that is not a
+     * BymaxConfigValidationError (here a schema transform that throws) carries no issue
+     * list, so it must propagate untouched and leave the hook uncalled.
+     */
+    const throwingSchema = defineEnv({
+      server: z.object({
+        port: z.string().transform(() => {
+          throw new Error('transform failed')
+        })
+      })
+    })
+    const hook = jest.fn()
+
+    const outcome = provide({
+      schema: throwingSchema as unknown as BymaxConfigModuleOptions['schema'],
+      source: { SERVER_PORT: 'x' },
+      onValidationError: hook
+    })
+
+    await expect(outcome).rejects.toThrow('transform failed')
+    await expect(outcome).rejects.not.toBeInstanceOf(BymaxConfigValidationError)
+    expect(hook).not.toHaveBeenCalled()
   })
 })

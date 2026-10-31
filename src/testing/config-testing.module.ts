@@ -14,7 +14,7 @@ import type { DynamicModule } from '@nestjs/common'
 import { BymaxConfigModule } from '@bymax-one/nest-config/internal'
 import type { EnvSchema, EnvShape } from '@bymax-one/nest-config/internal'
 
-import { buildTestSource } from './create-test-config'
+import { prepareTestConfig } from './create-test-config'
 import type { ConfigOverrides } from './create-test-config'
 
 /**
@@ -30,6 +30,8 @@ import type { ConfigOverrides } from './create-test-config'
  * @param schema - A schema produced by `defineEnv`.
  * @param overrides - Optional selective nested partial overrides.
  * @returns A dynamic module registered through the production `forRoot` path.
+ * @throws {BymaxConfigValidationError} When an override violates a constraint, or when no
+ * placeholder satisfies a leaf; the module is not built, and the issue names the leaf to override.
  * @example
  * ```typescript
  * const moduleRef = await Test.createTestingModule({
@@ -42,7 +44,7 @@ export function configTestingModule<TShape extends EnvShape>(
   schema: EnvSchema<TShape>,
   overrides?: ConfigOverrides<TShape>
 ): DynamicModule {
-  const source = buildTestSource(schema, overrides)
+  const { source } = prepareTestConfig(schema, overrides)
   // Widen the schema to the registration parameter's default shape: the phantom
   // `infer` accessor makes `EnvSchema<TShape>` structurally incompatible with the
   // non-generic `forRoot` parameter, though the runtime schema is identical.

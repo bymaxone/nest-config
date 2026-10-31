@@ -75,3 +75,93 @@ describe('createTestConfig', () => {
     }).toThrow(TypeError)
   })
 })
+
+describe('createTestConfig when no placeholder can satisfy a leaf', () => {
+  const unsynthesizable = defineEnv({
+    server: z.object({ port: z.coerce.number().int().min(1).max(65535).default(3000) }),
+    region: z.object({ code: z.string().regex(/^[A-Z]{3}$/) }),
+    billing: z.object({ key: z.string().refine((value) => value.startsWith('sk_')) })
+  })
+
+  /** What createTestConfig throws for the schema, or the test fails. */
+  function failure(
+    overrides?: Parameters<typeof createTestConfig<typeof unsynthesizable.shape>>[1]
+  ) {
+    try {
+      createTestConfig(unsynthesizable, overrides)
+    } catch (error) {
+      expect(error).toBeInstanceOf(BymaxConfigValidationError)
+      return error as BymaxConfigValidationError
+    }
+    throw new Error('createTestConfig was expected to throw')
+  }
+
+  it('names each leaf that needs an override, in the validation error', () => {
+    /**
+     * A regex or a refine rule is a constraint no sample can be known to satisfy. The
+     * failure used to read as a plain constraint violation, as if the schema or the
+     * caller were wrong. It now says that no placeholder fits and names the leaf to
+     * override, still as a BymaxConfigValidationError with the variable in its column.
+     */
+    const error = failure()
+
+    expect(error.issues.map((issue) => issue.path)).toEqual(['region.code', 'billing.key'])
+    expect(error.issues[0]?.message).toBe(
+      'no placeholder satisfies this leaf (invalid format (expected: regex)); pass an override for region.code'
+    )
+    expect(error.issues[1]?.message).toBe(
+      'no placeholder satisfies this leaf (invalid value); pass an override for billing.key'
+    )
+    expect(error.message).toContain('REGION_CODE')
+    expect(error.message).toContain('pass an override for billing.key')
+  })
+
+  it('stops asking once the leaf is overridden', () => {
+    /** Overriding both leaves with satisfying values makes the config valid. */
+    const config = createTestConfig(unsynthesizable, {
+      region: { code: 'BRA' },
+      billing: { key: 'sk_test' }
+    })
+
+    expect(config.region.code).toBe('BRA')
+    expect(config.billing.key).toBe('sk_test')
+  })
+
+  it('asks only for the leaves still unsatisfied', () => {
+    /** One override given, one still missing: only the missing one is named. */
+    const error = failure({ region: { code: 'BRA' } })
+
+    expect(error.issues.map((issue) => issue.path)).toEqual(['billing.key'])
+  })
+
+  it('leaves an override that violates its own constraint as the plain violation', () => {
+    /**
+     * The caller supplied this value, so "no placeholder satisfies it" would be false:
+     * the constraint's own description is the honest message.
+     */
+    const error = failure({ region: { code: 'brazil' }, billing: { key: 'sk_test' } })
+
+    expect(error.issues).toHaveLength(1)
+    expect(error.issues[0]?.message).toBe('invalid format (expected: regex)')
+  })
+})
+
+describe('createTestConfig when the schema itself throws', () => {
+  it('rethrows an error that is not a validation error, untouched', () => {
+    /**
+     * Only a BymaxConfigValidationError carries issues to explain. A transform that throws
+     * its own error is not one, so it reaches the caller as it was thrown instead of being
+     * wrapped in guidance about overrides.
+     */
+    const exploding = defineEnv({
+      s: z.object({
+        v: z.string().transform(() => {
+          throw new RangeError('transform failed')
+        })
+      })
+    })
+
+    expect(() => createTestConfig(exploding)).toThrow(RangeError)
+    expect(() => createTestConfig(exploding)).not.toThrow(BymaxConfigValidationError)
+  })
+})

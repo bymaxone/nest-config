@@ -24,6 +24,34 @@ as the GitHub Release body, so each released version needs a matching
   nothing; they are public now. **Apply to a derived backend:** nothing is required; import
   `resolveSourceNames` from `@bymax-one/nest-config` rather than from `./internal`.
 
+### Fixed
+
+- **A rule on a namespace that names no leaf is reported, not dropped.** A `.check`, `.refine` or
+  `.superRefine` on a namespace whose issue sets no `path` made the validation fail with
+  `environment validation failed (0 issues)` and an empty report. It is reported against the
+  namespace now: the issue's `path` is the namespace key, the variable column shows its prefix
+  followed by `*` (`STORAGE_*`), and the author's message is kept; a rule on the whole schema
+  reports `(schema)`. Such a rule runs once the namespace's own leaves are valid.
+- **`meta({ env })` is found wherever it sits in the chain.** `z.string().meta({ env: 'L' }).default('x')`
+  silently read the derived name, because `.default`, `.optional`, `.nullable`, `.nonoptional`,
+  `.readonly`, `.catch`, `.prefault`, `.transform` and `.pipe` build a node that carries no metadata.
+  The override is read through them, the outermost usable one wins, and `resolveSourceNames` gives
+  the same answer as validation. **Apply to a derived backend:** a leaf that wrote `meta({ env })`
+  before a wrapper now reads that variable instead of the derived one; check that the variable is
+  set where the derived name was.
+- **An asynchronous `onValidationError` that rejects no longer leaves an unhandled rejection.** The
+  provider awaits the hook, so the boot fails after it finishes, with the original validation error;
+  the hook's error, thrown or rejected, is attached to it as a non-enumerable `cause`. A hook that
+  threw was swallowed with no trace before. The hook's type returns `unknown`, so every existing
+  hook still compiles; a hook that never settles now holds the boot, since there is no timeout.
+- **`createTestConfig` and `configTestingModule` synthesize more leaf types and say what to
+  override.** `z.stringbool()`, `z.uuid()`, `z.iso.datetime()`, `z.iso.date()`, `z.iso.time()`,
+  `z.coerce.date()`, `z.string().email()`, `z.literal`, and leaves wrapped in `.readonly`,
+  `.nonoptional`, `.pipe`, `.prefault` or `.catch` got a placeholder or are left to the schema,
+  where each used to fail validation. A leaf no placeholder can satisfy (a regex, a `.refine`)
+  fails with an issue that names it and says to override it, and `configTestingModule` raises
+  that when it is called instead of when the module compiles.
+
 ### Documentation
 
 - **The README now states what the code does.** The sample failure report printed messages
@@ -31,6 +59,11 @@ as the GitHub Release body, so each released version needs a matching
   it documents. The Tech Stack and mutation-score figures, and the `configTestingModule`
   example, now match the code, and the library is no longer said to have property-based
   tests (the value-free guarantee is held by sentinel-secret tests).
+
+- **Where "deep-frozen" stops is stated.** Plain objects and arrays are frozen; a `Date`, `Map`
+  or `Set` leaf is frozen as an object but keeps its mutators, and the README says why a read-only
+  wrapper was rejected. The README also documents the namespace-level rule, the placement of
+  `meta({ env })`, the awaited hook and the placeholders `createTestConfig` can synthesize.
 
 ### Tests
 

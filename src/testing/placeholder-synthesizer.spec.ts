@@ -377,3 +377,74 @@ describe('synthesizePlaceholderSource', () => {
     expect(() => validateEnv(schema, source)).not.toThrow()
   })
 })
+
+describe('synthesizePlaceholderSource formats beyond url and email', () => {
+  /** A one-leaf schema, and the value the production validator reads from the synthesized source. */
+  function validatedLeaf<TLeaf extends z.ZodType>(leaf: TLeaf): unknown {
+    const schema = defineEnv({ sample: z.object({ value: leaf }) })
+    const config = validateEnv(schema, synthesizePlaceholderSource(schema)) as {
+      sample: { value: unknown }
+    }
+    return config.sample.value
+  }
+
+  const accepted: ReadonlyArray<readonly [string, z.ZodType, unknown]> = [
+    ['z.stringbool()', z.stringbool(), true],
+    ['z.uuid()', z.uuid(), '00000000-0000-4000-8000-000000000000'],
+    ['z.string().uuid()', z.string().uuid(), '00000000-0000-4000-8000-000000000000'],
+    ['z.iso.datetime()', z.iso.datetime(), '2000-01-01T00:00:00.000Z'],
+    ['z.iso.date()', z.iso.date(), '2000-01-01'],
+    ['z.iso.time()', z.iso.time(), '00:00:00'],
+    ['z.coerce.date()', z.coerce.date(), new Date('2000-01-01T00:00:00.000Z')],
+    ['z.string().email()', z.string().email(), 'a@placeholder.local'],
+    ['z.literal("fixed")', z.literal('fixed'), 'fixed']
+  ]
+
+  it.each(accepted)('emits a value the validator accepts for %s', (_label, leaf, expected) => {
+    // Scenario: each of these used to be rejected by validation, because the
+    // synthesizer fell back to the filler `a` for a type it did not recognize.
+    expect(validatedLeaf(leaf)).toEqual(expected)
+  })
+
+  it('emits the first value of a literal', () => {
+    // Scenario: a literal has exactly the values it lists, so the first is the sample.
+    const schema = defineEnv({ mode: z.object({ kind: z.literal(['a', 'b']) }) })
+    expect(synthesizePlaceholderSource(schema).MODE_KIND).toBe('a')
+  })
+
+  it('synthesizes through the wrappers that carry a value', () => {
+    // Scenario: readonly, nonoptional and a transform pipe all wrap a leaf that has
+    // to be synthesized from what it wraps, not replaced by the generic filler.
+    const schema = defineEnv({
+      wrapped: z.object({
+        ro: z.string().min(4).readonly(),
+        required: z.string().optional().nonoptional(),
+        piped: z
+          .string()
+          .min(3)
+          .transform((value) => value.length),
+        flag: z.stringbool().readonly()
+      })
+    })
+    const source = synthesizePlaceholderSource(schema)
+    expect(source.WRAPPED_RO).toBe('aaaa')
+    expect(source.WRAPPED_REQUIRED).toBe('a')
+    expect(source.WRAPPED_PIPED).toBe('aaa')
+    expect(source.WRAPPED_FLAG).toBe('true')
+  })
+
+  it('omits a prefault and a catch leaf, as it omits a default', () => {
+    // Scenario: both supply their own value when the variable is absent, so the
+    // schema decides, exactly as it does for `.default(...)`.
+    const schema = defineEnv({
+      fallback: z.object({
+        pre: z.string().min(9).prefault('prefaulted'),
+        safe: z.coerce.number().catch(7)
+      })
+    })
+    const source = synthesizePlaceholderSource(schema)
+    expect(source).not.toHaveProperty('FALLBACK_PRE')
+    expect(source).not.toHaveProperty('FALLBACK_SAFE')
+    expect(validateEnv(schema, source).fallback).toEqual({ pre: 'prefaulted', safe: 7 })
+  })
+})

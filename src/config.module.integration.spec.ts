@@ -117,6 +117,71 @@ describe('BymaxConfigModule integration', () => {
     expect(consumersBuilt).toBe(0)
   })
 
+  it('waits for an asynchronous validation hook before compile rejects', async () => {
+    /**
+     * The hook belongs to the boot path.
+     *
+     * An asynchronous hook that reports the failure is awaited inside the provider
+     * factory, so compile() rejects only after it has finished, with the validation
+     * error unchanged; a consumer that depends on the config is still never built.
+     */
+    let hookFinished = false
+    let consumersBuilt = 0
+    const hook = async (): Promise<void> => {
+      await new Promise((resolve) => setTimeout(resolve, 15))
+      hookFinished = true
+    }
+    const spyProvider = {
+      provide: Symbol('SPY_CONSUMER'),
+      useFactory: (config: AppConfig): AppConfig => {
+        consumersBuilt += 1
+        return config
+      },
+      inject: [BYMAX_CONFIG]
+    }
+
+    await expect(
+      Test.createTestingModule({
+        imports: [BymaxConfigModule.forRoot({ schema, source: {}, onValidationError: hook })],
+        providers: [spyProvider]
+      }).compile()
+    ).rejects.toBeInstanceOf(BymaxConfigValidationError)
+
+    expect(hookFinished).toBe(true)
+    expect(consumersBuilt).toBe(0)
+  })
+
+  it('rejects compile with the validation error when the hook rejects, with no stray rejection', async () => {
+    /**
+     * A rejecting hook cannot replace the failure or escape it.
+     *
+     * The boot fails with the original BymaxConfigValidationError and the hook's error is
+     * its `cause`; no unhandled rejection is left behind for the process to trip on.
+     */
+    const unhandled = jest.fn()
+    process.on('unhandledRejection', unhandled)
+    const hookError = new Error('reporting sink is down')
+
+    try {
+      const outcome = Test.createTestingModule({
+        imports: [
+          BymaxConfigModule.forRoot({
+            schema,
+            source: {},
+            onValidationError: () => Promise.reject(hookError)
+          })
+        ]
+      }).compile()
+
+      await expect(outcome).rejects.toBeInstanceOf(BymaxConfigValidationError)
+      await expect(outcome).rejects.toHaveProperty('cause', hookError)
+      await new Promise((resolve) => setImmediate(resolve))
+      expect(unhandled).not.toHaveBeenCalled()
+    } finally {
+      process.off('unhandledRejection', unhandled)
+    }
+  })
+
   it('resolves the source through a forRootAsync factory with explicit inject', async () => {
     /**
      * forRootAsync factory wiring.

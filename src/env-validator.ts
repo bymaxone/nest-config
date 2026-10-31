@@ -207,22 +207,50 @@ function toConfigIssue(
 }
 
 /**
+ * The issue of a rule that names no leaf, reported against a namespace or the schema.
+ *
+ * The variable column cannot hold a variable name, so it shows the namespace's
+ * prefix followed by `*`, or `(schema)` for a rule on the whole schema. The author's
+ * message is kept as written.
+ *
+ * @param path - The namespace key, or the empty string for the whole schema.
+ * @param variable - The text for the variable column.
+ * @param issue - The Zod issue that named no leaf.
+ * @returns The ConfigIssue for the report.
+ */
+function toNamespaceIssue(path: string, variable: string, issue: ZodValidationIssue): ConfigIssue {
+  return {
+    path,
+    variable,
+    code: ConfigErrorCode.INVALID,
+    message: authoredMessage(issue) ?? describeConstraint(issue)
+  }
+}
+
+/**
  * Aggregate the Zod issues into ConfigIssues in declaration order.
  *
  * Iterates the bindings so the report follows schema order and every emitted
- * issue carries a resolved variable name.
+ * issue carries a resolved variable name. An issue that names no declared leaf
+ * follows the leaf issues, as one issue per namespace in declaration order and
+ * then one for the schema as a whole.
  *
  * @param zodIssues - The issues from the failed parse.
  * @param bindings - The leaf-to-variable bindings for the schema.
+ * @param prefixes - The declared namespaces, in declaration order, with their prefixes.
  * @param source - The source values for missing-versus-invalid classification.
  * @returns The aggregated, ordered ConfigIssue list.
  */
 function translateIssues(
   zodIssues: ReadonlyArray<ZodValidationIssue>,
   bindings: readonly SourceBinding[],
+  prefixes: readonly NamespacePrefix[],
   source: ReadonlyMap<string, string | undefined>
 ): ConfigIssue[] {
+  const leafPaths = new Set(bindings.map((binding) => binding.path))
+  const namespaces = new Set(prefixes.map((entry) => entry.namespace))
   const issueByPath = new Map<string, ZodValidationIssue>()
+  const issueByNamespace = new Map<string, ZodValidationIssue>()
   for (const issue of zodIssues) {
     // Collapse any deeper path (a nested field inside a complex leaf, e.g.
     // namespace.leaf.0) to its declared leaf path so the issue still maps to a
@@ -230,9 +258,16 @@ function translateIssues(
     // Zod lists a leaf's primary failure first, and the report shows one line
     // per variable, so the choice must be deterministic, not order-dependent.
     const path = issue.path.slice(0, 2).join('.')
-    if (!issueByPath.has(path)) {
-      issueByPath.set(path, issue)
+    if (leafPaths.has(path)) {
+      if (!issueByPath.has(path)) issueByPath.set(path, issue)
+      continue
     }
+    // No leaf to point at: a rule on a namespace, or on the schema as a whole,
+    // whose issue names no declared leaf. It is kept under its namespace, or under
+    // the empty key for the schema, so a failed validation never reports nothing.
+    const namespace = issue.path.length > 0 && namespaces.has(String(issue.path[0]))
+    const key = namespace ? String(issue.path[0]) : ''
+    if (!issueByNamespace.has(key)) issueByNamespace.set(key, issue)
   }
   const result: ConfigIssue[] = []
   for (const binding of bindings) {
@@ -240,6 +275,13 @@ function translateIssues(
     if (issue === undefined) continue
     result.push(toConfigIssue(binding, issue, source))
   }
+  for (const entry of prefixes) {
+    const issue = issueByNamespace.get(entry.namespace)
+    if (issue === undefined) continue
+    result.push(toNamespaceIssue(entry.namespace, `${entry.prefix}*`, issue))
+  }
+  const wholeSchema = issueByNamespace.get('')
+  if (wholeSchema !== undefined) result.push(toNamespaceIssue('', '(schema)', wholeSchema))
   return result
 }
 
@@ -355,14 +397,12 @@ export function validateEnv<TShape extends EnvShape>(
   const namespaces = Object.keys(schema.shape)
   const candidate = buildCandidate(namespaces, collectPresentLeaves(bindings, sourceMap))
   const result = schema.safeParse(candidate)
-  const unknown =
-    options?.strict === true
-      ? detectUnknownKeys(resolveNamespacePrefixes(schema), bindings, sourceMap)
-      : []
+  const prefixes = resolveNamespacePrefixes(schema)
+  const unknown = options?.strict === true ? detectUnknownKeys(prefixes, bindings, sourceMap) : []
   if (result.success) {
     if (unknown.length === 0) return result.data
     throw new BymaxConfigValidationError(unknown)
   }
-  const issues = translateIssues(result.error.issues, bindings, sourceMap)
+  const issues = translateIssues(result.error.issues, bindings, prefixes, sourceMap)
   throw new BymaxConfigValidationError([...issues, ...unknown])
 }

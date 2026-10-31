@@ -1,7 +1,8 @@
 /**
  * @fileoverview Recursive `Object.freeze` utility that makes the validated
- * configuration immutable by construction. Nested objects and arrays are frozen
- * depth-first; primitives and null pass through untouched. Nodes are frozen
+ * configuration immutable by construction. Nested plain objects and arrays are frozen
+ * depth-first; primitives and null pass through untouched. A `Date`, a `Map` and a `Set`
+ * are frozen as objects but keep working mutators (see {@link deepFreeze}). Nodes are frozen
  * before their children are visited, so self-referencing structures terminate
  * on the already-frozen check instead of recursing forever.
  * @layer Utility
@@ -25,6 +26,14 @@ function isFreezable(value: unknown): value is Record<string, unknown> {
  * enumerable properties. Primitives, null, and already-frozen nodes are returned
  * unchanged, which also makes the function idempotent and cycle-safe. Under
  * strict mode, later writes to the returned structure throw.
+ *
+ * What it does not do: a `Date`, a `Map` or a `Set` keeps its mutators, because the state
+ * they change lives in internal slots that `Object.freeze` cannot reach, and the entries of
+ * a `Map` or `Set` are not own enumerable properties, so they are not visited. Replacing
+ * those values with a read-only wrapper was measured and rejected: a `Proxy` around a
+ * `Date` that refuses `setX` fails `util.types.isDate`, reports `[object Object]` to
+ * `Object.prototype.toString`, cannot be passed to `structuredClone`, and does not satisfy
+ * `assert.deepStrictEqual` against a real `Date`, which is how test runners compare them.
  *
  * @typeParam T - The type of the value being frozen.
  * @param value - The value to deep-freeze.

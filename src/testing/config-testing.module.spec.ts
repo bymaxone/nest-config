@@ -15,6 +15,7 @@ import { z } from 'zod'
 import { ConfigService } from '../config.service'
 import { BYMAX_CONFIG } from '../config.tokens'
 import { defineEnv } from '../define-env'
+import { BymaxConfigValidationError } from '../errors'
 import { configTestingModule } from './config-testing.module'
 
 const schema = defineEnv({
@@ -49,5 +50,41 @@ describe('configTestingModule', () => {
     const raw = moduleRef.get<AppConfig>(BYMAX_CONFIG)
     expect(raw.server.port).toBe(3000)
     expect(Object.isFrozen(raw)).toBe(true)
+  })
+})
+
+describe('configTestingModule when no placeholder can satisfy a leaf', () => {
+  const unsynthesizable = defineEnv({
+    region: z.object({ code: z.string().regex(/^[A-Z]{3}$/) })
+  })
+
+  it('throws, naming the leaf to override, when the module is built', () => {
+    /**
+     * The same guidance as createTestConfig, at the point the schema is handed over:
+     * the failure is raised by the call, not found later inside a compile, and it names
+     * the leaf the caller has to override.
+     */
+    let thrown: unknown
+    try {
+      configTestingModule(unsynthesizable)
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).toBeInstanceOf(BymaxConfigValidationError)
+    expect((thrown as BymaxConfigValidationError).issues[0]?.message).toContain(
+      'pass an override for region.code'
+    )
+  })
+
+  it('builds once the leaf is overridden', async () => {
+    /** An override that satisfies the rule makes the module compile and resolve. */
+    const moduleRef = await Test.createTestingModule({
+      imports: [configTestingModule(unsynthesizable, { region: { code: 'BRA' } })]
+    }).compile()
+
+    expect(moduleRef.get(ConfigService<typeof unsynthesizable.infer>).get('region.code')).toBe(
+      'BRA'
+    )
   })
 })

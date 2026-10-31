@@ -112,4 +112,31 @@ describe('deepFreeze', () => {
     expect(Object.isFrozen(frozen)).toBe(true)
     expect(frozen.self).toBe(frozen)
   })
+
+  it('freezes a Date, a Map and a Set as objects but does not make them immutable', () => {
+    /**
+     * The documented limit of "deep-frozen".
+     *
+     * Object.freeze reaches own properties, and a Date, a Map or a Set keep the state
+     * their mutators change in internal slots. The values are frozen objects whose
+     * mutators still work, and the entries of a Map or a Set are not visited at all. The
+     * README states this, so it is pinned here rather than left to be rediscovered.
+     */
+    const frozen = deepFreeze({
+      at: new Date('2026-01-01T00:00:00.000Z'),
+      byName: new Map([['a', { n: 1 }]]),
+      names: new Set(['a'])
+    })
+
+    expect(Object.isFrozen(frozen.at)).toBe(true)
+    frozen.at.setTime(0)
+    expect(frozen.at.getTime()).toBe(0)
+
+    frozen.byName.set('b', { n: 2 })
+    expect(frozen.byName.size).toBe(2)
+    expect(Object.isFrozen(frozen.byName.get('a'))).toBe(false)
+
+    frozen.names.add('b')
+    expect(frozen.names.size).toBe(2)
+  })
 })

@@ -221,8 +221,7 @@ API even though `@bymax-one/nest-config/internal` imports it successfully.
 Two findings follow, in opposite directions. Treating a change to an `./internal`-only export as a
 breaking change is **wrong** — `resolveSourceNames`, `createValidatedConfig` and the
 `SourceBinding` shape are reachable there and are free to move, and a name that reaches neither
-barrel (`NamespacePrefix`, `resolveNamespacePrefixes`, exported from `source-mapping.ts` and imported
-by `env-validator.ts`) is package-internal and freer still. Adding a name to `src/index.ts` is the real finding: it is new public surface, it is permanent, and it is
+barrel (`NamespacePrefix`, `resolveNamespacePrefixes`) is package-internal and freer still. Adding a name to `src/index.ts` is the real finding: it is new public surface, it is permanent, and it is
 raised with the maintainer before a version number is written rather than absorbed into a release.
 
 ### A `// Stryker disable` directive is not a suppression

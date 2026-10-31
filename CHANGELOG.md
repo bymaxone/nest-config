@@ -11,6 +11,19 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Fixed
+
+- **A schema in which two leaves read one variable is rejected.** `a.bC` and `aB.c` both
+  derive `A_B_C`, and `httpServer.port` and `HTTPServer.port` both derive
+  `HTTP_SERVER_PORT`; so does giving two leaves the same `meta({ env })`. Each pair used to
+  read one value silently, so setting the variable satisfied both leaves and neither could
+  tell. `forRoot`, `createValidatedConfig` and the testing helpers now throw a
+  `BymaxConfigValidationError` before the source is read, with one `BYMAX_CONFIG_INVALID`
+  issue per colliding leaf naming the other leaves and the shared variable. There is no
+  opt-out. `resolveSourceNames` still returns every binding. **Apply to a derived
+  backend:** a colliding schema now fails at boot. Give one leaf of each pair a distinct
+  `meta({ env })`, or read one leaf and derive the other value from it in the consumer.
+
 ## [1.2.2] - 2026-10-31
 
 ### Added

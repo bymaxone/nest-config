@@ -10,7 +10,11 @@
  * @layer Utility
  */
 
-import { BymaxConfigValidationError, createValidatedConfig } from '@bymax-one/nest-config/internal'
+import {
+  assertDistinctVariables,
+  BymaxConfigValidationError,
+  createValidatedConfig
+} from '@bymax-one/nest-config/internal'
 import { resolveSourceNames } from '@bymax-one/nest-config/internal'
 import type { EnvOutput, EnvSchema, EnvShape } from '@bymax-one/nest-config/internal'
 
@@ -137,6 +141,7 @@ export function prepareTestConfig<TShape extends EnvShape>(
   schema: EnvSchema<TShape>,
   overrides?: ConfigOverrides<TShape>
 ): { readonly source: Record<string, string>; readonly config: Readonly<EnvOutput<TShape>> } {
+  assertDistinctVariables(resolveSourceNames(schema))
   const overridden = new Set<string>()
   const source = applyOverrides(schema, synthesizePlaceholderSource(schema), overrides, overridden)
   try {

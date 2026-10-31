@@ -31,6 +31,7 @@ export type { ConfigIssue, ConfigIssueCode, ConfigValidationCode } from '../erro
 // Schema and validation helpers the testing entry builds on.
 export { defineEnv } from '../define-env'
 export { createValidatedConfig } from '../config.providers'
+export { assertDistinctVariables } from '../env-validator'
 export { resolveSourceNames } from '../source-mapping'
 export type { SourceBinding } from '../source-mapping'
 

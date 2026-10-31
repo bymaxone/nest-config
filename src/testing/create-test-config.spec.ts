@@ -213,3 +213,29 @@ describe('createTestConfig when the schema itself throws', () => {
     expect(() => createTestConfig(exploding)).not.toThrow(BymaxConfigValidationError)
   })
 })
+
+describe('createTestConfig when two leaves read one variable', () => {
+  const colliding = defineEnv({
+    a: z.object({ bC: z.string() }),
+    aB: z.object({ c: z.string() })
+  })
+
+  it('reports the collision itself, not a request for an override', () => {
+    /**
+     * Overriding one of two leaves that share a variable cannot fix the schema, so the
+     * collision is raised as it is, without the guidance about placeholders.
+     */
+    let thrown: unknown
+    try {
+      createTestConfig(colliding)
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).toBeInstanceOf(BymaxConfigValidationError)
+    expect((thrown as BymaxConfigValidationError).issues.map((issue) => issue.message)).toEqual([
+      'shares this variable with aB.c; rename one with meta({ env })',
+      'shares this variable with a.bC; rename one with meta({ env })'
+    ])
+  })
+})

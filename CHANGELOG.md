@@ -11,6 +11,20 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Documentation
+
+- **The README now states what the code does.** The sample failure report printed messages
+  the validator never produces and was misaligned; it is now the exact output for the inputs
+  it documents. The Tech Stack and mutation-score figures, and the `configTestingModule`
+  example, now match the code, and the library is no longer said to have property-based
+  tests (the value-free guarantee is held by sentinel-secret tests).
+
+### Tests
+
+- **A contract spec pins the README to the code.** `src/readme-contract.spec.ts` parses the
+  README and asserts its documented defaults, error catalog, peer table, mutation score and
+  first sample report against the code, so the next drift fails CI.
+
 ## [1.2.1] - 2026-10-30
 
 ### Security

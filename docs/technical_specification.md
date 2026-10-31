@@ -59,7 +59,7 @@ Every backend repeats the same bootstrap chore: read the environment, coerce str
 | Runtime              | Node.js 24+                                 |
 | Framework            | NestJS 11+                                  |
 | Subpaths             | `.` (server) + `./testing` (test utilities) |
-| Main peer dependency | `zod ^4`                                    |
+| Main peer dependency | `zod ^4.6.6`                                |
 
 ### 1.5 Design Principles
 

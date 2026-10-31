@@ -220,6 +220,12 @@ describe('the BYMAX_CONFIG provider factory and the validation hook', () => {
       await new Promise((resolve) => setImmediate(resolve))
 
       expect(error.cause).toBe(hookError)
+      expect(Object.getOwnPropertyDescriptor(error, 'cause')).toEqual({
+        value: hookError,
+        writable: false,
+        enumerable: false,
+        configurable: false
+      })
       expect(error.message).toBe(control.message)
       expect(error.issues).toEqual(control.issues)
       expect(error.code).toBe(ConfigErrorCode.VALIDATION)

@@ -588,6 +588,38 @@ describe('validateEnv issues that name no leaf', () => {
     ])
   })
 
+  it('reports a rule on the whole schema whose path starts outside every namespace', () => {
+    /**
+     * A schema-level rule may set a path whose first segment is not a namespace. It names no
+     * declared place, so it is reported against the schema, never dropped.
+     */
+    const stray = defineEnv({ a: z.object({ x: z.string().default('x') }) }).check((ctx) => {
+      ctx.issues.push({ code: 'custom', input: ctx.value, path: ['stray'], message: 'stray path' })
+    })
+
+    const error = captureError(stray, {})
+
+    expect(error.issues).toEqual([
+      { path: '', variable: '(schema)', code: ConfigErrorCode.INVALID, message: 'stray path' }
+    ])
+  })
+
+  it('does not mistake a rule on the whole schema for a namespace called undefined', () => {
+    /**
+     * An empty path has no first segment. It is the schema's, even when a namespace happens
+     * to be named `undefined`, which is what reading that missing segment as text would give.
+     */
+    const odd = defineEnv({ undefined: z.object({ x: z.string().default('x') }) }).check((ctx) => {
+      ctx.issues.push({ code: 'custom', input: ctx.value, message: 'whole schema' })
+    })
+
+    const error = captureError(odd, {})
+
+    expect(error.issues).toEqual([
+      { path: '', variable: '(schema)', code: ConfigErrorCode.INVALID, message: 'whole schema' }
+    ])
+  })
+
   it('reports only the first issue of a namespace', () => {
     /** One rule reports two issues on a namespace: one issue per namespace, as one per leaf. */
     const twice = defineEnv({

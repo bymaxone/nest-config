@@ -447,4 +447,36 @@ describe('synthesizePlaceholderSource formats beyond url and email', () => {
     expect(source).not.toHaveProperty('FALLBACK_SAFE')
     expect(validateEnv(schema, source).fallback).toEqual({ pre: 'prefaulted', safe: 7 })
   })
+
+  it('finds a format check that follows a length check', () => {
+    // Scenario: `.min(3).email()` puts a length check ahead of the format check, so the
+    // format has to be looked up by what the check is, not taken from the first one.
+    expect(validatedLeaf(z.string().min(3).email())).toBe('a@placeholder.local')
+    expect(validatedLeaf(z.string().min(3).uuid())).toBe('00000000-0000-4000-8000-000000000000')
+  })
+
+  it('omits a readonly leaf that wraps an optional one', () => {
+    // Scenario: readonly adds nothing to an optional leaf, so it is omitted like one;
+    // a sample would turn an absent value into a present one.
+    const schema = defineEnv({ ro: z.object({ v: z.string().min(4).optional().readonly() }) })
+    expect(synthesizePlaceholderSource(schema)).not.toHaveProperty('RO_V')
+    expect(validateEnv(schema, synthesizePlaceholderSource(schema))).toEqual({ ro: {} })
+  })
+
+  it('synthesizes a nonoptional leaf from what lies below its optional layer', () => {
+    // Scenario: the sample has to honor the inner constraints (here a minimum length of
+    // four), which the generic filler does not.
+    const schema = defineEnv({ req: z.object({ v: z.string().min(4).optional().nonoptional() }) })
+    expect(synthesizePlaceholderSource(schema).REQ_V).toBe('aaaa')
+  })
+
+  it('synthesizes a pipe whose output is boolean from its input when that is not a string', () => {
+    // Scenario: only a pipe that reads a string and yields a boolean (what z.stringbool()
+    // is) takes the boolean token; a numeric input is synthesized as a number, so `true`
+    // is not handed to a coercing number.
+    const schema = defineEnv({ gate: z.object({ on: z.coerce.number().pipe(z.coerce.boolean()) }) })
+    const source = synthesizePlaceholderSource(schema)
+    expect(source.GATE_ON).toBe('1')
+    expect(validateEnv(schema, source)).toEqual({ gate: { on: true } })
+  })
 })

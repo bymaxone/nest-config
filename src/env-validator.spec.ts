@@ -488,10 +488,9 @@ describe('validateEnv issues that name no leaf', () => {
   it('reports a namespace rule that carries no leaf path against the namespace', () => {
     /**
      * A rule written with `.check` on a namespace and no `path` has no leaf to point at.
-     * It used to vanish: the validation failed with an empty report, "(0 issues)", which
-     * says that something is wrong and nothing else. It is reported against the
-     * namespace now, with the namespace's variable prefix in the variable column and
-     * the author's message untouched.
+     * It is reported against the namespace, never as an empty report ("(0 issues)", which
+     * says that something is wrong and nothing else): the namespace's variable prefix is
+     * in the variable column and the author's message is untouched.
      */
     const error = captureError(storageSchema, { STORAGE_ENABLED: 'true' })
 

@@ -99,9 +99,9 @@ describe('createTestConfig when no placeholder can satisfy a leaf', () => {
   it('names each leaf that needs an override, in the validation error', () => {
     /**
      * A regex or a refine rule is a constraint no sample can be known to satisfy. The
-     * failure used to read as a plain constraint violation, as if the schema or the
-     * caller were wrong. It now says that no placeholder fits and names the leaf to
-     * override, still as a BymaxConfigValidationError with the variable in its column.
+     * failure says that no placeholder fits and names the leaf to override, as a
+     * BymaxConfigValidationError with the variable in its column, so it does not read as
+     * a plain constraint violation of the schema or of the caller's values.
      */
     const error = failure()
 

@@ -17,6 +17,7 @@ import type { BymaxConfigModuleOptions } from './config.options'
 import { bymaxConfigProvider, createValidatedConfig } from './config.providers'
 import { defineEnv } from './define-env'
 import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
+import type { EnvSchema } from './types'
 
 const schema = defineEnv({
   server: z.object({ port: z.coerce.number().int().min(1) })
@@ -198,10 +199,10 @@ describe('the BYMAX_CONFIG provider factory and the validation hook', () => {
 
   it('keeps the validation error and records a rejecting hook as its cause', async () => {
     /**
-     * A hook that rejects used to leave an unhandled rejection behind. The boot now
-     * fails with the original validation error, unchanged in class, code, issues and
-     * message, and the hook's error is attached as its `cause`, a non-enumerable property
-     * so that `code` and `issues` stay the only own enumerable ones.
+     * A hook that rejects leaves no unhandled rejection behind. The boot fails with the
+     * original validation error, unchanged in class, code, issues and message, and the
+     * hook's error is attached as its `cause`, a non-enumerable property so that `code`
+     * and `issues` stay the only own enumerable ones.
      */
     const unhandled = jest.fn()
     process.on('unhandledRejection', unhandled)
@@ -260,7 +261,7 @@ describe('the BYMAX_CONFIG provider factory and the validation hook', () => {
     const hook = jest.fn()
 
     const outcome = provide({
-      schema: throwingSchema as unknown as BymaxConfigModuleOptions['schema'],
+      schema: throwingSchema as EnvSchema,
       source: { SERVER_PORT: 'x' },
       onValidationError: hook
     })

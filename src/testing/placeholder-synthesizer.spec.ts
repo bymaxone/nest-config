@@ -401,8 +401,8 @@ describe('synthesizePlaceholderSource formats beyond url and email', () => {
   ]
 
   it.each(accepted)('emits a value the validator accepts for %s', (_label, leaf, expected) => {
-    // Scenario: each of these used to be rejected by validation, because the
-    // synthesizer fell back to the filler `a` for a type it did not recognize.
+    // Scenario: the filler `a` is not a valid value for any of these types, so the
+    // synthesizer has to generate a sample that the production validator accepts.
     expect(validatedLeaf(leaf)).toEqual(expected)
   })
 

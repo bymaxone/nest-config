@@ -304,9 +304,9 @@ describe('resolveSourceNames metadata through wrappers', () => {
      * Placement does not matter.
      *
      * A wrapper such as .default() builds a new schema node that carries no metadata of
-     * its own, so a meta({ env }) written before it used to be ignored without a word
-     * and the derived name was read instead. The override is read through every wrapper
-     * Zod offers, and a check method (.min, .refine) keeps it on the schema itself.
+     * its own, so a meta({ env }) written before it has to be found through the wrapper,
+     * or the derived name would be read instead. The override is read through every
+     * wrapper Zod offers, and a check method (.min, .refine) keeps it on the schema itself.
      */
     const schema = defineEnv({ legacy: z.object({ value: build() }) })
 

@@ -129,12 +129,12 @@ This package is the only member of the family that touches the environment, and 
 
 All tokens are `Symbol`s, never strings, and every constructor parameter and factory `inject` entry uses an explicit `@Inject(...)` (implicit class-type resolution is not relied upon in the published bundle).
 
-| Token                  | Provides                                 | Scope     |
-| ---------------------- | ---------------------------------------- | --------- |
-| `BYMAX_CONFIG_OPTIONS` | Resolved `BymaxConfigModuleOptions`      | Singleton |
-| `BYMAX_CONFIG`         | The deep-frozen, validated config object | Singleton |
+| Token                  | Provides                                                                                | Scope     |
+| ---------------------- | --------------------------------------------------------------------------------------- | --------- |
+| `BYMAX_CONFIG_OPTIONS` | Resolved `BymaxConfigModuleOptions`, inside the module only (it holds the raw `source`) | Singleton |
+| `BYMAX_CONFIG`         | The deep-frozen, validated config object                                                | Singleton |
 
-`ConfigService` itself is exported by class and is the recommended consumption surface; injecting `BYMAX_CONFIG` directly is supported for factory-style wiring of other dynamic modules.
+`ConfigService` itself is exported by class and is the recommended consumption surface; injecting `BYMAX_CONFIG` directly is supported for factory-style wiring of other dynamic modules. `BYMAX_CONFIG_OPTIONS` is not exported to other modules and is not a consumption surface.
 
 ---
 

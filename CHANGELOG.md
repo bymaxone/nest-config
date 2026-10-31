@@ -60,6 +60,14 @@ as the GitHub Release body, so each released version needs a matching
 - **Where "deep-frozen" stops is stated.** Plain objects and arrays are frozen; a `Date`, `Map`
   or `Set` leaf is frozen as an object but keeps its mutators.
 
+- **The findings of the feature inventory that no fix changes are documented.** `forRootAsync`
+  also takes `useClass` and `useExisting`; `BYMAX_CONFIG_OPTIONS` is not injectable outside the
+  module and holds the raw `source`, so the README no longer calls it exported for wiring;
+  `z.coerce.boolean()` turns `'false'` into `true` and an empty string is a present value; the
+  report shows the first issue per variable; `meta({ open: true })` must come last; `ConfigService`
+  shares its name with `@nestjs/config`'s; and what the testing helpers do with overrides, which
+  leaves they fill, and what they do not take are stated.
+
 ### Tests
 
 - **A contract spec pins the README to the code.** `src/readme-contract.spec.ts` parses the

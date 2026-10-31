@@ -33,8 +33,7 @@ as the GitHub Release body, so each released version needs a matching
   followed by `*` (`STORAGE_*`), and the author's message is kept; a rule on the whole schema
   reports `(schema)`. Such a rule runs once the namespace's own leaves are valid.
 - **`meta({ env })` is found wherever it sits in the chain.** `z.string().meta({ env: 'L' }).default('x')`
-  silently read the derived name, because `.default`, `.optional`, `.nullable`, `.nonoptional`,
-  `.readonly`, `.catch`, `.prefault`, `.transform` and `.pipe` build a node that carries no metadata.
+  silently read the derived name, because a wrapper builds a node that carries no metadata.
   The override is read through them, the outermost usable one wins, and `resolveSourceNames` gives
   the same answer as validation. **Apply to a derived backend:** a leaf that wrote `meta({ env })`
   before a wrapper now reads that variable instead of the derived one; check that the variable is
@@ -45,10 +44,8 @@ as the GitHub Release body, so each released version needs a matching
   threw was swallowed with no trace before. The hook's type returns `unknown`, so every existing
   hook still compiles; a hook that never settles now holds the boot, since there is no timeout.
 - **`createTestConfig` and `configTestingModule` synthesize more leaf types and say what to
-  override.** `z.stringbool()`, `z.uuid()`, `z.iso.datetime()`, `z.iso.date()`, `z.iso.time()`,
-  `z.coerce.date()`, `z.string().email()`, `z.literal`, and leaves wrapped in `.readonly`,
-  `.nonoptional`, `.pipe`, `.prefault` or `.catch` got a placeholder or are left to the schema,
-  where each used to fail validation. A leaf no placeholder can satisfy (a regex, a `.refine`)
+  override.** Leaf types that used to fail validation now get a placeholder or are left to the
+  schema. A leaf no placeholder can satisfy (a regex, a `.refine`)
   fails with an issue that names it and says to override it, and `configTestingModule` raises
   that when it is called instead of when the module compiles.
 
@@ -61,9 +58,7 @@ as the GitHub Release body, so each released version needs a matching
   tests (the value-free guarantee is held by sentinel-secret tests).
 
 - **Where "deep-frozen" stops is stated.** Plain objects and arrays are frozen; a `Date`, `Map`
-  or `Set` leaf is frozen as an object but keeps its mutators, and the README says why a read-only
-  wrapper was rejected. The README also documents the namespace-level rule, the placement of
-  `meta({ env })`, the awaited hook and the placeholders `createTestConfig` can synthesize.
+  or `Set` leaf is frozen as an object but keeps its mutators.
 
 ### Tests
 

@@ -268,9 +268,7 @@ database: z.object({
 ```
 
 The override is found wherever `meta` sits in the chain: `z.string().meta({ env: 'LEGACY' }).default('x')`
-and `z.string().default('x').meta({ env: 'LEGACY' })` both read `LEGACY`, whether the wrapper is
-`.default`, `.optional`, `.nullable`, `.nonoptional`, `.readonly`, `.catch`, `.prefault`,
-`.transform` or `.pipe`. When more than one layer sets it, the outermost usable one wins, and an
+and `z.string().default('x').meta({ env: 'LEGACY' })` both read `LEGACY`. When more than one layer sets it, the outermost usable one wins, and an
 empty or non-string value is skipped. `resolveSourceNames` answers the same, because validation
 reads its variables through it.
 
@@ -821,11 +819,7 @@ values elsewhere), applies selective overrides, then runs the exact
 production pipeline (validate, freeze), so a test exercises the same code
 path a running application does.
 
-Placeholders exist for a string (with its length bounds), `z.email()`, `z.url()`, `z.uuid()`, the
-`z.iso` date, time and datetime formats, `z.coerce.number()` (with its bounds), `z.coerce.boolean()`,
-`z.stringbool()`, `z.coerce.date()`, `z.literal`, `z.enum` and a leaf wrapped in `.nullable`,
-`.readonly`, `.nonoptional` or `.pipe`; `.default`, `.optional`, `.prefault` and `.catch` leaves are
-left out so the schema decides. A leaf no placeholder can be known to satisfy, such as a
+A leaf no placeholder can be known to satisfy, such as a
 `z.string().regex(...)` or a `.refine(...)` rule, makes the helper throw a
 `BymaxConfigValidationError` whose issue says `no placeholder satisfies this leaf` and names it
 (`pass an override for region.code`); give that leaf an override and the helper builds.

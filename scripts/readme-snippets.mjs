@@ -24,6 +24,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync
@@ -219,6 +220,30 @@ function scaffoldConsumer() {
 // 3. The README's own snippets compile against the built package.
 // ---------------------------------------------------------------------------
 
+/** A plain identifier: ID_Start, `$` or `_`, then ID_Continue, `$` or the joiners. */
+const IDENTIFIER = /^[\p{ID_Start}$_][\p{ID_Continue}$\u200c\u200d]*$/u
+
+/** Where the module file for a relative import goes, or `null` when the specifier does not
+ * name a plain path below the gate directory. The path is built from segments rather than
+ * checked afterwards: every segment is a plain name that is neither a dot-segment nor
+ * `node_modules`, the file never replaces one that exists, and the nearest existing
+ * ancestor must resolve, symlinks included, to a place inside the gate directory. The
+ * gate directory holds a symlink to the repository, so a lexical prefix test would let a
+ * specifier through it write into the repository. */
+function moduleFile(specifier) {
+  if (!specifier.startsWith('./')) return null
+  const segments = specifier.slice(2).split('/')
+  const plain = /^[A-Za-z0-9_][A-Za-z0-9_.-]*$/
+  if (!segments.every((s) => plain.test(s) && s !== 'node_modules')) return null
+  const file = `${join(GATE_DIR, ...segments)}.ts`
+  if (existsSync(file)) return null
+  let ancestor = dirname(file)
+  while (!existsSync(ancestor)) ancestor = dirname(ancestor)
+  const gate = realpathSync(GATE_DIR)
+  const real = realpathSync(ancestor)
+  return real === gate || real.startsWith(`${gate}${sep}`) ? file : null
+}
+
 /** Relative imports across the snippets, each resolved to the first snippet that
  * exports every name imported from it. A README shows `./config/env.schema` in one
  * block and imports it in another, so the importing block is checked against the
@@ -241,11 +266,13 @@ function localModules(blocks) {
               .split(/\s+as\s+/)[0]
         )
         .filter(Boolean)
+      // A name that is not a plain identifier is not a declaration this can look for.
+      if (!wanted.every((n) => IDENTIFIER.test(n))) continue
       const source = blocks.find((b) =>
         wanted.every((n) =>
           new RegExp(
-            `^export\\s+(?:const|class|interface|type|function|enum)\\s+${n}\\b`,
-            'm'
+            `^export\\s+(?:const|class|interface|type|function|enum)\\s+${n.replaceAll('$', '\\$')}(?![\\p{ID_Continue}$\\u200c\\u200d])`,
+            'mu'
           ).test(b.code)
         )
       )
@@ -255,6 +282,11 @@ function localModules(blocks) {
   return modules
 }
 
+/** Compiles every TypeScript fence of the README against the built package and reports a
+ * failure through `fail(check, detail)` for each error about the published API. Writes
+ * only below `.docs-gate/` and removes it afterwards, and prints a one-line summary of
+ * what was compiled and what was counted but not held against a snippet.
+ * @param {(check: string, detail: string) => void} fail Records a failure without stopping. */
 export function checkSnippets(fail) {
   // `tsx` too, and the fence language is kept: a React example has to be written
   // to a .tsx file or it does not parse, and a package with a React subpath
@@ -289,7 +321,8 @@ export function checkSnippets(fail) {
     writeFileSync(join(GATE_DIR, name), code)
   })
   for (const [specifier, source] of localModules(blocks)) {
-    const file = join(GATE_DIR, `${specifier}.ts`)
+    const file = moduleFile(specifier)
+    if (file === null) continue
     mkdirSync(dirname(file), { recursive: true })
     writeFileSync(file, prepare(source))
   }

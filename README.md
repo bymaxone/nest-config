@@ -587,11 +587,11 @@ it('documents every variable the schema reads in .env.example', () => {
 - **Two paths can read one variable.** Names are derived from the keys, so `a.bC` and
   `aB.c` both derive `A_B_C`, and `httpServer.port` and `HTTPServer.port` both derive
   `HTTP_SERVER_PORT`. Every binding is returned and none is dropped; validation reads the
-  shared variable once for both leaves, and neither collision is reported.
+  shared variable for both leaves.
 - **An open namespace changes nothing.** `meta({ open: true })` only waives strict
   unknown-key detection, so the list is the same whether a namespace is open or closed. It
   does not help to find variables in `.env.example` that no leaf reads.
-- **Two-level schemas only.** Deeper nesting validates but is outside this contract, as it
+- **Two-level schemas only.** Deeper nesting is outside this contract, as it
   is for `Path` and `PathValue`.
 
 ## 🚨 Error Catalog

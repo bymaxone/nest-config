@@ -554,8 +554,13 @@ environment variable it reads. The list has one entry per declared leaf, in decl
 order. A leaf reads its `meta({ env })` override when that is a non-empty string, and
 otherwise `NAMESPACE_LEAF` in SCREAMING_SNAKE_CASE, with a camelCase key split into words.
 It reads the schema only, never a source record, so it works on a schema exported as a
-value. For the Quick Start schema it returns `SERVER_PORT`, `SERVER_ENV`, `DATABASE_URL`,
-`REDIS_URL` and `LOG_LEVEL`.
+value.
+
+```typescript
+// For the Quick Start schema:
+resolveSourceNames(envSchema).map((binding) => binding.variable)
+// ['SERVER_PORT', 'SERVER_ENV', 'DATABASE_URL', 'REDIS_URL', 'LOG_LEVEL']
+```
 
 A test that keeps `.env.example` honest is the usual use:
 

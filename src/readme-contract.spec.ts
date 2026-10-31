@@ -210,15 +210,15 @@ const quickStartSchema = defineEnv({
 describe('README resolveSourceNames section', () => {
   it('names the variables the Quick Start schema reads, in order', () => {
     /**
-     * The section states what the helper returns for the Quick Start schema declared
-     * above. The documented list must be the function's actual output, so a change to
-     * the naming rules fails here.
+     * The section shows what the helper returns for the Quick Start schema declared
+     * above. The documented list must be the function's actual output, so a change
+     * to the naming rules fails here.
      */
-    const sentence = captured(
-      prose.replace(/\s+/g, ' '),
-      /For the Quick Start schema it returns ((?:`[A-Z_]+`(?:, | and )?)+)\./
+    const example = captured(
+      readme,
+      /resolveSourceNames\(envSchema\)\.map\(\(binding\) => binding\.variable\)\n\/\/ \[(.+)\]/
     )
-    const documented = Array.from(sentence.matchAll(/`([A-Z_]+)`/g), (match) => match[1])
+    const documented = Array.from(example.matchAll(/'([A-Z_]+)'/g), (match) => match[1])
 
     expect(documented).toEqual(
       resolveSourceNames(quickStartSchema).map((binding) => binding.variable)

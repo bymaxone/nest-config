@@ -95,7 +95,9 @@ function applyOverrides<TShape extends EnvShape>(
  * Every leaf the caller left alone received a synthesized sample, so an issue on one of
  * them is not the caller's mistake: no sample fits what the schema asks, as with a regex
  * or a `refine` rule. The message says that and names the leaf to override; an issue on
- * a leaf the caller did override keeps its own description.
+ * a leaf the caller did override keeps its own description. So does an issue that names no
+ * leaf (a rule on a namespace or on the whole schema, whose path has no `.`): there is no
+ * leaf to point at, and the rule may as well have failed on a value the caller supplied.
  *
  * @param error - The validation error of the synthesized source.
  * @param overridden - The variables the caller supplied a value for.
@@ -107,7 +109,7 @@ function explainUnsatisfiedLeaves(
 ): BymaxConfigValidationError {
   return new BymaxConfigValidationError(
     error.issues.map((issue) =>
-      overridden.has(issue.variable)
+      !issue.path.includes('.') || overridden.has(issue.variable)
         ? issue
         : {
             ...issue,

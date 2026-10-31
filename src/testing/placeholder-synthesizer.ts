@@ -373,10 +373,13 @@ function withoutOptional(leaf: EnvLeaf): EnvLeaf {
  * `undefined`) so the schema resolves their value; nullable and readonly leaves recurse
  * into the inner type, and a nonoptional leaf into what lies below its optional layers,
  * so a present value is supplied. A pipe, which is what `z.stringbool()` and a
- * `transform` are, is synthesized from the side that reads the string. A date, a literal and the string formats have fixed samples. Leaf
- * kinds beyond that set, and rules no sample can be known to satisfy (a regex, a
- * `refine`), fall back to a generic filler rather than aborting the walk; the testing
- * helpers then ask for an override for the leaf that fails.
+ * `transform` are, is synthesized from the side that reads the string. A date and the string
+ * formats have fixed samples, and a literal gets the string form of its first value, which
+ * only a string literal can validate: every environment value is a string, so a bare numeric
+ * or boolean literal is unsatisfiable from any source. Leaf kinds beyond that set, and
+ * rules no sample can be known to satisfy (a regex, a `refine`), fall back to a generic
+ * filler rather than aborting the walk; the testing helpers then ask for an override for
+ * the leaf that fails.
  *
  * @param leaf - The leaf schema to synthesize.
  * @returns The placeholder string, or `undefined` to omit the leaf.

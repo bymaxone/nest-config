@@ -146,6 +146,54 @@ describe('createTestConfig when no placeholder can satisfy a leaf', () => {
   })
 })
 
+describe('createTestConfig when a rule on a namespace or on the schema fails', () => {
+  const ruled = defineEnv({
+    storage: z
+      .object({ enabled: z.string().default('false'), endpoint: z.string().default('') })
+      .check((ctx) => {
+        if (ctx.value.enabled === 'true' && ctx.value.endpoint === '') {
+          ctx.issues.push({ code: 'custom', input: ctx.value, message: 'endpoint is required' })
+        }
+      })
+  })
+  const wholeRuled = defineEnv({ a: z.object({ x: z.string().default('x') }) }).check((ctx) => {
+    ctx.issues.push({ code: 'custom', input: ctx.value, message: 'the schema is wrong' })
+  })
+
+  /** What createTestConfig throws, or the test fails. */
+  function failure(run: () => unknown): BymaxConfigValidationError {
+    try {
+      run()
+    } catch (error) {
+      expect(error).toBeInstanceOf(BymaxConfigValidationError)
+      return error as BymaxConfigValidationError
+    }
+    throw new Error('createTestConfig was expected to throw')
+  }
+
+  it("keeps the rule's own message when the caller's override breaks a namespace rule", () => {
+    /**
+     * The rule failed because of a value the caller supplied, not because no placeholder
+     * fits, so the guidance about placeholders would blame the wrong thing. Only an issue
+     * that names a leaf the caller left alone is rewritten; a namespace issue names none.
+     */
+    const error = failure(() => createTestConfig(ruled, { storage: { enabled: 'true' } }))
+
+    expect(error.issues).toEqual([
+      expect.objectContaining({ path: 'storage', message: 'endpoint is required' })
+    ])
+  })
+
+  it('does not point at an override for a rule on the whole schema', () => {
+    /** A schema-level issue names no leaf, so there is nothing to override; its message stands. */
+    const error = failure(() => createTestConfig(wholeRuled))
+
+    expect(error.issues).toEqual([
+      expect.objectContaining({ path: '', message: 'the schema is wrong' })
+    ])
+  })
+})
+
 describe('createTestConfig when the schema itself throws', () => {
   it('rethrows an error that is not a validation error, untouched', () => {
     /**

@@ -329,7 +329,7 @@ BymaxConfigModule.forRootAsync({
 })
 ```
 
-`forRootAsync` takes the three forms of Nest's configurable-module options: `useFactory` with
+`forRootAsync` takes Nest's configurable-module options: `useFactory` with
 `inject` and `imports`, shown above; `useClass`, a class whose `create()` returns the options; and
 `useExisting`, which reuses a provider that is already registered (import its module through
 `imports`):
@@ -898,8 +898,7 @@ const moduleRef = await Test.createTestingModule({
 }).compile()
 ```
 
-Overrides mirror the `namespace.leaf` shape with every key optional and typed from the schema (the
-type itself is not exported). Each value is converted with `String(value)` before validation, so give
+Overrides mirror the `namespace.leaf` shape with every key optional and typed from the schema. Each value is converted with `String(value)` before validation, so give
 a leaf what its environment variable would hold; an object becomes `'[object Object]'`, and an override
 of `undefined` is ignored, so a defaulted leaf cannot be unset. Neither helper takes `strict`, a
 custom `source`, a hook or `isGlobal`: `configTestingModule` registers the module globally, and a

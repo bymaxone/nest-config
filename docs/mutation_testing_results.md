@@ -9,15 +9,15 @@
 
 | Metric                                                 | Value                     |
 | ------------------------------------------------------ | ------------------------- |
-| **Global mutation score**                              | **99.69 %**               |
+| **Global mutation score**                              | **99.71 %**               |
 | Break threshold (`thresholds.break`)                   | 95 % -> **PASS (exit 0)** |
 | Aspirational target (`thresholds.high`)                | 99 % -> **reached**       |
-| Killed                                                 | 317                       |
+| Killed                                                 | 338                       |
 | Survived (equivalent, and unable to carry a directive) | 1                         |
 | Timeout (counts as detected)                           | 1                         |
-| Type-invalid mutants (checker-discarded, excluded)     | 204                       |
+| Type-invalid mutants (checker-discarded, excluded)     | 207                       |
 
-Score = `(killed + timeout) / (killed + timeout + survived)` = `318 / 319` = **99.69 %**, up
+Score = `(killed + timeout) / (killed + timeout + survived)` = `339 / 340` = **99.71 %**, up
 from **95.74 %** and a **89.11 %** baseline. `pnpm mutation` exits green against `break: 95`,
 and clears the `high: 99` target.
 
@@ -43,6 +43,10 @@ brought 59 counted mutants, so the denominator grew from 260 to 319. The first c
 release commit scored **96.87 %** with ten survivors: the nine in the new code were genuine
 coverage gaps, not equivalents, and tests killed them; the tenth is the counted survivor below.
 Nothing was silenced to get there. See the dated re-run at the end.
+
+**99.69 % -> 99.71 % is the collision check added for `1.2.3`, again denominator growth.** The
+new code added 21 counted mutants, all in `env-validator.ts`, all killed, while the type-invalid
+total moved 204 -> 207. The survivor count held at one.
 
 ## Approach to equivalents: documented in the source
 
@@ -406,3 +410,29 @@ The single survivor is the acronym regex in `toScreamingSnake` (`source-mapping.
 equivalent: a brute force over 5,380,839 strings (alphabet `a b A B C Z 1 _ z`, length up to 7)
 comparing the whole function with the regex as written and with the mutant gave no differing
 output. The 18 directive-ignored mutants come from four directives.
+
+---
+
+## Re-run — 2026-10-31 (1.2.3)
+
+The release gate for `v1.2.3`. Command: **`pnpm mutation:full`**, run cold on a hosted runner by
+the `Mutation (full)` workflow dispatched on `main` at `59cbbaa`, the commit that merged the
+collision check. Run [41250741481](https://github.com/bymaxone/nest-config/actions/runs/41250741481);
+the job concluded `success`, and the run did not need a second pass.
+
+| Metric                      | Value           |
+| --------------------------- | --------------- |
+| **Mutation score**          | **99.71 %**     |
+| Killed                      | 338             |
+| Surviving mutants           | 1               |
+| Timeout                     | 1               |
+| Break threshold             | 95 % -> PASS    |
+| High target                 | 99 % -> reached |
+| CompileError (type-invalid) | 207             |
+
+`env-validator.ts` went from 90 killed to 111, 100.00 % with no survivor: the 21 added mutants
+are the check itself, `assertDistinctVariables`. The change touched no other file's mutants.
+
+The single survivor is unchanged: the acronym regex in `toScreamingSnake`
+(`source-mapping.ts:65`, `[A-Z]+` -> `[A-Z]`), argued above and left in the denominator because a
+directive cannot attach inside a method chain.

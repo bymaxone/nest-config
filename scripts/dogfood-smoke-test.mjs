@@ -46,7 +46,8 @@ const EXPECTED_EXPORTS = {
     'BYMAX_CONFIG_OPTIONS',
     'defineEnv',
     'BymaxConfigValidationError',
-    'ConfigErrorCode'
+    'ConfigErrorCode',
+    'resolveSourceNames'
   ],
   './testing': ['createTestConfig', 'configTestingModule']
 }

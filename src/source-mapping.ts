@@ -5,8 +5,9 @@
  * unless the leaf declares a `meta({ env })` override, which wins. It also
  * resolves the shared prefix of each namespace and whether that namespace
  * declared `meta({ open: true })`, the two facts strict unknown-key detection
- * runs on. This is an internal module consumed by the validator; it is not part
- * of the public API.
+ * runs on. The validator and the package root share this one module:
+ * `resolveSourceNames` and `SourceBinding` are exported from the package root,
+ * while the namespace-prefix helpers stay internal.
  * @layer Utility
  */
 
@@ -14,6 +15,7 @@ import type { EnvNamespace, EnvSchema, EnvShape } from './types'
 
 /**
  * The resolved binding between one config leaf and its source variable name.
+ * Part of the public API, as the element type of `resolveSourceNames`.
  */
 export interface SourceBinding {
   /** Nested config path, e.g. `database.url`. */
@@ -110,6 +112,14 @@ function deriveVariable(namespace: string, leafKey: string): string {
  * otherwise the SCREAMING_SNAKE_CASE derivation of the joined path. The result
  * is total: every declared leaf maps to exactly one variable, in declaration
  * order.
+ *
+ * This is the list the validator reads, not a copy of its rules: validation
+ * resolves its bindings through this same function. It reads the schema only,
+ * never a source record. Declared is not required: a leaf with a default or an
+ * optional leaf is listed like any other. Two distinct paths can resolve to one
+ * variable (`a.bC` and `aB.c` both derive `A_B_C`); both bindings are returned
+ * and none is dropped. An open namespace changes nothing here, since opening
+ * only waives strict unknown-key detection.
  *
  * @typeParam TShape - The two-level shape the schema was composed from.
  * @param schema - A schema produced by `defineEnv`.

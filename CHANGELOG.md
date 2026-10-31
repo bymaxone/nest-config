@@ -11,6 +11,19 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Added
+
+- **`resolveSourceNames` and the `SourceBinding` type are exported from the package root.**
+  `resolveSourceNames(schema)` returns one `{ path, variable }` binding per leaf of a
+  `defineEnv` schema, in declaration order: the environment variable that leaf reads. It is the
+  function validation resolves its variables through, so the list equals what `forRoot` reads,
+  and a test can assert that every variable the schema declares appears in `.env.example`
+  without re-deriving the naming rules. Two distinct paths can derive one variable and both
+  bindings are returned, and declared is not required; the README section lists what the list
+  does not tell you. Both names were already importable from `./internal`, which promises
+  nothing; they are public now. **Apply to a derived backend:** nothing is required; import
+  `resolveSourceNames` from `@bymax-one/nest-config` rather than from `./internal`.
+
 ### Documentation
 
 - **The README now states what the code does.** The sample failure report printed messages

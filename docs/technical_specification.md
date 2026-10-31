@@ -179,13 +179,13 @@ All tokens are `Symbol`s, never strings, and every constructor parameter and fac
 
 ### 3.2 Subpath Exports
 
-| Subpath      | Content                                             | Environment |
-| ------------ | --------------------------------------------------- | ----------- |
-| `.`          | Module, service, `defineEnv`, tokens, errors, types | Node server |
-| `./testing`  | `createTestConfig`, `configTestingModule`           | Test only   |
-| `./internal` | The shared runtime the two above are built on       | Not for use |
+| Subpath      | Content                                                                   | Environment |
+| ------------ | ------------------------------------------------------------------------- | ----------- |
+| `.`          | Module, service, `defineEnv`, `resolveSourceNames`, tokens, errors, types | Node server |
+| `./testing`  | `createTestConfig`, `configTestingModule`                                 | Test only   |
+| `./internal` | The shared runtime the two above are built on                             | Not for use |
 
-The first two are the public API. `./internal` is listed because it is a real subpath in the `exports` map, not because it is meant to be imported: it carries no compatibility promise, and everything it exposes is reachable from `.` or `./testing`.
+The first two are the public API. `./internal` is listed because it is a real subpath in the `exports` map, not because it is meant to be imported: it carries no compatibility promise.
 
 It exists because each entry point is a separate bundle, so a module both reach by a relative path is copied into each — and a copied class is a different injection token and a different `instanceof` target. Owning the shared graph in one bundle that both import by package specifier gives it a single identity in CommonJS as well as ESM; code splitting cannot substitute, since esbuild splits ESM only.
 

@@ -13,22 +13,17 @@ as the GitHub Release body, so each released version needs a matching
 
 ### Documentation
 
-- **The README now states what the code does.** The sample failure report printed two
-  messages the validator never produces (`missing required value (expected: url)` and
-  `invalid value (expected: integer between 1 and 65535)`) and was misaligned by a column;
-  it is now the exact output for the inputs it documents. The Tech Stack bullet named the
-  `zod` peer as `^4` instead of `^4.6.6`, the mutation-score bullet read 99.61% against the
-  documented 99.62%, the `configTestingModule` example overrode `server.port` with `0`, which the
-  schema above it rejects, and the library was said to have property-based tests, which it
-  does not (the value-free guarantee is held by sentinel-secret tests).
+- **The README now states what the code does.** The sample failure report printed messages
+  the validator never produces and was misaligned; it is now the exact output for the inputs
+  it documents. The Tech Stack and mutation-score figures, and the `configTestingModule`
+  example, now match the code, and the library is no longer said to have property-based
+  tests (the value-free guarantee is held by sentinel-secret tests).
 
 ### Tests
 
 - **A contract spec pins the README to the code.** `src/readme-contract.spec.ts` parses the
-  README and asserts the `strict`, `source` and `isGlobal` defaults against the behavior,
-  the error catalog against `ConfigErrorCode`, the peer table and Tech Stack range against
-  `package.json`, the mutation score against `docs/mutation_testing_results.md`, and the
-  first sample report against the validator's real output, so the next drift fails CI.
+  README and asserts its documented defaults, error catalog, peer table, mutation score and
+  first sample report against the code, so the next drift fails CI.
 
 ## [1.2.1] - 2026-10-30
 

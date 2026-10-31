@@ -90,6 +90,10 @@ function publicNames(options) {
   })
 }
 
+/** One `import ... from '...'` statement, so it can be lifted out of a snippet or kept
+ * out of a search for what the snippet itself declares. */
+const IMPORT_STATEMENT = /^import\s[\s\S]*?from\s+['"][^'"]+['"]\s*;?\n/gm
+
 /** Names a snippet declares at its top level. */
 const declaredNames = (code) =>
   [
@@ -107,11 +111,10 @@ const declaredNames = (code) =>
  * types is left as written, apart from a class that restates an exported one, which
  * becomes an ambient declaration so its fields need no initializer. */
 function prepareSnippet(code, importsPkg, names) {
-  const importPattern = /^import\s[\s\S]*?from\s+['"][^'"]+['"]\s*;?\n/gm
-  const imports = code.match(importPattern) ?? []
+  const imports = code.match(IMPORT_STATEMENT) ?? []
   // `{ ... }` is how a snippet says "the usual arguments". Left alone it is a parse
   // error, and a parse error in a call hides every semantic error around it.
-  let body = code.replace(importPattern, '').replaceAll('{ ... }', '{} as never')
+  let body = code.replace(IMPORT_STATEMENT, '').replaceAll('{ ... }', '{} as never')
   const declared = new Set(declaredNames(body))
   const restated = names.filter((n) => declared.has(n.name))
   const headerLines = []
@@ -691,9 +694,15 @@ function checkSnippets() {
     const m = /Property '[^']+' does not exist on type '([^']+)'/.exec(line)
     if (!m) return false
     const file = /^([^(]+)\(/.exec(line)?.[1]
+    // A union, an object type or a generic instance is not a declared name, and an
+    // imported `type Name` is the package's own type: neither may exempt the error.
+    if (!/^[A-Za-z_$][\w$]*$/.test(m[1])) return false
     // `tsc` emits backslashes on Windows, so the basename is taken on either.
-    const own = sources.get(file?.split(/[\\/]/).pop() ?? '') ?? ''
-    return new RegExp(`\\b(class|interface|type)\\s+${m[1]}\\b`).test(own)
+    const own = (sources.get(file?.split(/[\\/]/).pop() ?? '') ?? '').replace(IMPORT_STATEMENT, '')
+    // `$` is the one identifier character that is also a regexp metacharacter, and it
+    // is not a word character, so `\b` cannot end the name: a lookahead does.
+    const name = m[1].replaceAll('$', '\\$')
+    return new RegExp(`\\b(class|interface|type)\\s+${name}(?![\\w$])`).test(own)
   }
   /** An import of some OTHER package the fixture does not install — a documented
    * optional integration. A relative import that no snippet declares is a defect. */

@@ -696,13 +696,17 @@ function checkSnippets() {
     const file = /^([^(]+)\(/.exec(line)?.[1]
     // A union, an object type or a generic instance is not a declared name, and an
     // imported `type Name` is the package's own type: neither may exempt the error.
-    if (!/^[A-Za-z_$][\w$]*$/.test(m[1])) return false
+    if (!/^[\p{ID_Start}$_][\p{ID_Continue}$\u200c\u200d]*$/u.test(m[1])) return false
     // `tsc` emits backslashes on Windows, so the basename is taken on either.
     const own = (sources.get(file?.split(/[\\/]/).pop() ?? '') ?? '').replace(IMPORT_STATEMENT, '')
-    // `$` is the one identifier character that is also a regexp metacharacter, and it
-    // is not a word character, so `\b` cannot end the name: a lookahead does.
+    // `$` is the one identifier character that is also a regexp metacharacter, so it is
+    // escaped; a lookahead over the identifier-continue characters, not `\b`, ends the
+    // name, so a non-ASCII letter or a `$` neither cuts it short nor extends it.
     const name = m[1].replaceAll('$', '\\$')
-    return new RegExp(`\\b(class|interface|type)\\s+${name}(?![\\w$])`).test(own)
+    return new RegExp(
+      `\\b(class|interface|type)\\s+${name}(?![\\p{ID_Continue}$\\u200c\\u200d])`,
+      'u'
+    ).test(own)
   }
   /** An import of some OTHER package the fixture does not install — a documented
    * optional integration. A relative import that no snippet declares is a defect. */

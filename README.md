@@ -294,10 +294,8 @@ otel: z.object({ enabled: z.stringbool().default(false) }).meta({ open: true })
 Only the literal `true` opens a namespace. Any other value, and any metadata
 without the key, leaves detection in force.
 
-Write `.meta({ open: true })` last. `.check` and `.refine` keep it, but `.strict()`,
-`.passthrough()`, `.strip()`, `.catchall()`, `.extend()`, `.pick()`, `.omit()`, `.partial()` and
-`.required()` build a new object schema that carries no metadata, so the namespace is closed
-again; under `strict` that shows as the foreign variables being rejected.
+Write `.meta({ open: true })` last: methods that build a new object schema, such as `.strict()`,
+`.extend()` or `.pick()`, drop the metadata and close the namespace again.
 
 ### `BymaxConfigModule`
 

@@ -403,7 +403,6 @@ of the nine mutants was applied by hand against the new tests and each made one 
 | RuntimeError (unadjudicated) | **0**           |
 
 The single survivor is the acronym regex in `toScreamingSnake` (`source-mapping.ts:65`), still
-equivalent on this code: a brute force over 5,380,839 strings (alphabet `a b A B C Z 1 _ z`,
-length up to 7) comparing the whole function with the regex as written and with the mutant gave
-no differing output, and the function and its comment are byte-identical to `1.2.1`. The 18
-directive-ignored mutants are the same four directives as before; this release added none.
+equivalent: a brute force over 5,380,839 strings (alphabet `a b A B C Z 1 _ z`, length up to 7)
+comparing the whole function with the regex as written and with the mutant gave no differing
+output. The 18 directive-ignored mutants come from four directives.

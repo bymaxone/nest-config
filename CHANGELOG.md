@@ -11,6 +11,8 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-10-31
+
 ### Added
 
 - **`resolveSourceNames` and the `SourceBinding` type are exported from the package root.**
@@ -465,4 +467,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.1.3]: https://github.com/bymaxone/nest-config/compare/v1.1.2...v1.1.3
 [1.2.0]: https://github.com/bymaxone/nest-config/compare/v1.1.3...v1.2.0
 [1.2.1]: https://github.com/bymaxone/nest-config/compare/v1.2.0...v1.2.1
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.1...HEAD
+[1.2.2]: https://github.com/bymaxone/nest-config/compare/v1.2.1...v1.2.2
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.2...HEAD

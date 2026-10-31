@@ -1,6 +1,6 @@
 # Mutation Testing Results: @bymax-one/nest-config
 
-> **Last run:** 2026-09-04
+> **Last run:** 2026-10-31
 > **Command:** `pnpm mutation:full` (Stryker 9, jest runner, `coverageAnalysis: perTest`, `ignoreStatic: true`, `break: 95`) — the cold command, which the release gate requires; `pnpm mutation` reuses stored verdicts and cannot establish it
 > **Report:** [`../reports/mutation/mutation.html`](../reports/mutation/mutation.html)
 > **Plan:** [`mutation_testing_plan.md`](./mutation_testing_plan.md)
@@ -9,17 +9,17 @@
 
 | Metric                                                 | Value                     |
 | ------------------------------------------------------ | ------------------------- |
-| **Global mutation score**                              | **99.62 %**               |
+| **Global mutation score**                              | **99.69 %**               |
 | Break threshold (`thresholds.break`)                   | 95 % -> **PASS (exit 0)** |
 | Aspirational target (`thresholds.high`)                | 99 % -> **reached**       |
-| Killed                                                 | 259                       |
+| Killed                                                 | 317                       |
 | Survived (equivalent, and unable to carry a directive) | 1                         |
-| Timeout (counts as detected)                           | 0                         |
-| Type-invalid mutants (checker-discarded, excluded)     | 174                       |
+| Timeout (counts as detected)                           | 1                         |
+| Type-invalid mutants (checker-discarded, excluded)     | 204                       |
 
-Score = `killed / (killed + survived)` = `259 / 260` = **99.62 %**, up from **95.74 %** and a
-**89.11 %** baseline. `pnpm mutation` exits green against `break: 95`, and now also clears the
-`high: 99` target.
+Score = `(killed + timeout) / (killed + timeout + survived)` = `318 / 319` = **99.69 %**, up
+from **95.74 %** and a **89.11 %** baseline. `pnpm mutation` exits green against `break: 95`,
+and clears the `high: 99` target.
 
 Three moves produced that number, and they are different in kind.
 
@@ -37,6 +37,12 @@ held at one. Nothing was silenced to get there — see the dated re-run at the e
 **99.61 % -> 99.62 % is the open-namespace opt-out, again denominator growth.** The feature
 added 5 counted mutants, all killed, while the type-invalid total moved 171 -> 174. The survivor
 count held at one. See the dated re-run at the end.
+
+**99.62 % -> 99.69 % is the code added for `1.2.2`, and it first scored lower.** The new code
+brought 59 counted mutants, so the denominator grew from 260 to 319. The first cold run on the
+release commit scored **96.87 %** with ten survivors: the nine in the new code were genuine
+coverage gaps, not equivalents, and tests killed them; the tenth is the counted survivor below.
+Nothing was silenced to get there. See the dated re-run at the end.
 
 ## Approach to equivalents: documented in the source
 
@@ -89,7 +95,7 @@ non-equivalent survivors:
 | `testing/placeholder-synthesizer.ts` | 100.00 % | 0 (1 silenced)         |
 | `env-validator.ts`                   | 100.00 % | 0 (5 silenced)         |
 | `deep-freeze.ts`                     | 100.00 % | 0 (4 silenced)         |
-| `source-mapping.ts`                  | 94.74 %  | 1 (cannot be silenced) |
+| `source-mapping.ts`                  | 95.24 %  | 1 (cannot be silenced) |
 
 `config.module-definition.ts`, `config.options.ts`, `config.tokens.ts`,
 `define-env.ts`, `types.ts`, and `testing/config-testing.module.ts` produce only
@@ -362,3 +368,41 @@ runs of 3m06s and 59s on this same tree; sibling repositories measured spreads n
 you whether the last one was cold — only the script invoked and the presence of
 `reports/stryker-incremental.json` do. Schedule against the outlier and finish
 early; a duration read off one run is not a budget, and it is not evidence.
+
+---
+
+## Re-run — 2026-10-31
+
+The release gate for `v1.2.2`. Command: **`pnpm mutation:full`**, run cold on a hosted runner by
+the `Mutation (full)` workflow dispatched on `main` (the reusable workflow refuses any other ref,
+because it saves the shared incremental baseline).
+
+**First run, on the release commit `bc82461`: 96.87 %, ten survivors.** Run
+[41245343949](https://github.com/bymaxone/nest-config/actions/runs/41245343949): 308 killed, 1
+timeout, 10 survived. One was the counted survivor below. Nine were in code added since `1.2.1`:
+the format lookup and three wrapper cases of the placeholder synthesizer, the `cause` descriptor
+flags in the provider, and the namespace decision in the validator. Each was reproduced by
+applying the mutant to the real source and running the covering spec, which passed, so each was a
+missing test rather than an equivalence.
+
+**Second run, after tests killed them, on `4e26166`.** Run
+[41246881772](https://github.com/bymaxone/nest-config/actions/runs/41246881772). Before it, each
+of the nine mutants was applied by hand against the new tests and each made one fail.
+
+| Metric                       | Value           |
+| ---------------------------- | --------------- |
+| **Mutation score**           | **99.69 %**     |
+| Killed                       | 317             |
+| Surviving mutants            | 1               |
+| Timeout                      | 1               |
+| Break threshold              | 95 % -> PASS    |
+| High target                  | 99 % -> reached |
+| Ignored — `ignoreStatic`     | 32              |
+| Ignored — directive          | 18              |
+| CompileError (type-invalid)  | 204             |
+| RuntimeError (unadjudicated) | **0**           |
+
+The single survivor is the acronym regex in `toScreamingSnake` (`source-mapping.ts:65`), still
+equivalent: a brute force over 5,380,839 strings (alphabet `a b A B C Z 1 _ z`, length up to 7)
+comparing the whole function with the regex as written and with the mutant gave no differing
+output. The 18 directive-ignored mutants come from four directives.

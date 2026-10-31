@@ -638,8 +638,9 @@ it('documents every variable the schema reads in .env.example', () => {
   the schema reads it.
 - **Two paths can read one variable.** Names are derived from the keys, so `a.bC` and
   `aB.c` both derive `A_B_C`, and `httpServer.port` and `HTTPServer.port` both derive
-  `HTTP_SERVER_PORT`. Every binding is returned and none is dropped; validation reads the
-  shared variable for both leaves.
+  `HTTP_SERVER_PORT`. Every binding is returned and none is dropped, so a tool can see the
+  collision; validation rejects such a schema (see the error catalog). Giving two leaves
+  the same `meta({ env })` is the same collision, and there is no opt-out.
 - **An open namespace changes nothing.** `meta({ open: true })` only waives strict
   unknown-key detection, so the list is the same whether a namespace is open or closed. It
   does not help to find variables in `.env.example` that no leaf reads.
@@ -648,12 +649,12 @@ it('documents every variable the schema reads in .env.example', () => {
 
 ## 🚨 Error Catalog
 
-| Code                       | Meaning                                                |
-| -------------------------- | ------------------------------------------------------ |
-| `BYMAX_CONFIG_VALIDATION`  | One or more schema violations (top-level error code).  |
-| `BYMAX_CONFIG_MISSING`     | Required variable absent from the source (issue code). |
-| `BYMAX_CONFIG_INVALID`     | Present but failed its constraint (issue code).        |
-| `BYMAX_CONFIG_UNKNOWN_KEY` | Strict mode: source variable matches no declared leaf. |
+| Code                       | Meaning                                                   |
+| -------------------------- | --------------------------------------------------------- |
+| `BYMAX_CONFIG_VALIDATION`  | One or more schema violations (top-level error code).     |
+| `BYMAX_CONFIG_MISSING`     | Required variable absent from the source (issue code).    |
+| `BYMAX_CONFIG_INVALID`     | Failed its constraint, or shares a variable (issue code). |
+| `BYMAX_CONFIG_UNKNOWN_KEY` | Strict mode: source variable matches no declared leaf.    |
 
 ## 🏗️ Architecture
 

@@ -88,3 +88,25 @@ describe('configTestingModule when no placeholder can satisfy a leaf', () => {
     )
   })
 })
+
+describe('configTestingModule when two leaves read one variable', () => {
+  it('throws the collision when the module is built', () => {
+    /** The same schema defect, at the same point as an unsatisfiable leaf. */
+    const colliding = defineEnv({
+      a: z.object({ bC: z.string() }),
+      aB: z.object({ c: z.string() })
+    })
+
+    let thrown: unknown
+    try {
+      configTestingModule(colliding)
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).toBeInstanceOf(BymaxConfigValidationError)
+    expect((thrown as BymaxConfigValidationError).issues[0]?.message).toContain(
+      'shares this variable with aB.c'
+    )
+  })
+})

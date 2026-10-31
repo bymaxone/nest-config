@@ -448,8 +448,8 @@ describe('resolveSourceNames as published from the package root', () => {
      * Collisions are neither detected nor deduplicated.
      *
      * a.bC and aB.c both derive A_B_C, and httpServer.port and HTTPServer.port both
-     * derive HTTP_SERVER_PORT. Every binding is returned, and validation reads the
-     * shared variable once for both leaves.
+     * derive HTTP_SERVER_PORT. Every binding is returned, so a tool can see the collision;
+     * validation rejects such a schema, naming both leaves of each pair.
      */
     const schema = defineEnv({
       a: z.object({ bC: z.string() }),
@@ -464,6 +464,11 @@ describe('resolveSourceNames as published from the package root', () => {
       { path: 'httpServer.port', variable: 'HTTP_SERVER_PORT' },
       { path: 'HTTPServer.port', variable: 'HTTP_SERVER_PORT' }
     ])
-    expect(reportedVariables(schema, { A_B_C: 'x', HTTP_SERVER_PORT: 'x' })).toEqual([])
+    expect(reportedVariables(schema, { A_B_C: 'x', HTTP_SERVER_PORT: 'x' })).toEqual([
+      'A_B_C',
+      'A_B_C',
+      'HTTP_SERVER_PORT',
+      'HTTP_SERVER_PORT'
+    ])
   })
 })

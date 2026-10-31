@@ -364,6 +364,38 @@ function detectUnknownKeys(
 // Stryker restore EqualityOperator,ConditionalExpression
 
 /**
+ * Reject a schema in which two leaves read one source variable.
+ *
+ * Two leaves that derive, or are told through `meta({ env })`, the same variable would
+ * each read the one value and neither could report on its own, so the schema is wrong
+ * before any source is looked at. One issue is produced per colliding leaf, in order of
+ * first appearance, each naming the other leaves that share its variable.
+ *
+ * @param bindings - Every leaf binding of a schema, from `resolveSourceNames`.
+ * @throws {BymaxConfigValidationError} When any variable is bound by more than one leaf.
+ */
+export function assertDistinctVariables(bindings: ReadonlyArray<SourceBinding>): void {
+  const byVariable = new Map<string, string[]>()
+  for (const { path, variable } of bindings) {
+    byVariable.set(variable, [...(byVariable.get(variable) ?? []), path])
+  }
+  const issues: ConfigIssue[] = []
+  for (const [variable, paths] of byVariable) {
+    if (paths.length < 2) continue
+    for (const path of paths) {
+      const others = paths.filter((other) => other !== path).join(', ')
+      issues.push({
+        path,
+        variable,
+        code: ConfigErrorCode.INVALID,
+        message: `shares this variable with ${others}; rename one with meta({ env })`
+      })
+    }
+  }
+  if (issues.length > 0) throw new BymaxConfigValidationError(issues)
+}
+
+/**
  * Validate a flat source against a schema in a single pass.
  *
  * Maps the source onto the nested schema, runs exactly one `safeParse`, and
@@ -379,8 +411,8 @@ function detectUnknownKeys(
  * @param source - The flat source record, typically the process environment.
  * @param options - Optional behavior flags, such as strict unknown-key detection.
  * @returns The parsed, typed configuration output.
- * @throws {BymaxConfigValidationError} When any variable is missing, invalid, or
- * (under strict) an unrecognized declared-prefix variable.
+ * @throws {BymaxConfigValidationError} When two leaves read one variable, or any variable
+ * is missing, invalid, or (under strict) an unrecognized declared-prefix variable.
  * @example
  * ```typescript
  * const config = validateEnv(envSchema, source, { strict: true });
@@ -393,6 +425,7 @@ export function validateEnv<TShape extends EnvShape>(
   options?: EnvValidationOptions
 ): EnvOutput<TShape> {
   const bindings = resolveSourceNames(schema)
+  assertDistinctVariables(bindings)
   const sourceMap = new Map(Object.entries(source))
   const namespaces = Object.keys(schema.shape)
   const candidate = buildCandidate(namespaces, collectPresentLeaves(bindings, sourceMap))

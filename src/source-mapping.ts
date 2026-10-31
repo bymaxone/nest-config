@@ -136,7 +136,7 @@ function deriveVariable(namespace: string, leafKey: string): string {
  * never a source record. Declared is not required: a leaf with a default or an
  * optional leaf is listed like any other. Two distinct paths can resolve to one
  * variable (`a.bC` and `aB.c` both derive `A_B_C`); both bindings are returned
- * and none is dropped. An open namespace changes nothing here, since opening
+ * and none is dropped, though validation rejects a schema that holds such a pair. An open namespace changes nothing here, since opening
  * only waives strict unknown-key detection.
  *
  * @typeParam TShape - The two-level shape the schema was composed from.

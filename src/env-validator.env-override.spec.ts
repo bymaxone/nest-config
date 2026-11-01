@@ -25,8 +25,8 @@ describe('validateEnv with an unusable meta({ env })', () => {
     ['an object', {}, 'an object']
   ])('reports %s as an issue instead of reading the derived variable', (_name, value, found) => {
     /**
-     * `z.string().meta({ env: '' })` used to read DATABASE_URL, so a present and valid derived
-     * variable made the boot succeed on a mapping the author never wrote.
+     * An `env` that cannot name a variable must be reported even when the variable derived
+     * from the path is present and valid: the leaf may not read a mapping its author did not write.
      */
     const schema = defineEnv({ database: z.object({ url: z.string().meta({ env: value }) }) })
 

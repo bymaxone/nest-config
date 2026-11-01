@@ -40,7 +40,8 @@ describe('a source key that is present with the value undefined', () => {
   it('throws instead of validating process.env', () => {
     /**
      * `source` is optional, so `source: loadSource()` type-checks when the loader may return
-     * nothing. A valid process.env then made the boot succeed on the wrong source.
+     * nothing. A source that was named and is missing must fail the boot: validating a valid
+     * process.env instead would report success for configuration the host never read.
      */
     process.env = { SERVER_PORT: '3000' } as NodeJS.ProcessEnv
 

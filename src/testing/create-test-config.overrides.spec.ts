@@ -31,8 +31,8 @@ function outcome(run: () => unknown): unknown {
 describe('createTestConfig with an override that matches no leaf', () => {
   it('throws, listing every override path that matches no leaf', () => {
     /**
-     * A misspelled leaf and an undeclared namespace used to vanish: the call returned
-     * `{ database: { url: 'a' } }` as if both had been applied. Both must be named.
+     * A misspelled leaf and an undeclared namespace must each be named: the call may not return
+     * a config as if both overrides had been applied.
      */
     const thrown = outcome(() => createTestConfig(schema, unplaced))
 

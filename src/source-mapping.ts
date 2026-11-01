@@ -168,6 +168,25 @@ function describeUnusable(value: unknown): string {
 }
 
 /**
+ * Describe the first unusable `meta({ env })` on a leaf, looking through every wrapper layer.
+ *
+ * @param leaf - The leaf schema to inspect.
+ * @returns What `env` held at the first layer where it is present but not a non-empty string,
+ * or `undefined` when no layer has an unusable one.
+ */
+function describeUnusableEnv(leaf: OverrideNode): string | undefined {
+  for (let node: OverrideNode | undefined = leaf; node !== undefined;) {
+    const meta = node.meta()
+    if (meta !== undefined && 'env' in meta) {
+      const value = meta.env
+      if (typeof value !== 'string' || value.length === 0) return describeUnusable(value)
+    }
+    node = node._zod.def.innerType ?? node._zod.def.in
+  }
+  return undefined
+}
+
+/**
  * Find the leaves whose `meta({ env })` is present but is not a non-empty string.
  *
  * Such a value cannot name a variable, and resolution skips it, so the leaf reads the variable
@@ -184,17 +203,8 @@ export function findUnusableEnvOverrides<TShape extends EnvShape = EnvShape>(
   const unusable: Array<{ readonly path: string; readonly found: string }> = []
   for (const [namespace, namespaceSchema] of Object.entries(schema.shape)) {
     for (const [leafKey, leafSchema] of Object.entries(namespaceSchema.shape)) {
-      for (let node: OverrideNode | undefined = leafSchema; node !== undefined;) {
-        const meta = node.meta()
-        if (meta !== undefined && 'env' in meta) {
-          const value = meta.env
-          if (typeof value !== 'string' || value.length === 0) {
-            unusable.push({ path: `${namespace}.${leafKey}`, found: describeUnusable(value) })
-            break
-          }
-        }
-        node = node._zod.def.innerType ?? node._zod.def.in
-      }
+      const found = describeUnusableEnv(leafSchema)
+      if (found !== undefined) unusable.push({ path: `${namespace}.${leafKey}`, found })
     }
   }
   return unusable

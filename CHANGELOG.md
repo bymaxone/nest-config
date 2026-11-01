@@ -22,9 +22,10 @@ as the GitHub Release body, so each released version needs a matching
 
   #### Apply to a derived backend
 
-  Run the test suites: a test that expected a `TypeError` for a `null` namespace now receives a
-  `BymaxConfigValidationError`, and an override that was a `Map`, a `Date` or a class instance now
-  fails instead of being ignored or read field by field. Pass a plain object.
+  Run the test suites. A test that expected a `TypeError` for a `null` namespace now receives a
+  `BymaxConfigValidationError`. A namespace override given as a class instance was applied field by
+  field; it is now refused, so pass a plain object. A `Map` or a `Date` as a namespace override was
+  ignored; it is now refused too.
 
 ## [1.2.4] - 2026-11-01
 

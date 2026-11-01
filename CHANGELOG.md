@@ -15,8 +15,8 @@ as the GitHub Release body, so each released version needs a matching
 
 - **A `source` that is present but `undefined` fails the boot.** `BymaxConfigModule.forRoot({ schema,
 source: loadSource() })` used to validate `process.env` when the loader returned nothing, and boot
-  successfully on configuration the host never meant to use. Passing the key with the value `undefined`
-  now throws a `TypeError` ("source was provided but is undefined"); omitting the key still reads
+  successfully on configuration the host never meant to use. Passing the key with the value `undefined` or
+  `null` now throws a `TypeError` ("source was provided but is undefined"); omitting the key still reads
   `process.env`.
 
   #### Apply to a derived backend

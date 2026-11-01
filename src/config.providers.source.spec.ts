@@ -24,7 +24,7 @@ function loadSource(): Record<string, string> | undefined {
   return undefined
 }
 
-/** A loader that answers `null` for a missing record, as JSON.parse of nothing does. */
+/** A loader that answers `null` when it finds no record, as a lookup that misses does. */
 function loadNullableSource(): Record<string, string> | null {
   return null
 }
@@ -52,7 +52,7 @@ describe('a source key that is present with the value undefined', () => {
 
   it('throws for a null source too, as a JavaScript caller can pass', () => {
     /**
-     * A loader that returns `null` (a failed JSON.parse, a missing record) is the same
+     * A loader that returns `null` (a lookup that finds nothing, a stored `null`) is the same
      * mistake as `undefined`, and the type system does not stand between it and a plain-JS host.
      */
     process.env = { SERVER_PORT: '3000' } as NodeJS.ProcessEnv

@@ -29,7 +29,9 @@ source: loadSource() })` used to validate `process.env` when the loader returned
 - **A `meta({ env })` that cannot name a variable is an issue.** An `env` that is present but is not
   a non-empty string (`''`, `undefined`, a number) used to be skipped, and the leaf read the variable
   derived from its path. The aggregated validation report now lists it, naming the variable the leaf
-  would read and the kind of value found. A leaf with no `env` at all is unchanged, and
+  would read and the kind of value found, on any layer of the leaf: an inner layer whose `env` is
+  unusable is reported even when an outer layer's usable one wins. The issue is its own line for
+  that leaf, before the line about its value. A leaf with no `env` at all is unchanged, and
   `resolveSourceNames` still answers the derived name.
 
   #### Apply to a derived backend
@@ -40,7 +42,10 @@ source: loadSource() })` used to validate `process.env` when the loader returned
 - **A test override that matches no leaf throws.** `createTestConfig` and `configTestingModule` used to
   drop an override for a path the schema does not declare (a misspelled leaf, an undeclared namespace,
   a stale override after a rename) and answer with a config that lacked it. They now throw a
-  `BymaxConfigValidationError` listing every unmatched path, before any provider is built.
+  `BymaxConfigValidationError` listing every unmatched path, before any provider is built, even when
+  the override's value is `undefined`. The path is the name shown in the report, and its footer asks
+  for a fix in the test rather than a restart of the process. A namespace given something other than
+  an object is reported once, by name, instead of once per character.
 
   #### Apply to a derived backend
 

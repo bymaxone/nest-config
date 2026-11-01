@@ -157,3 +157,73 @@ describe('formatIssueReport value-free guarantee', () => {
     expect(JSON.stringify(error)).not.toContain(sentinel)
   })
 })
+
+describe('formatIssueReport for issues that name no variable', () => {
+  const unplaced: ConfigIssue[] = [
+    {
+      path: 'database.urll',
+      variable: '',
+      code: ConfigErrorCode.UNKNOWN_KEY,
+      message: 'no leaf of the schema is at this path; the override was not applied'
+    },
+    {
+      path: 'ghost.x',
+      variable: '',
+      code: ConfigErrorCode.UNKNOWN_KEY,
+      message: 'no leaf of the schema is at this path; the override was not applied'
+    }
+  ]
+
+  it('shows the path of each issue in the name column', () => {
+    /**
+     * An issue about an override has no environment variable, so the column that names the
+     * offender must name the path, or the report is N identical lines with a blank first column.
+     */
+    const lines = formatIssueReport(unplaced).split('\n')
+
+    expect(lines.filter((line) => line.includes('database.urll'))).toHaveLength(1)
+    expect(lines.filter((line) => line.includes('ghost.x'))).toHaveLength(1)
+  })
+
+  it('closes with a footer about the test, not the process restart', () => {
+    /** These issues come from a test helper, so asking to restart the process would mislead. */
+    const report = formatIssueReport(unplaced)
+
+    expect(report).toContain('Fix the overrides above in the test.')
+    expect(report).not.toContain('restart the process')
+  })
+
+  it('keeps the production footer when any issue names a variable', () => {
+    /** One real variable among them makes it a production report, whatever else is listed. */
+    const report = formatIssueReport([...unplaced, ...reportIssues.slice(0, 1)])
+
+    expect(report).toContain('Fix the variables above and restart the process.')
+  })
+
+  it('keeps a gutter between a path longer than the minimum column and its message', () => {
+    /** The name column grows to the longest path, as it does for a variable. */
+    const longPath = 'averylongnamespace.averylongleafname'
+    const issue: ConfigIssue = {
+      path: longPath,
+      variable: '',
+      code: ConfigErrorCode.UNKNOWN_KEY,
+      message: 'm'
+    }
+    const report = formatIssueReport([issue])
+
+    expect(report).toContain(`  ${longPath}  m`)
+  })
+
+  it('uses the production footer for a report with no issues', () => {
+    /** An empty list names no override, so the test footer does not apply to it. */
+    expect(formatIssueReport([])).toContain('Fix the variables above and restart the process.')
+  })
+
+  it('reaches error.message through the error class', () => {
+    /** The text a developer reads in a Jest run is the error's message, not the formatter's. */
+    const error = new BymaxConfigValidationError(unplaced)
+
+    expect(error.message).toContain('database.urll')
+    expect(error.message).toContain('ghost.x')
+  })
+})

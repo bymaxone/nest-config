@@ -76,6 +76,22 @@ describe('validateEnv with an unusable meta({ env })', () => {
     expect(captureError(schema, {}).issues.map((issue) => issue.path)).toEqual(['database.url'])
   })
 
+  it('reports an unusable inner layer even when an outer layer names a variable', () => {
+    /**
+     * The outermost usable `env` decides the variable, but an inner one that cannot name a
+     * variable is still a mistake in the schema and is reported.
+     */
+    const schema = defineEnv({
+      database: z.object({ url: z.string().meta({ env: '' }).default('x').meta({ env: 'OUTER' }) })
+    })
+
+    const error = captureError(schema, {})
+
+    expect(error.issues.map((issue) => [issue.path, issue.variable])).toEqual([
+      ['database.url', 'OUTER']
+    ])
+  })
+
   it('accepts a one-character name', () => {
     /** The rule is non-empty, not longer than one character. */
     const schema = defineEnv({ database: z.object({ url: z.string().meta({ env: 'X' }) }) })

@@ -206,8 +206,10 @@ BymaxConfigValidationError: environment validation failed (3 issues)
 Fix the variables above and restart the process.
 ```
 
-The report has one line per variable: when a leaf fails several rules, the line shows the first
-one Zod lists, and fixing it can reveal the next on the following start.
+The report has one line per violation: when a leaf fails several rules, the line shows the first
+one Zod lists, and fixing it can reveal the next on the following start. A `meta({ env })` that
+cannot name a variable adds its own line for that leaf, before the line about its value, because it
+is a different mistake: merging the two would hide the one that explains the other.
 
 In a message this package generates, raw values are never printed — not
 truncated, not masked, absent. That is a hard guarantee, verified by tests. The
@@ -282,8 +284,10 @@ database: z.object({
 The override is found wherever `meta` sits in the chain: `z.string().meta({ env: 'LEGACY' }).default('x')`
 and `z.string().default('x').meta({ env: 'LEGACY' })` both read `LEGACY`. When more than one layer sets it, the outermost usable one wins. An `env` that is present but
 is not a non-empty string (`''`, `undefined`, a number) cannot name a variable, so validation reports it
-as an issue instead of letting the leaf read the variable derived from its path; a leaf with no
-`env` at all is unaffected. `resolveSourceNames` skips an unusable `env` and answers the derived name.
+as an issue instead of letting the leaf read the variable derived from its path, on any layer: an
+inner layer whose `env` is unusable is reported even when an outer layer's usable one wins. A leaf
+with no `env` at all is unaffected. `resolveSourceNames` skips an unusable `env` and answers the
+derived name.
 
 A namespace can declare itself **open**, which waives strict unknown-key
 detection for the rest of its prefix. Use it when the prefix is shared with
@@ -908,7 +912,8 @@ const moduleRef = await Test.createTestingModule({
 Overrides mirror the `namespace.leaf` shape with every key optional and typed from the schema. Each value is converted with `String(value)` before validation, so give
 a leaf what its environment variable would hold; an object becomes `'[object Object]'`, and an override
 of `undefined` is ignored, so a defaulted leaf cannot be unset. An override whose path matches no leaf
-of the schema throws, listing every such path, instead of being dropped. Neither helper takes `strict`, a
+of the schema throws, listing every such path, even when its value is `undefined`; a namespace given
+something other than an object is reported once, by name. Neither helper takes `strict`, a
 custom `source`, a hook or `isGlobal`: `configTestingModule` registers the module globally, and a
 failure case (a missing variable, a strict violation) is built with
 `BymaxConfigModule.forRoot({ schema, source, strict: true })` and a source you write.

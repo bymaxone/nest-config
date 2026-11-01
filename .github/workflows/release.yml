@@ -125,8 +125,8 @@ jobs:
         #
         # `dist/internal` is compared on purpose. The root entry re-exports its public types
         # from `@bymax-one/nest-config/internal`, so that is where every public signature is
-        # declared. A symbol that is internal and not re-exported publicly is kept out of the
-        # declarations with `@internal` and `stripInternal`, or ships in a minor.
+        # declared. A change to any declaration under it therefore ships in a minor, including
+        # a symbol the root entry does not re-export.
         run: node scripts/check-api-surface.mjs
 
       - name: Verify published type resolution

@@ -11,6 +11,16 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Tests
+
+- **The README Quick Start is executed, not only type-checked.** A new spec takes the schema, the
+  `BymaxConfigModule.forRoot` registration and the `FeatureProvider` from the README text,
+  compiles and runs them against a real Nest testing graph, and asserts the stated outcomes: a
+  complete environment boots and the provider returns `<database url>::3000`, and an environment
+  missing both required variables fails with one error naming both. A wrong argument shape or a
+  value that fails validation now fails a test instead of reaching a reader. No source or
+  published-surface change, so there is nothing to apply in a derived backend.
+
 ## [1.2.3] - 2026-10-31
 
 ### Fixed

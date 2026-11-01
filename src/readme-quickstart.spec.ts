@@ -6,8 +6,8 @@
  * the schema, the root module registration and the injected provider are taken from the README
  * text, compiled and run against a real Nest testing graph, and the outcomes the section states
  * are asserted.
- * Mocks: none. The two variables the schema requires are set on the process environment for the
- * duration of the test and restored afterwards, because the README module reads it.
+ * Mocks: none. The variables the schema reads are set or unset on the process environment for the
+ * duration of each phase and restored afterwards, because the README module reads it.
  */
 
 import { readFileSync } from 'node:fs'
@@ -49,6 +49,49 @@ function runBlock(block: string, modules: Record<string, unknown>): Record<strin
   return exported
 }
 
+/** The module and the provider the README declares, compiled from its text. */
+function loadQuickStart(): {
+  readonly AppModule: new () => unknown
+  readonly FeatureProvider: new (config: never) => { describeConnection(): string }
+} {
+  const [schemaBlock, moduleBlock, providerBlock] = quickStartBlocks()
+  const nest = {
+    '@bymax-one/nest-config': require('./index') as unknown,
+    '@nestjs/common': require('@nestjs/common') as unknown,
+    zod: require('zod') as unknown
+  }
+  const withSchema = { ...nest, './config/env.schema': runBlock(schemaBlock ?? '', nest) }
+  return {
+    AppModule: runBlock(moduleBlock ?? '', withSchema).AppModule as new () => unknown,
+    FeatureProvider: runBlock(providerBlock ?? '', withSchema).FeatureProvider as new (
+      config: never
+    ) => { describeConnection(): string }
+  }
+}
+
+/** Run with exactly these process variables, an undefined value meaning unset, then restore. */
+async function withEnvironment(
+  variables: Readonly<Record<string, string | undefined>>,
+  run: () => Promise<void>
+): Promise<void> {
+  const saved = Object.keys(variables).map((name) => [name, process.env[name]] as const)
+  const apply = (values: ReadonlyArray<readonly [string, string | undefined]>): void => {
+    for (const [name, value] of values) {
+      if (value === undefined) delete process.env[name]
+      else process.env[name] = value
+    }
+  }
+  try {
+    apply(Object.entries(variables))
+    await run()
+  } finally {
+    apply(saved)
+  }
+}
+
+/** The variables the Quick Start schema reads, so an ambient value cannot change the outcome. */
+const SCHEMA_VARIABLES = ['DATABASE_URL', 'REDIS_URL', 'SERVER_PORT', 'SERVER_ENV', 'LOG_LEVEL']
+
 describe('README Quick Start', () => {
   it('boots from the schema, module and provider the README shows', async () => {
     /**
@@ -58,34 +101,28 @@ describe('README Quick Start', () => {
      * typed values, with the declared port default; an environment missing both required
      * variables fails with one error that names both.
      */
-    const [schemaBlock, moduleBlock, providerBlock] = quickStartBlocks()
-    const nest = {
-      '@bymax-one/nest-config': require('./index') as unknown,
-      '@nestjs/common': require('@nestjs/common') as unknown,
-      zod: require('zod') as unknown
-    }
-    const schemaExports = runBlock(schemaBlock ?? '', nest)
-    const withSchema = { ...nest, './config/env.schema': schemaExports }
-    const AppModule = runBlock(moduleBlock ?? '', withSchema).AppModule as new () => unknown
-    const FeatureProvider = runBlock(providerBlock ?? '', withSchema).FeatureProvider as new (
-      config: never
-    ) => { describeConnection(): string }
-    const saved = { database: process.env.DATABASE_URL, redis: process.env.REDIS_URL }
+    const { AppModule, FeatureProvider } = loadQuickStart()
+    const unset = Object.fromEntries(SCHEMA_VARIABLES.map((name) => [name, undefined]))
 
-    try {
-      process.env.DATABASE_URL = 'postgres://localhost:5432/app'
-      process.env.REDIS_URL = 'redis://localhost:6379'
-      const booted = await Test.createTestingModule({
-        imports: [AppModule],
-        providers: [FeatureProvider]
-      }).compile()
-      expect(booted.get(FeatureProvider).describeConnection()).toBe(
-        'postgres://localhost:5432/app::3000'
-      )
-      await booted.close()
+    await withEnvironment(
+      {
+        ...unset,
+        DATABASE_URL: 'postgres://localhost:5432/app',
+        REDIS_URL: 'redis://localhost:6379'
+      },
+      async () => {
+        const booted = await Test.createTestingModule({
+          imports: [AppModule],
+          providers: [FeatureProvider]
+        }).compile()
+        expect(booted.get(FeatureProvider).describeConnection()).toBe(
+          'postgres://localhost:5432/app::3000'
+        )
+        await booted.close()
+      }
+    )
 
-      delete process.env.DATABASE_URL
-      delete process.env.REDIS_URL
+    await withEnvironment(unset, async () => {
       const failure = await Test.createTestingModule({ imports: [AppModule] })
         .compile()
         .catch((error: unknown) => error)
@@ -93,14 +130,6 @@ describe('README Quick Start', () => {
       expect((failure as BymaxConfigValidationError).issues.map((issue) => issue.variable)).toEqual(
         ['DATABASE_URL', 'REDIS_URL']
       )
-    } finally {
-      for (const [name, value] of [
-        ['DATABASE_URL', saved.database],
-        ['REDIS_URL', saved.redis]
-      ] as const) {
-        if (value === undefined) delete process.env[name]
-        else process.env[name] = value
-      }
-    }
+    })
   })
 })

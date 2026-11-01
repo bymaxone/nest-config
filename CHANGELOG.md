@@ -36,6 +36,16 @@ as the GitHub Release body, so each released version needs a matching
   value that fails validation now fails a test instead of reaching a reader. No source or
   published-surface change, so there is nothing to apply in a derived backend.
 
+## [1.2.4] - 2026-11-02
+
+### Added
+
+- A throwaway method, to prove the gate.
+
+#### Apply to a derived backend
+
+Nothing: this section exists only for the throwaway proof.
+
 ## [1.2.3] - 2026-10-31
 
 ### Fixed

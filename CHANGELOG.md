@@ -11,6 +11,8 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.5] - 2026-11-01
+
 ### Fixed
 
 - **A test override that is not a plain object is one issue.** A namespace given `null` threw a raw
@@ -26,6 +28,17 @@ as the GitHub Release body, so each released version needs a matching
   `BymaxConfigValidationError`. A namespace override given as a class instance was applied field by
   field; it is now refused, so pass a plain object. A `Map` or a `Date` as a namespace override was
   ignored; it is now refused too.
+
+### Changed
+
+- **The shipped bundles no longer carry comments.** The build runs `scripts/strip-bundle-comments.mjs`
+  after `tsup`: every comment is removed from `index.mjs` and `index.cjs`, except `/*!` blocks,
+  `@license` and `@preserve` notes, the `__PURE__` annotations and the `// src/` region markers, and
+  the script proves with the TypeScript parser that it changed no code. The documentation people read
+  comes from the `.d.ts` files, which are untouched. The internal bundle goes from 22,079 to 16,652
+  bytes and the package from 68.3 to 65.5 kB. Nothing to apply in a derived backend.
+- **The internal bundle has a size budget.** `scripts/check-size.mjs` gates `dist/internal/index.mjs`,
+  which carries nearly all of the code, at 4.6 KiB brotli. Tooling only.
 
 ## [1.2.4] - 2026-11-01
 
@@ -572,4 +585,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.2]: https://github.com/bymaxone/nest-config/compare/v1.2.1...v1.2.2
 [1.2.3]: https://github.com/bymaxone/nest-config/compare/v1.2.2...v1.2.3
 [1.2.4]: https://github.com/bymaxone/nest-config/compare/v1.2.3...v1.2.4
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.4...HEAD
+[1.2.5]: https://github.com/bymaxone/nest-config/compare/v1.2.4...v1.2.5
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.5...HEAD

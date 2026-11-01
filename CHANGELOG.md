@@ -32,9 +32,9 @@ as the GitHub Release body, so each released version needs a matching
 ### Changed
 
 - **The shipped bundles no longer carry comments.** The build runs `scripts/strip-bundle-comments.mjs`
-  after `tsup`: every comment is removed from `index.mjs` and `index.cjs`, except `/*!` blocks,
-  `@license` and `@preserve` notes, the `__PURE__` annotations and the `// src/` region markers, and
-  the script proves with the TypeScript parser that it changed no code. The documentation people read
+  after `tsup`: every comment is removed from `index.mjs` and `index.cjs` except the legal,
+  bundler-annotation and region-marker ones the script keeps, and the script proves with the
+  TypeScript parser that it changed no code. The documentation people read
   comes from the `.d.ts` files, which are untouched. The internal bundle goes from 22,079 to 16,652
   bytes and the package from 68.3 to 65.5 kB. Nothing to apply in a derived backend.
 - **The internal bundle has a size budget.** `scripts/check-size.mjs` gates `dist/internal/index.mjs`,

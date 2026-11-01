@@ -13,6 +13,11 @@ as the GitHub Release body, so each released version needs a matching
 
 ### Changed
 
+- **A patch release is checked against the previous one's public declarations.** The release workflow
+  runs `check:api`, which compares the built `.d.ts` and `.d.cts` with the previous published version,
+  ignoring comments, and fails a patch that changes any of them, including `dist/internal`, where the
+  public types are declared. A minor or a major is let through with the differences printed. Tooling
+  only: nothing to apply in a derived backend.
 - **The mutation gate is 100.** `thresholds.break` moves from 95 to 100, and `high` and `low` with it,
   because a cold run on `main` now has no survivor. Tooling only: nothing to apply in
   a derived backend.

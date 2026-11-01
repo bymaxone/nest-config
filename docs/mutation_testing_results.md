@@ -12,12 +12,12 @@
 | **Global mutation score**                          | **100.00 %**               |
 | Break threshold (`thresholds.break`)               | 100 % -> **PASS (exit 0)** |
 | Aspirational target (`thresholds.high`)            | 100 % -> **reached**       |
-| Killed                                             | 402                        |
+| Killed                                             | 444                        |
 | Survived                                           | 0                          |
 | Timeout (counts as detected)                       | 2                          |
-| Type-invalid mutants (checker-discarded, excluded) | 236                        |
+| Type-invalid mutants (checker-discarded, excluded) | 249                        |
 
-Score = `(killed + timeout) / (killed + timeout + survived)` = `404 / 404` = **100.00 %**, up
+Score = `(killed + timeout) / (killed + timeout + survived)` = `446 / 446` = **100.00 %**, up
 from **95.74 %** and a **89.11 %** baseline. `pnpm mutation` exits green against `break: 100`,
 which is also the `high` and `low` target.
 
@@ -475,3 +475,22 @@ concluded `success`.
 | CompileError (type-invalid) | 236           |
 
 Score = `404 / 404`.
+
+## Re-run — 2026-11-01 (1.2.5)
+
+The release gate for `v1.2.5`. Command: **`pnpm mutation:full`**, run cold on a hosted runner by the
+`Mutation (full)` workflow dispatched on `main` at `9a64d2d`. Run
+[41358217705](https://github.com/bymaxone/nest-config/actions/runs/41358217705); the job
+concluded `success`.
+
+| Metric                      | Value         |
+| --------------------------- | ------------- |
+| **Mutation score**          | **100.00 %**  |
+| Killed                      | 444           |
+| Surviving mutants           | 0             |
+| Timeout                     | 2             |
+| Ignored                     | 51            |
+| Break threshold             | 100 % -> PASS |
+| CompileError (type-invalid) | 249           |
+
+Score = `446 / 446`.

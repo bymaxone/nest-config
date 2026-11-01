@@ -55,6 +55,7 @@
   },
   "scripts": {
     "build": "pnpm clean && tsup",
+    "check:api": "node scripts/check-api-surface.mjs",
     "check:exports": "attw --pack . --profile strict",
     "check:lint-graph": "node scripts/check-lint-graph-rules.mjs",
     "check:mutants": "node scripts/check-mutation-directives.mjs",

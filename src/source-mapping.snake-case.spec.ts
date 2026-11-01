@@ -10,8 +10,9 @@ import { defineEnv } from './define-env'
 import { resolveSourceNames } from './source-mapping'
 
 /**
- * The converter as it was written with two capturing regexes. It is the reference the
- * zero-width form must reproduce on every segment, not a second implementation to keep.
+ * An independent definition of the expected conversion, written with two capturing regexes
+ * rather than the zero-width boundary the production converter uses. The converter must
+ * reproduce it on every segment; it is an oracle for the comparison, not code to keep in step.
  */
 function referenceScreamingSnake(segment: string): string {
   return segment

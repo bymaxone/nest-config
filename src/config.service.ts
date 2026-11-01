@@ -134,6 +134,11 @@ export class ConfigService<TConfig> {
    * const everything = config.getAll(); // Readonly<AppConfig>
    * ```
    */
+  /** Throwaway proof: a public declaration change. */
+  public proofOnly(): number {
+    return 1
+  }
+
   public getAll(): Readonly<TConfig> {
     return this.#config
   }

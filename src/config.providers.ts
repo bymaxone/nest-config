@@ -60,6 +60,8 @@ async function reportIssues(
  * @param options - The resolved module options (schema, source, strict).
  * @returns The validated, deep-frozen configuration output.
  * @throws {BymaxConfigValidationError} When the source fails the schema.
+ * @throws {TypeError} When `source` is present with the value `undefined` or `null`, which would
+ * otherwise validate `process.env` in place of the source that failed to load.
  * @example
  * ```typescript
  * const config = createValidatedConfig({ schema: envSchema });
@@ -71,10 +73,10 @@ export function createValidatedConfig<TShape extends EnvShape>(
     readonly schema: EnvSchema<TShape>
   }
 ): Readonly<EnvOutput<TShape>> {
-  if ('source' in options && options.source === undefined) {
+  if ('source' in options && (options.source === undefined || options.source === null)) {
     throw new TypeError(
-      'BymaxConfigModule: source was provided but is undefined; omit the key to validate ' +
-        'process.env, or pass the source that failed to load'
+      'BymaxConfigModule: source was provided but is undefined or null; omit the key to ' +
+        'validate process.env, or pass the source that failed to load'
     )
   }
   const source = options.source ?? process.env

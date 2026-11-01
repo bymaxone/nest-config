@@ -24,6 +24,11 @@ function loadSource(): Record<string, string> | undefined {
   return undefined
 }
 
+/** A loader that answers `null` for a missing record, as JSON.parse of nothing does. */
+function loadNullableSource(): Record<string, string> | null {
+  return null
+}
+
 /** What the failed loader hands the module, narrowed the way a host narrows it. */
 const failedSource = loadSource() as Record<string, string>
 
@@ -43,6 +48,17 @@ describe('a source key that is present with the value undefined', () => {
     expect(() => createValidatedConfig({ schema, source: failedSource })).toThrow(
       'source was provided but is undefined'
     )
+  })
+
+  it('throws for a null source too, as a JavaScript caller can pass', () => {
+    /**
+     * A loader that returns `null` (a failed JSON.parse, a missing record) is the same
+     * mistake as `undefined`, and the type system does not stand between it and a plain-JS host.
+     */
+    process.env = { SERVER_PORT: '3000' } as NodeJS.ProcessEnv
+    const nullSource = loadNullableSource() as Record<string, string>
+
+    expect(() => createValidatedConfig({ schema, source: nullSource })).toThrow(TypeError)
   })
 
   it('still uses process.env when the key is absent', () => {

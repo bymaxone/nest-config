@@ -445,7 +445,7 @@ tsup produces both module formats without `emitDecoratorMetadata`; therefore eve
 
 ### 9.3 Publishing
 
-Public npm, `--provenance`, released from CI via OIDC (no long-lived npm tokens). Versioning follows semver strictly: patch for fixes, minor for backward-compatible features, major for breaking changes with a migration section in the changelog.
+Public npm, `--provenance`, released from CI via OIDC (no long-lived npm tokens). The version number carries no compatibility information while the `@bymax-one/*` libraries are pre-stable, so a breaking change may ship in a patch or a minor release. The compatibility contract is the `#### Apply to a derived backend` note in the changelog section of the release, and the release workflow fails a release whose built declarations changed without one.
 
 ---
 

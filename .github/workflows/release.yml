@@ -54,6 +54,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # The install step below runs the tagged repository's own scripts; the job token, which
+          # can write contents, must not stay in the repository's git configuration for them to read.
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Setup pnpm

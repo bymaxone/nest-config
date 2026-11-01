@@ -45,6 +45,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The install step below runs the pull request's own scripts; the read-only token must
+          # not stay in the repository's git configuration for them to read.
+          persist-credentials: false
       - uses: bymaxone/.github/.github/actions/setup-node-pnpm@v1
       - name: Mutation directives parse and carry their reason
         run: pnpm check:mutants
@@ -93,6 +97,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The install step below runs the pull request's own scripts; the read-only token must
+          # not stay in the repository's git configuration for them to read.
+          persist-credentials: false
       - uses: bymaxone/.github/.github/actions/setup-node-pnpm@v1
       - name: Build all subpaths
         # The e2e suite resolves through dist/, never src/ aliases, so it proves

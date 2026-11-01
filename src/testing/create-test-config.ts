@@ -15,10 +15,10 @@ import {
   BymaxConfigValidationError,
   ConfigErrorCode,
   createValidatedConfig,
+  resolveSourceNames,
   unusableOverrideIssues
 } from '@bymax-one/nest-config/internal'
-import { resolveSourceNames } from '@bymax-one/nest-config/internal'
-import type { EnvOutput, EnvSchema, EnvShape } from '@bymax-one/nest-config/internal'
+import type { ConfigIssue, EnvOutput, EnvSchema, EnvShape } from '@bymax-one/nest-config/internal'
 
 import { synthesizePlaceholderSource } from './placeholder-synthesizer'
 
@@ -41,23 +41,64 @@ export type ConfigOverrides<TShape extends EnvShape> = {
 type OverrideRecord = Readonly<Record<string, Readonly<Record<string, unknown>>>>
 
 /**
+ * Describe an override that cannot be placed, under its path and with no variable.
+ *
+ * @param path - The path of the override that was not applied.
+ * @param code - What is wrong with it.
+ * @param message - The description shown beside the path.
+ * @returns The issue, listed in the report under its path.
+ */
+function unplacedIssue(path: string, code: ConfigIssue['code'], message: string): ConfigIssue {
+  return { path, variable: '', code, message }
+}
+
+/**
  * Flatten nested partial overrides into a `namespace.leaf` to value map.
  *
  * Iterating entries (rather than indexing by a dynamic key) keeps the lookup a
  * `Map`, mirroring the rest of the package and avoiding a computed-property
- * access sink.
+ * access sink. An override that cannot be placed is not dropped: a namespace that is not
+ * an object, and a path that matches no declared leaf (whatever its value), each become an
+ * issue, in the order the overrides are written.
  *
  * @param overrides - The selective nested partial overrides.
- * @returns A flat map of `namespace.leaf` paths to their override values.
+ * @param declared - The paths of the schema's leaves.
+ * @returns The placed overrides as a map of `namespace.leaf` paths to their values, and the
+ * issues for those that could not be placed.
  */
-function flattenOverrides(overrides: OverrideRecord): ReadonlyMap<string, unknown> {
+function flattenOverrides(
+  overrides: OverrideRecord,
+  declared: ReadonlySet<string>
+): { readonly flat: ReadonlyMap<string, unknown>; readonly unplaced: readonly ConfigIssue[] } {
   const flat = new Map<string, unknown>()
+  const unplaced: ConfigIssue[] = []
   for (const [namespace, leaves] of Object.entries(overrides)) {
+    if (typeof leaves !== 'object') {
+      unplaced.push(
+        unplacedIssue(
+          namespace,
+          ConfigErrorCode.INVALID,
+          `the override for \`${namespace}\` must be an object`
+        )
+      )
+      continue
+    }
     for (const [leaf, value] of Object.entries(leaves)) {
-      flat.set(`${namespace}.${leaf}`, value)
+      const path = `${namespace}.${leaf}`
+      if (declared.has(path)) {
+        flat.set(path, value)
+      } else {
+        unplaced.push(
+          unplacedIssue(
+            path,
+            ConfigErrorCode.UNKNOWN_KEY,
+            'no leaf of the schema is at this path; the override was not applied'
+          )
+        )
+      }
     }
   }
-  return flat
+  return { flat, unplaced }
 }
 
 /**
@@ -80,20 +121,12 @@ function applyOverrides<TShape extends EnvShape>(
   overrides: ConfigOverrides<TShape> | undefined,
   overridden: Set<string>
 ): Record<string, string> {
-  const flat = flattenOverrides((overrides ?? {}) as OverrideRecord)
   const bindings = resolveSourceNames(schema)
-  const declared = new Set(bindings.map((binding) => binding.path))
-  const unplaced = [...flat.keys()].filter((path) => !declared.has(path))
-  if (unplaced.length > 0) {
-    throw new BymaxConfigValidationError(
-      unplaced.map((path) => ({
-        path,
-        variable: '',
-        code: ConfigErrorCode.UNKNOWN_KEY,
-        message: 'no leaf of the schema is at this path; the override was not applied'
-      }))
-    )
-  }
+  const { flat, unplaced } = flattenOverrides(
+    (overrides ?? {}) as OverrideRecord,
+    new Set(bindings.map((binding) => binding.path))
+  )
+  if (unplaced.length > 0) throw new BymaxConfigValidationError(unplaced)
   const entries = new Map(Object.entries(base))
   for (const binding of bindings) {
     const value = flat.get(binding.path)

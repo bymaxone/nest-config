@@ -283,8 +283,7 @@ The override is found wherever `meta` sits in the chain: `z.string().meta({ env:
 and `z.string().default('x').meta({ env: 'LEGACY' })` both read `LEGACY`. When more than one layer sets it, the outermost usable one wins. An `env` that is present but
 is not a non-empty string (`''`, `undefined`, a number) cannot name a variable, so validation reports it
 as an issue instead of letting the leaf read the variable derived from its path; a leaf with no
-`env` at all is unaffected. `resolveSourceNames` answers the same for every usable override,
-because validation reads its variables through it.
+`env` at all is unaffected. `resolveSourceNames` skips an unusable `env` and answers the derived name.
 
 A namespace can declare itself **open**, which waives strict unknown-key
 detection for the rest of its prefix. Use it when the prefix is shared with

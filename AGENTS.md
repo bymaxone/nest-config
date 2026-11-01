@@ -234,9 +234,9 @@ in the repository.
 
 What **is** a finding: a directive without a reason, a reason that asserts equivalence without
 saying how it was checked, or a directive placed over a mutant the suite could kill. The last one is
-the rule that matters — a killable mutant is never disabled to raise a number, which is why
-`toScreamingSnake`'s acronym regex stays a counted survivor in the denominator instead of being
-silenced.
+the rule that matters — a killable mutant is never disabled to raise a number. Where a directive
+cannot attach, the code is rewritten so the equivalent construct is gone, as it was for
+`toScreamingSnake`'s acronym boundary.
 
 ### The version number carries no compatibility information, and a major is not on the table
 

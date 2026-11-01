@@ -12,14 +12,14 @@
 `stryker.config.json`:
 
 ```json
-"thresholds": { "high": 99, "low": 95, "break": 95 }
+"thresholds": { "high": 100, "low": 100, "break": 100 }
 ```
 
-| Threshold   | Meaning                                                        |
-| ----------- | -------------------------------------------------------------- |
-| `break: 95` | `pnpm mutation` exits non-zero when the score drops below 95 % |
-| `low: 95`   | Score between low and high renders yellow in the HTML report   |
-| `high: 99`  | Aspirational target; a score at or above 99 % renders green    |
+| Threshold    | Meaning                                                         |
+| ------------ | --------------------------------------------------------------- |
+| `break: 100` | `pnpm mutation` exits non-zero when the score drops below 100 % |
+| `low: 100`   | Score below this renders yellow in the HTML report              |
+| `high: 100`  | Target; a score at this value renders green                     |
 
 Mutation testing is a **release gate, not a per-commit gate**: a full run is
 slow and memory-heavy, so it runs in concentrated sessions and in the dedicated
@@ -106,7 +106,7 @@ mutants that produce runnable, type-valid programs.
 3. **Equivalents documentation.** Every genuine equivalent is documented in
    `mutation_testing_results.md`; narrow, justified inline disables only where a
    mutant is a proven equivalent.
-4. **Final gated run.** `pnpm mutation` with `break: 95` enforced must exit green.
+4. **Final gated run.** `pnpm mutation` with the break threshold enforced must exit green.
 
 ---
 

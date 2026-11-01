@@ -457,7 +457,7 @@ Public npm, `--provenance`, released from CI via OIDC (no long-lived npm tokens)
 | Lint              | ESLint flat config; restricted imports ban `dotenv`, bare `crypto`, and other non-`node:` builtins                                |
 | Unit coverage     | Jest, **100%** line / branch / function / statement, enforced via `coverageThreshold` in both jest configs                        |
 | Test discipline   | Every `it()` carries a comment stating the scenario and the rule it protects                                                      |
-| Mutation testing  | Stryker as a pre-release gate: thresholds `high: 99, low: 95, break: 95`                                                          |
+| Mutation testing  | Stryker as a gate; thresholds live in `stryker.config.json`                                                                       |
 | Bundle size       | `scripts/check-size.mjs`, budgets in KiB (brotli), calibrated to the real artifact as a bloat tripwire                            |
 | Package integrity | `scripts/dogfood-smoke-test.mjs`: resolves and imports every subpath in both ESM and CJS from a packed tarball before any release |
 

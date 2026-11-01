@@ -62,7 +62,7 @@ mutation runs over the full suite).
 | `pnpm test` (jest, `maxWorkers: '50%'`, 100% line/branch/function/statement via `coverageThreshold` in BOTH jest configs) | phase 1                                           |
 | `node scripts/dogfood-smoke-test.mjs` (packed tarball resolves both subpaths in ESM and CJS)                              | phase 5                                           |
 | `node scripts/check-size.mjs` (provisional budgets from P0, recalibrated in P6)                                           | phase 6                                           |
-| `pnpm test:mutation` (Stryker, high 99 / low 95 / **break 95**)                                                           | phase 7 only - pre-release gate, never per-commit |
+| `pnpm test:mutation` (Stryker, high 100 / low 100 / **break 100**)                                                        | phase 7 only - pre-release gate, never per-commit |
 
 **Expected-skip CI checks**: `codeql` and `scorecard` workflows may report
 skipped/inactive while the repository is private; they count as pass until

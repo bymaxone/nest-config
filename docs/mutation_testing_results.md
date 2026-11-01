@@ -1,33 +1,32 @@
 # Mutation Testing Results: @bymax-one/nest-config
 
-> **Last run:** 2026-10-31
-> **Command:** `pnpm mutation:full` (Stryker 9, jest runner, `coverageAnalysis: perTest`, `ignoreStatic: true`, `break: 95`) — the cold command, which the release gate requires; `pnpm mutation` reuses stored verdicts and cannot establish it
+> **Last run:** 2026-11-01
+> **Command:** `pnpm mutation:full` (Stryker 9, jest runner, `coverageAnalysis: perTest`, `ignoreStatic: true`, `break: 100`) — the cold command, which the release gate requires; `pnpm mutation` reuses stored verdicts and cannot establish it
 > **Report:** [`../reports/mutation/mutation.html`](../reports/mutation/mutation.html)
 > **Plan:** [`mutation_testing_plan.md`](./mutation_testing_plan.md)
 
 ## Summary
 
-| Metric                                                 | Value                     |
-| ------------------------------------------------------ | ------------------------- |
-| **Global mutation score**                              | **99.71 %**               |
-| Break threshold (`thresholds.break`)                   | 95 % -> **PASS (exit 0)** |
-| Aspirational target (`thresholds.high`)                | 99 % -> **reached**       |
-| Killed                                                 | 338                       |
-| Survived (equivalent, and unable to carry a directive) | 1                         |
-| Timeout (counts as detected)                           | 1                         |
-| Type-invalid mutants (checker-discarded, excluded)     | 207                       |
+| Metric                                             | Value                      |
+| -------------------------------------------------- | -------------------------- |
+| **Global mutation score**                          | **100.00 %**               |
+| Break threshold (`thresholds.break`)               | 100 % -> **PASS (exit 0)** |
+| Aspirational target (`thresholds.high`)            | 100 % -> **reached**       |
+| Killed                                             | 340                        |
+| Survived                                           | 0                          |
+| Timeout (counts as detected)                       | 1                          |
+| Type-invalid mutants (checker-discarded, excluded) | 207                        |
 
-Score = `(killed + timeout) / (killed + timeout + survived)` = `339 / 340` = **99.71 %**, up
-from **95.74 %** and a **89.11 %** baseline. `pnpm mutation` exits green against `break: 95`,
-and clears the `high: 99` target.
+Score = `(killed + timeout) / (killed + timeout + survived)` = `341 / 341` = **100.00 %**, up
+from **95.74 %** and a **89.11 %** baseline. `pnpm mutation` exits green against `break: 100`,
+which is also the `high` and `low` target.
 
-Three moves produced that number, and they are different in kind.
+The moves that produced that number are different in kind.
 
-**95.74 % -> 99.59 % was not new tests.** The eleven equivalents were already argued here and
-left to survive. Ten of them now carry their reason as an inline directive, so Stryker excludes
-them from the denominator instead of counting them as failures to kill. The eleventh cannot
-carry one and is still counted — see the section below. There are zero genuine coverage gaps,
-before or after.
+**95.74 % -> 99.59 % was not new tests.** The equivalents were already argued here and
+left to survive. Most now carry their reason as an inline directive, so Stryker excludes
+them from the denominator instead of counting them as failures to kill. The one that could not
+carry a directive is dealt with below. There were no genuine coverage gaps, before or after.
 
 **99.59 % -> 99.61 % is new code with new tests.** The `v1.1.1` fix generated 17 mutants in
 `env-validator.ts`: 14 that count toward the score, all killed, and 3 the type checker discards
@@ -48,6 +47,13 @@ Nothing was silenced to get there. See the dated re-run at the end.
 new code added 21 counted mutants, all in `env-validator.ts`, all killed, while the type-invalid
 total moved 204 -> 207. The survivor count held at one.
 
+**99.71 % -> 100.00 % removed the last survivor by changing the code, not the tests.** The
+acronym boundary in `toScreamingSnake` is now a zero-width lookaround, so there is no capturing
+group left whose quantifier could shrink unobserved. Every derived name is unchanged: a spec
+compares the converter with an independent two-regex definition on every string up to seven
+characters over `a`, `B`, `C`, `1` and `_`. Nothing was silenced, and `thresholds.break` moved
+from 95 to 100 once a cold run on `main` read 341 of 341. See the dated re-run at the end.
+
 ## Approach to equivalents: documented in the source
 
 Equivalent mutants carry their reason on the line they apply to, as
@@ -57,15 +63,9 @@ The argument for each is reproduced below, because the entries here carry contex
 inline note cannot: what the supported two-level convention rules out, and what was
 verified by running the mutant rather than reading it.
 
-Ten of the eleven are silenced that way. **One is not, and is a counted survivor:**
-
-| Location                                 | Mutator                      | Why it stays counted                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| ---------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `source-mapping.ts` — `toScreamingSnake` | `Regex` (`[A-Z]+` → `[A-Z]`) | The mutation is equivalent — the underscore's position is fixed by the following `[A-Z][a-z]` boundary, which both variants locate identically. But a directive does not attach inside a method chain: measured, not assumed — with `// Stryker disable next-line Regex` on the line above, the mutant still reported as surviving. Silencing it would take a block directive spanning the `.replace()` above it, whose own regex mutants the suite does kill, and a killable mutant is never disabled. So it is argued in the source, counted here, and left in the score. |
-
-That is the policy's own escape hatch: where the source cannot carry the directive, the
-report carries the argument and the mutant stays in the denominator. The score is an
-accounting either way.
+The one in `toScreamingSnake` could not carry a directive, so it stayed a counted survivor until
+the converter was rewritten without the construct that made it equivalent; it is no longer in the
+source.
 
 ## Hardening performed
 
@@ -99,17 +99,17 @@ non-equivalent survivors:
 | `testing/placeholder-synthesizer.ts` | 100.00 % | 0 (1 silenced)         |
 | `env-validator.ts`                   | 100.00 % | 0 (5 silenced)         |
 | `deep-freeze.ts`                     | 100.00 % | 0 (4 silenced)         |
-| `source-mapping.ts`                  | 95.24 %  | 1 (cannot be silenced) |
+| `source-mapping.ts`                  | 100.00 % | 0                      |
 
 `config.module-definition.ts`, `config.options.ts`, `config.tokens.ts`,
 `define-env.ts`, `types.ts`, and `testing/config-testing.module.ts` produce only
 type-invalid or type-guarded mutants (the checker discards them), so they carry no
 runtime mutants to score.
 
-## Equivalent mutants (11)
+## Equivalent mutants
 
 Each of the following is an equivalent mutant: no test can observe a behavioral
-difference, so the survivor is expected and is not a coverage gap.
+difference, so it is silenced with an inline reason and is not a coverage gap.
 
 ### `deep-freeze.ts:17` - `isFreezable` guard (4 mutants)
 
@@ -154,21 +154,10 @@ mutant only changes the chosen branch when `target === lengths.max`, and in that
 case both branches evaluate to the same number (`lengths.max === target`), so the
 filler length is identical.
 
-### `source-mapping.ts` — `toScreamingSnake` acronym regex quantifier (`[A-Z]+` to `[A-Z]`, 1 mutant)
-
-`.replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')` inserts an underscore before the
-final capital of an acronym. The mutant shrinks the first group from `[A-Z]+` to a
-single `[A-Z]`. The underscore position is fixed by group 2 (the following
-`[A-Z][a-z]` boundary), which both variants locate identically; group 1 only
-extends left over characters that are reproduced verbatim either way, and the
-match end (so the global-flag `lastIndex`) is unchanged. The output is therefore
-identical for every input.
-
 ## Residual survivors
 
-All 11 were the equivalent mutants above, counted as survivors because the convention at the
-time was to document rather than disable. Ten now carry an inline directive; the eleventh is
-the `source-mapping.ts` regex, which no directive can reach.
+None. The mutants once argued equivalent now carry an inline directive with their reason, except
+the one in `toScreamingSnake`, which was removed by rewriting the converter.
 
 ---
 
@@ -436,3 +425,34 @@ are the check itself, `assertDistinctVariables`. The change touched no other fil
 The single survivor is unchanged: the acronym regex in `toScreamingSnake`
 (`source-mapping.ts:65`, `[A-Z]+` -> `[A-Z]`), argued above and left in the denominator because a
 directive cannot attach inside a method chain.
+
+## Re-run — 2026-11-01
+
+The gate for `thresholds.break: 100`. Command: **`pnpm mutation:full`**, run cold on a hosted runner
+by the `Mutation (full)` workflow dispatched on `main`, which only runs on the default branch. Two
+runs bound the result.
+
+Run [41311571756](https://github.com/bymaxone/nest-config/actions/runs/41311571756) on `488b5d9`,
+the commit that rewrote `toScreamingSnake`, scored **99.13 %** (344 of 347): the survivor in
+`source-mapping.ts` was gone, and three new ones appeared, `StringLiteral` mutants on the
+module-level message constants of `env-validator.ts`. In the previous run the same three were
+`Ignored` as static. The README Quick Start spec required the library inside its test, so the
+module was first evaluated during a test and the report recorded those constants as covered by that
+one test, which never reads them. The library is now imported at the top of the spec, and a spec
+pins the three message constants by value, so mutating any of them fails a test whatever the
+classification.
+
+Run [41314000750](https://github.com/bymaxone/nest-config/actions/runs/41314000750) on `b9680fe`
+concluded `success`:
+
+| Metric                      | Value         |
+| --------------------------- | ------------- |
+| **Mutation score**          | **100.00 %**  |
+| Killed                      | 340           |
+| Surviving mutants           | 0             |
+| Timeout                     | 1             |
+| Ignored                     | 50            |
+| Break threshold             | 100 % -> PASS |
+| CompileError (type-invalid) | 207           |
+
+Score = `341 / 341`.

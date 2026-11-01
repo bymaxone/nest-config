@@ -37,8 +37,20 @@ export type ConfigOverrides<TShape extends EnvShape> = {
   }
 }
 
-/** Internal read view over the overrides for dynamic leaf lookup. */
-type OverrideRecord = Readonly<Record<string, Readonly<Record<string, unknown>>>>
+/**
+ * Whether a value is a plain object: one whose prototype is `Object.prototype` or none.
+ *
+ * Arrays, `Map`, `Date` and class instances are objects too, but reading their own entries
+ * as a namespace's leaves applies nothing, or applies the indices of an array as paths.
+ *
+ * @param value - The value to test.
+ * @returns True when the value is a plain object.
+ */
+function isPlainObject(value: unknown): value is Readonly<Record<string, unknown>> {
+  if (typeof value !== 'object' || value === null) return false
+  const prototype: unknown = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
 
 /**
  * Describe an override that cannot be placed, under its path and with no variable.
@@ -57,23 +69,31 @@ function unplacedIssue(path: string, code: ConfigIssue['code'], message: string)
  *
  * Iterating entries (rather than indexing by a dynamic key) keeps the lookup a
  * `Map`, mirroring the rest of the package and avoiding a computed-property
- * access sink. An override that cannot be placed is not dropped: a namespace that is not
- * an object, and a path that matches no declared leaf (whatever its value), each become an
- * issue, in the order the overrides are written.
+ * access sink. An override that cannot be placed is not dropped: an overrides argument or a
+ * namespace that is not a plain object, and a path that matches no declared leaf (whatever its
+ * value), each become an issue, in the order the overrides are written. No overrides at all,
+ * `undefined` or `null`, is an empty map.
  *
- * @param overrides - The selective nested partial overrides.
+ * @param overrides - The selective nested partial overrides, as the caller passed them.
  * @param declared - The paths of the schema's leaves.
  * @returns The placed overrides as a map of `namespace.leaf` paths to their values, and the
  * issues for those that could not be placed.
  */
 function flattenOverrides(
-  overrides: OverrideRecord,
+  overrides: unknown,
   declared: ReadonlySet<string>
 ): { readonly flat: ReadonlyMap<string, unknown>; readonly unplaced: readonly ConfigIssue[] } {
   const flat = new Map<string, unknown>()
   const unplaced: ConfigIssue[] = []
+  if (overrides === undefined || overrides === null) return { flat, unplaced }
+  if (!isPlainObject(overrides)) {
+    unplaced.push(
+      unplacedIssue('(overrides)', ConfigErrorCode.INVALID, 'the overrides must be an object')
+    )
+    return { flat, unplaced }
+  }
   for (const [namespace, leaves] of Object.entries(overrides)) {
-    if (typeof leaves !== 'object') {
+    if (!isPlainObject(leaves)) {
       unplaced.push(
         unplacedIssue(
           namespace,
@@ -123,7 +143,7 @@ function applyOverrides<TShape extends EnvShape>(
 ): Record<string, string> {
   const bindings = resolveSourceNames(schema)
   const { flat, unplaced } = flattenOverrides(
-    (overrides ?? {}) as OverrideRecord,
+    overrides,
     new Set(bindings.map((binding) => binding.path))
   )
   if (unplaced.length > 0) throw new BymaxConfigValidationError(unplaced)

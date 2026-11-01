@@ -913,7 +913,9 @@ Overrides mirror the `namespace.leaf` shape with every key optional and typed fr
 a leaf what its environment variable would hold; an object becomes `'[object Object]'`, and an override
 of `undefined` is ignored, so a defaulted leaf cannot be unset. An override whose path matches no leaf
 of the schema throws, listing every such path, even when its value is `undefined`; a namespace given
-something other than an object is reported once, by name. Neither helper takes `strict`, a
+something other than a plain object (a string, a number, `null`, an array, a `Map`, a `Date` or a class
+instance) is reported once, by name, and so is an overrides argument that is not a plain object; passing
+`undefined` or `null` for the whole argument means no overrides. Neither helper takes `strict`, a
 custom `source`, a hook or `isGlobal`: `configTestingModule` registers the module globally, and a
 failure case (a missing variable, a strict violation) is built with
 `BymaxConfigModule.forRoot({ schema, source, strict: true })` and a source you write.

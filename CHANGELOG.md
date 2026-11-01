@@ -11,6 +11,21 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Fixed
+
+- **A test override that is not a plain object is one issue.** A namespace given `null` threw a raw
+  `TypeError`, an array produced one issue per index, and a `Map`, a `Date` or a class instance applied
+  nothing and said nothing. `createTestConfig` and `configTestingModule` now report each of them once,
+  by name, as "the override for `x` must be an object", in the same `BymaxConfigValidationError` as any
+  unmatched path. The overrides argument itself is held to the same rule and reported as "the overrides
+  must be an object"; `undefined` and `null` still mean no overrides.
+
+  #### Apply to a derived backend
+
+  Run the test suites: a test that expected a `TypeError` for a `null` namespace now receives a
+  `BymaxConfigValidationError`, and an override that was a `Map`, a `Date` or a class instance now
+  fails instead of being ignored. Pass a plain object.
+
 ## [1.2.4] - 2026-11-01
 
 ### Fixed

@@ -14,10 +14,14 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { compileFunction } from 'node:vm'
 
+import * as nestCommon from '@nestjs/common'
 import { Test } from '@nestjs/testing'
 import { transpileModule, ModuleKind, ScriptTarget } from 'typescript'
 
+import * as zod from 'zod'
+
 import { BymaxConfigValidationError } from './errors'
+import * as library from './index'
 
 const readme = readFileSync(join(__dirname, '..', 'README.md'), 'utf8')
 
@@ -49,17 +53,20 @@ function runBlock(block: string, modules: Record<string, unknown>): Record<strin
   return exported
 }
 
-/** The module and the provider the README declares, compiled from its text. */
+/**
+ * The module and the provider the README declares, compiled from its text.
+ *
+ * The library is imported at the top of the file and never required here: a module first
+ * evaluated inside a test is recorded by mutation testing as covered by that test alone, not
+ * as evaluated at load, so its module-level constants stop being classed as static and
+ * survive a test that does not read them.
+ */
 function loadQuickStart(): {
   readonly AppModule: new () => unknown
   readonly FeatureProvider: new (config: never) => { describeConnection(): string }
 } {
   const [schemaBlock, moduleBlock, providerBlock] = quickStartBlocks()
-  const nest = {
-    '@bymax-one/nest-config': require('./index') as unknown,
-    '@nestjs/common': require('@nestjs/common') as unknown,
-    zod: require('zod') as unknown
-  }
+  const nest = { '@bymax-one/nest-config': library, '@nestjs/common': nestCommon, zod }
   const withSchema = { ...nest, './config/env.schema': runBlock(schemaBlock ?? '', nest) }
   return {
     AppModule: runBlock(moduleBlock ?? '', withSchema).AppModule as new () => unknown,

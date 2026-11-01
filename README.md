@@ -817,7 +817,7 @@ beyond "the tests pass".
 
 - ✅ **100% line coverage** — statements, branches, functions and lines, enforced as a gate
 - ✅ **100.00% mutation score** — verified with [Stryker](https://stryker-mutator.io/) at
-  `break: 100`; ten provable equivalents carry their reason inline and nothing else survives
+  `break: 100`; provable equivalents carry their reason inline and nothing else survives
   ([report](./docs/mutation_testing_results.md))
 - ✅ **The value-free guarantee is tested, not assumed** — a sentinel secret is placed in a
   source and the assertion is that it appears nowhere in the rendered report or in the thrown

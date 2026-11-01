@@ -21,13 +21,12 @@ Score = `(killed + timeout) / (killed + timeout + survived)` = `341 / 341` = **1
 from **95.74 %** and a **89.11 %** baseline. `pnpm mutation` exits green against `break: 100`,
 which is also the `high` and `low` target.
 
-Four moves produced that number, and they are different in kind.
+The moves that produced that number are different in kind.
 
-**95.74 % -> 99.59 % was not new tests.** The eleven equivalents were already argued here and
-left to survive. Ten of them now carry their reason as an inline directive, so Stryker excludes
-them from the denominator instead of counting them as failures to kill. The eleventh cannot
-carry one and is still counted — see the section below. There are zero genuine coverage gaps,
-before or after.
+**95.74 % -> 99.59 % was not new tests.** The equivalents were already argued here and
+left to survive. Most now carry their reason as an inline directive, so Stryker excludes
+them from the denominator instead of counting them as failures to kill. The one that could not
+carry a directive is dealt with below. There were no genuine coverage gaps, before or after.
 
 **99.59 % -> 99.61 % is new code with new tests.** The `v1.1.1` fix generated 17 mutants in
 `env-validator.ts`: 14 that count toward the score, all killed, and 3 the type checker discards
@@ -64,9 +63,9 @@ The argument for each is reproduced below, because the entries here carry contex
 inline note cannot: what the supported two-level convention rules out, and what was
 verified by running the mutant rather than reading it.
 
-Ten of the eleven were silenced that way. The eleventh, in `toScreamingSnake`, could not carry
-a directive, so it stayed a counted survivor until the converter was rewritten without the
-construct that made it equivalent; it is no longer in the source.
+The one in `toScreamingSnake` could not carry a directive, so it stayed a counted survivor until
+the converter was rewritten without the construct that made it equivalent; it is no longer in the
+source.
 
 ## Hardening performed
 
@@ -107,7 +106,7 @@ non-equivalent survivors:
 type-invalid or type-guarded mutants (the checker discards them), so they carry no
 runtime mutants to score.
 
-## Equivalent mutants (10)
+## Equivalent mutants
 
 Each of the following is an equivalent mutant: no test can observe a behavioral
 difference, so it is silenced with an inline reason and is not a coverage gap.
@@ -157,8 +156,8 @@ filler length is identical.
 
 ## Residual survivors
 
-None. Eleven mutants were once argued equivalent and counted as survivors. Ten now carry an inline
-directive with their reason; the eleventh was removed by rewriting `toScreamingSnake`.
+None. The mutants once argued equivalent now carry an inline directive with their reason, except
+the one in `toScreamingSnake`, which was removed by rewriting the converter.
 
 ---
 
@@ -456,4 +455,4 @@ concluded `success`:
 | Break threshold             | 100 % -> PASS |
 | CompileError (type-invalid) | 207           |
 
-Score = `341 / 341`. The ignored total is back to 50, the same as before the rewrite.
+Score = `341 / 341`.

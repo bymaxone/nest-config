@@ -11,6 +11,8 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-11-01
+
 ### Fixed
 
 - **A `source` that is present but `undefined` fails the boot.** `BymaxConfigModule.forRoot({ schema,
@@ -548,4 +550,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.1]: https://github.com/bymaxone/nest-config/compare/v1.2.0...v1.2.1
 [1.2.2]: https://github.com/bymaxone/nest-config/compare/v1.2.1...v1.2.2
 [1.2.3]: https://github.com/bymaxone/nest-config/compare/v1.2.2...v1.2.3
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.3...HEAD
+[1.2.4]: https://github.com/bymaxone/nest-config/compare/v1.2.3...v1.2.4
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.4...HEAD

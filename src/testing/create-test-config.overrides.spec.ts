@@ -113,8 +113,8 @@ describe('createTestConfig with a meta({ env }) that cannot name a variable', ()
 describe('createTestConfig with an override namespace that is not an object', () => {
   it('reports one issue naming the namespace, not one per character', () => {
     /**
-     * A namespace override that is not an object yields one namespace-level issue, naming the
-     * namespace, and never character-level issues for the pieces of a string.
+     * A namespace override that is a string yields one namespace-level issue, naming the
+     * namespace, and never character-level issues for the pieces of the string.
      */
     const thrown = outcome(() => createTestConfig(schema, { database: 'x' } as never))
 
@@ -131,7 +131,7 @@ describe('createTestConfig with an override namespace that is not an object', ()
     ['a boolean', true],
     ['undefined', undefined]
   ])('reports %s the same way', (_name, value) => {
-    /** Every primitive in place of an object is one namespace-level issue, whatever its type. */
+    /** A number, a boolean or undefined in place of an object is one namespace-level issue. */
     const thrown = outcome(() => createTestConfig(schema, { database: value } as never))
 
     expect((thrown as BymaxConfigValidationError).issues.map((issue) => issue.path)).toEqual([

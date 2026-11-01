@@ -474,4 +474,5 @@ concluded `success`.
 | Break threshold             | 100 % -> PASS |
 | CompileError (type-invalid) | 236           |
 
-Score = `404 / 404`. Every mutant is killed; nothing was silenced.
+Score = `404 / 404`. Every counted mutant was killed or timed out, and a timeout counts as detected;
+nothing was silenced.

@@ -47,7 +47,8 @@ describe('a source key that is present with the value undefined', () => {
 
     expect(() => createValidatedConfig({ schema, source: failedSource })).toThrow(TypeError)
     expect(() => createValidatedConfig({ schema, source: failedSource })).toThrow(
-      'source was provided but is undefined'
+      'BymaxConfigModule: source was provided but is undefined or null; omit the key to validate ' +
+        'process.env, or pass the source that failed to load'
     )
   })
 

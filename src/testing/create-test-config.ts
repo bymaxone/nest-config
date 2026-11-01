@@ -13,7 +13,9 @@
 import {
   assertDistinctVariables,
   BymaxConfigValidationError,
-  createValidatedConfig
+  ConfigErrorCode,
+  createValidatedConfig,
+  unusableOverrideIssues
 } from '@bymax-one/nest-config/internal'
 import { resolveSourceNames } from '@bymax-one/nest-config/internal'
 import type { EnvOutput, EnvSchema, EnvShape } from '@bymax-one/nest-config/internal'
@@ -79,8 +81,21 @@ function applyOverrides<TShape extends EnvShape>(
   overridden: Set<string>
 ): Record<string, string> {
   const flat = flattenOverrides((overrides ?? {}) as OverrideRecord)
+  const bindings = resolveSourceNames(schema)
+  const declared = new Set(bindings.map((binding) => binding.path))
+  const unplaced = [...flat.keys()].filter((path) => !declared.has(path))
+  if (unplaced.length > 0) {
+    throw new BymaxConfigValidationError(
+      unplaced.map((path) => ({
+        path,
+        variable: '',
+        code: ConfigErrorCode.UNKNOWN_KEY,
+        message: 'no leaf of the schema is at this path; the override was not applied'
+      }))
+    )
+  }
   const entries = new Map(Object.entries(base))
-  for (const binding of resolveSourceNames(schema)) {
+  for (const binding of bindings) {
     const value = flat.get(binding.path)
     if (value === undefined) continue
     entries.set(binding.variable, String(value))
@@ -141,7 +156,10 @@ export function prepareTestConfig<TShape extends EnvShape>(
   schema: EnvSchema<TShape>,
   overrides?: ConfigOverrides<TShape>
 ): { readonly source: Record<string, string>; readonly config: Readonly<EnvOutput<TShape>> } {
-  assertDistinctVariables(resolveSourceNames(schema))
+  const bindings = resolveSourceNames(schema)
+  assertDistinctVariables(bindings)
+  const unusable = unusableOverrideIssues(schema, bindings)
+  if (unusable.length > 0) throw new BymaxConfigValidationError(unusable)
   const overridden = new Set<string>()
   const source = applyOverrides(schema, synthesizePlaceholderSource(schema), overrides, overridden)
   try {

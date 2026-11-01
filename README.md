@@ -265,6 +265,10 @@ including `'false'`, becomes `true`, so use `z.stringbool()` for a flag. And a v
 empty string is present, not missing: `z.string()` accepts it and `z.coerce.number()` turns it into
 `0`, so add `.min(1)` or a bound where empty should fail.
 
+A leaf that ends in `.catch(fallback)` replaces an invalid value with its fallback and reports no
+issue, so a mistyped variable reaches the application as the fallback; leave `.catch()` off a
+leaf whose failure should stop the boot.
+
 A leaf can override its derived variable name through schema metadata when a
 legacy name must be preserved:
 
@@ -276,9 +280,10 @@ database: z.object({
 ```
 
 The override is found wherever `meta` sits in the chain: `z.string().meta({ env: 'LEGACY' }).default('x')`
-and `z.string().default('x').meta({ env: 'LEGACY' })` both read `LEGACY`. When more than one layer sets it, the outermost usable one wins, and an
-empty or non-string value is skipped. `resolveSourceNames` answers the same, because validation
-reads its variables through it.
+and `z.string().default('x').meta({ env: 'LEGACY' })` both read `LEGACY`. When more than one layer sets it, the outermost usable one wins. An `env` that is present but
+is not a non-empty string (`''`, `undefined`, a number) cannot name a variable, so validation reports it
+as an issue instead of letting the leaf read the variable derived from its path; a leaf with no
+`env` at all is unaffected. `resolveSourceNames` skips an unusable `env` and answers the derived name.
 
 A namespace can declare itself **open**, which waives strict unknown-key
 detection for the rest of its prefix. Use it when the prefix is shared with
@@ -309,7 +314,7 @@ Write `.meta({ open: true })` last: methods that build a new object schema, such
 | Field               | Type                                              | Required | Notes                                                                                                                                                                                                                            |
 | ------------------- | ------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `schema`            | `EnvSchema`                                       | yes      | Produced by `defineEnv`.                                                                                                                                                                                                         |
-| `source`            | `Record<string, string \| undefined>`             | no       | Defaults to `process.env` in the provider factory. Injectable for tests.                                                                                                                                                         |
+| `source`            | `Record<string, string \| undefined>`             | no       | Defaults to `process.env` when the key is omitted; a key present with the value `undefined` or `null` throws at boot. Injectable for tests.                                                                                      |
 | `onValidationError` | `(issues: ReadonlyArray<ConfigIssue>) => unknown` | no       | Observability hook invoked before the fail-fast throw; a promise it returns is awaited. Cannot suppress the failure.                                                                                                             |
 | `strict`            | `boolean`                                         | no       | When true, source variables matching a namespace prefix but no declared leaf raise `BYMAX_CONFIG_UNKNOWN_KEY`. Defaults to `false`. Read [Strict mode and shared prefixes](#strict-mode-and-shared-prefixes) before enabling it. |
 
@@ -604,7 +609,8 @@ resolves its variables through, so the list cannot drift from what `forRoot` rea
 `SourceBinding` is `{ path: string; variable: string }`: the leaf's dot path and the
 environment variable it reads. The list has one entry per declared leaf, in declaration
 order. A leaf reads its `meta({ env })` override when that is a non-empty string, and
-otherwise `NAMESPACE_LEAF` in SCREAMING_SNAKE_CASE, with a camelCase key split into words.
+`NAMESPACE_LEAF` in SCREAMING_SNAKE_CASE, with a camelCase key split into words, when it has no
+`env` at all.
 It reads the schema only, never a source record, so it works on a schema exported as a
 value.
 
@@ -901,7 +907,8 @@ const moduleRef = await Test.createTestingModule({
 
 Overrides mirror the `namespace.leaf` shape with every key optional and typed from the schema. Each value is converted with `String(value)` before validation, so give
 a leaf what its environment variable would hold; an object becomes `'[object Object]'`, and an override
-of `undefined` is ignored, so a defaulted leaf cannot be unset. Neither helper takes `strict`, a
+of `undefined` is ignored, so a defaulted leaf cannot be unset. An override whose path matches no leaf
+of the schema throws, listing every such path, instead of being dropped. Neither helper takes `strict`, a
 custom `source`, a hook or `isGlobal`: `configTestingModule` registers the module globally, and a
 failure case (a missing variable, a strict violation) is built with
 `BymaxConfigModule.forRoot({ schema, source, strict: true })` and a source you write.

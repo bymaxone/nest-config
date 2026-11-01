@@ -155,6 +155,52 @@ export function resolveSourceNames<TShape extends EnvShape = EnvShape>(
 }
 
 /**
+ * Describe a `meta({ env })` value that cannot name a variable, without quoting it.
+ *
+ * @param value - The unusable value.
+ * @returns A short description of its kind: `an empty string`, `undefined`, `a number`.
+ */
+function describeUnusable(value: unknown): string {
+  if (value === '') return 'an empty string'
+  if (value === undefined) return 'undefined'
+  if (value === null) return 'null'
+  return `${typeof value === 'object' ? 'an' : 'a'} ${typeof value}`
+}
+
+/**
+ * Find the leaves whose `meta({ env })` is present but is not a non-empty string.
+ *
+ * Such a value cannot name a variable, and resolution skips it, so the leaf reads the variable
+ * derived from its path instead of the one its author meant. A leaf with no `env` in its
+ * metadata at all is not listed. Every wrapper layer is read, as resolution does, and each leaf
+ * is listed once, for the first layer found unusable.
+ *
+ * @param schema - A schema produced by `defineEnv`.
+ * @returns One entry per affected leaf: its path and a description of what `env` held.
+ */
+export function findUnusableEnvOverrides<TShape extends EnvShape = EnvShape>(
+  schema: EnvSchema<TShape>
+): ReadonlyArray<{ readonly path: string; readonly found: string }> {
+  const unusable: Array<{ readonly path: string; readonly found: string }> = []
+  for (const [namespace, namespaceSchema] of Object.entries(schema.shape)) {
+    for (const [leafKey, leafSchema] of Object.entries(namespaceSchema.shape)) {
+      for (let node: OverrideNode | undefined = leafSchema; node !== undefined;) {
+        const meta = node.meta()
+        if (meta !== undefined && 'env' in meta) {
+          const value = meta.env
+          if (typeof value !== 'string' || value.length === 0) {
+            unusable.push({ path: `${namespace}.${leafKey}`, found: describeUnusable(value) })
+            break
+          }
+        }
+        node = node._zod.def.innerType ?? node._zod.def.in
+      }
+    }
+  }
+  return unusable
+}
+
+/**
  * Resolve the shared source-variable prefix of every declared namespace.
  *
  * Each derived leaf variable starts with its namespace's SCREAMING_SNAKE_CASE

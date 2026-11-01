@@ -71,6 +71,12 @@ export function createValidatedConfig<TShape extends EnvShape>(
     readonly schema: EnvSchema<TShape>
   }
 ): Readonly<EnvOutput<TShape>> {
+  if ('source' in options && options.source === undefined) {
+    throw new TypeError(
+      'BymaxConfigModule: source was provided but is undefined; omit the key to validate ' +
+        'process.env, or pass the source that failed to load'
+    )
+  }
   const source = options.source ?? process.env
   return deepFreeze(validateEnv(options.schema, source, { strict: options.strict === true }))
 }

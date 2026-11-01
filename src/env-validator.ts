@@ -15,7 +15,11 @@ import type { z } from 'zod'
 
 import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
 import type { ConfigIssue } from './errors'
-import { resolveNamespacePrefixes, resolveSourceNames } from './source-mapping'
+import {
+  findUnusableEnvOverrides,
+  resolveNamespacePrefixes,
+  resolveSourceNames
+} from './source-mapping'
 import type { NamespacePrefix, SourceBinding } from './source-mapping'
 import type { EnvOutput, EnvSchema, EnvShape } from './types'
 
@@ -396,6 +400,33 @@ export function assertDistinctVariables(bindings: ReadonlyArray<SourceBinding>):
 }
 
 /**
+ * Describe every leaf whose `meta({ env })` is present but cannot name a variable.
+ *
+ * The leaf would silently read the variable derived from its path, so it is a mistake in the
+ * schema, reported beside the violations of the source. The message names the variable the
+ * leaf reads and the kind of value `env` held, never the value.
+ *
+ * @param schema - A schema produced by `defineEnv`.
+ * @param bindings - Every leaf binding of the schema, from `resolveSourceNames`.
+ * @returns One issue per affected leaf, in schema order.
+ */
+export function unusableOverrideIssues<TShape extends EnvShape>(
+  schema: EnvSchema<TShape>,
+  bindings: ReadonlyArray<SourceBinding>
+): ConfigIssue[] {
+  const variables = new Map(bindings.map((binding) => [binding.path, binding.variable]))
+  return findUnusableEnvOverrides(schema).map(({ path, found }) => {
+    const variable = variables.get(path) as string
+    return {
+      path,
+      variable,
+      code: ConfigErrorCode.INVALID,
+      message: `meta({ env }) must be a non-empty string, found ${found}; the leaf would read ${variable}`
+    }
+  })
+}
+
+/**
  * Validate a flat source against a schema in a single pass.
  *
  * Maps the source onto the nested schema, runs exactly one `safeParse`, and
@@ -432,10 +463,11 @@ export function validateEnv<TShape extends EnvShape>(
   const result = schema.safeParse(candidate)
   const prefixes = resolveNamespacePrefixes(schema)
   const unknown = options?.strict === true ? detectUnknownKeys(prefixes, bindings, sourceMap) : []
+  const overrides = unusableOverrideIssues(schema, bindings)
   if (result.success) {
-    if (unknown.length === 0) return result.data
-    throw new BymaxConfigValidationError(unknown)
+    if (unknown.length === 0 && overrides.length === 0) return result.data
+    throw new BymaxConfigValidationError([...overrides, ...unknown])
   }
   const issues = translateIssues(result.error.issues, bindings, prefixes, sourceMap)
-  throw new BymaxConfigValidationError([...issues, ...unknown])
+  throw new BymaxConfigValidationError([...overrides, ...issues, ...unknown])
 }

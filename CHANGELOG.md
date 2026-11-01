@@ -11,6 +11,45 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Fixed
+
+- **A `source` that is present but `undefined` fails the boot.** `BymaxConfigModule.forRoot({ schema,
+source: loadSource() })` used to validate `process.env` when the loader returned nothing, and boot
+  successfully on configuration the host never meant to use. Passing the key with the value `undefined`
+  now throws a `TypeError` ("source was provided but is undefined"); omitting the key still reads
+  `process.env`.
+
+  #### Apply to a derived backend
+
+  Search for a `source:` option that can be `undefined`. If the host relied on the fall-back to
+  `process.env`, leave the key out instead of passing `undefined`.
+
+- **A `meta({ env })` that cannot name a variable is an issue.** An `env` that is present but is not
+  a non-empty string (`''`, `undefined`, a number) used to be skipped, and the leaf read the variable
+  derived from its path. The aggregated validation report now lists it, naming the variable the leaf
+  would read and the kind of value found. A leaf with no `env` at all is unchanged, and
+  `resolveSourceNames` still answers the derived name.
+
+  #### Apply to a derived backend
+
+  Search the schemas for `meta({ env: ... })` whose argument can be empty or undefined (for example
+  `meta({ env: process.env.X })`) and give it a real name or remove the call.
+
+- **A test override that matches no leaf throws.** `createTestConfig` and `configTestingModule` used to
+  drop an override for a path the schema does not declare (a misspelled leaf, an undeclared namespace,
+  a stale override after a rename) and answer with a config that lacked it. They now throw a
+  `BymaxConfigValidationError` listing every unmatched path, before any provider is built.
+
+  #### Apply to a derived backend
+
+  Run the test suites: an override that used to be silently ignored now fails. Correct the path or
+  delete the override.
+
+### Documentation
+
+- A leaf that ends in `.catch(fallback)` replaces an invalid value with its fallback and reports no
+  issue; the README now says so.
+
 ### Changed
 
 - **A release that changes the public declarations must say so.** `check:api`

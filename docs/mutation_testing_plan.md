@@ -200,7 +200,7 @@ Stryker does not know — which matches nothing, so the directive silences nothi
 looking like it does. Stryker warns about that case, but only during a mutation run, which
 is too late to block the change that introduced it.
 
-These comments live in the source: the build removes every comment from the shipped
+These comments live in the source: the build strips comments from the shipped
 bundles (`scripts/strip-bundle-comments.mjs`), so a directive costs nothing in a bundle or
 against a bundle budget. Where a budget is genuinely tight, it is raised deliberately in the
 same change with the measurement recorded beside it, rather than the documentation being

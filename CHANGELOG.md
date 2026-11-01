@@ -13,6 +13,10 @@ as the GitHub Release body, so each released version needs a matching
 
 ### Changed
 
+- **A release that changes the public declarations must say so.** `check:api`
+  (`scripts/check-api-surface.mjs`) compares the built declarations with the previous published
+  version and fails when they differ unless the released version's CHANGELOG section has an
+  "Apply to a derived backend" note. Tooling only: nothing to apply in a derived backend.
 - **The mutation gate is 100.** `thresholds.break` moves from 95 to 100, and `high` and `low` with it,
   because a cold run on `main` now has no survivor. Tooling only: nothing to apply in
   a derived backend.

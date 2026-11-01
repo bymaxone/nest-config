@@ -826,7 +826,8 @@ beyond "the tests pass".
   proven is the guarantee this package makes for its own generated text
 - ✅ **Published-artifact gates** — `check:exports` resolves the types the way each module
   system does, `check:runtime` loads every subpath from the packed tarball in ESM and
-  CommonJS, and `check:published` compiles this README's snippets against `dist/`
+  CommonJS, `check:published` compiles this README's snippets against `dist/`, and `check:api`
+  requires an "Apply to a derived backend" CHANGELOG note when the built declarations change
 - ✅ **Every suppression carries its reason** — no coverage directives anywhere; each
   `// Stryker disable` in the production source names, after the `:` Stryker reads it from,
   why the mutant it silences is behaviour-preserving, and `check:mutants` proves those

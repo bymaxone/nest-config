@@ -11,6 +11,14 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Changed
+
+- **The camelCase-to-variable converter has no equivalent mutant.** The acronym boundary is now a
+  zero-width lookaround instead of a capturing group with a quantifier whose shrunken form no input
+  could tell apart. Every derived variable name is unchanged: a new spec compares the converter
+  with the previous two-expression form on every string up to seven characters over
+  `a`, `B`, `C`, `1` and `_`. Nothing to apply in a derived backend.
+
 ### Tests
 
 - **The README Quick Start is executed, not only type-checked.** A new spec takes the schema, the

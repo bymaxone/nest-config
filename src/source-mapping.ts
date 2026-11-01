@@ -53,16 +53,10 @@ function toScreamingSnake(segment: string): string {
   return (
     segment
       .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
-      // Shrinking the first group from `[A-Z]+` to a single `[A-Z]` is an equivalent
-      // mutation: the underscore's position is fixed by group 2 (the following
-      // `[A-Z][a-z]` boundary), which both variants locate identically, and group 1 only
-      // extends left over characters reproduced verbatim either way. It is NOT written as
-      // a `// Stryker disable` directive because one does not attach inside a method
-      // chain — measured, not assumed: with the directive here the mutant still reported
-      // as surviving. Silencing it would mean a block directive spanning the `.replace()`
-      // above, whose own regex mutants the suite does kill, and a killable mutant is never
-      // disabled. It stays a counted survivor, recorded in `docs/mutation_testing_results.md`.
-      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')
+      // A zero-width boundary: the position between an uppercase letter and the
+      // `[A-Z][a-z]` that follows it. Nothing is captured, so no quantifier on a captured
+      // group can shrink without changing the result.
+      .replace(/(?<=[A-Z])(?=[A-Z][a-z])/g, '_')
       .toUpperCase()
   )
 }

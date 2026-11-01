@@ -12,12 +12,12 @@
 | **Global mutation score**                          | **100.00 %**               |
 | Break threshold (`thresholds.break`)               | 100 % -> **PASS (exit 0)** |
 | Aspirational target (`thresholds.high`)            | 100 % -> **reached**       |
-| Killed                                             | 340                        |
+| Killed                                             | 402                        |
 | Survived                                           | 0                          |
-| Timeout (counts as detected)                       | 1                          |
-| Type-invalid mutants (checker-discarded, excluded) | 207                        |
+| Timeout (counts as detected)                       | 2                          |
+| Type-invalid mutants (checker-discarded, excluded) | 236                        |
 
-Score = `(killed + timeout) / (killed + timeout + survived)` = `341 / 341` = **100.00 %**, up
+Score = `(killed + timeout) / (killed + timeout + survived)` = `404 / 404` = **100.00 %**, up
 from **95.74 %** and a **89.11 %** baseline. `pnpm mutation` exits green against `break: 100`,
 which is also the `high` and `low` target.
 
@@ -456,3 +456,28 @@ concluded `success`:
 | CompileError (type-invalid) | 207           |
 
 Score = `341 / 341`.
+
+## Re-run — 2026-11-01 (1.2.4)
+
+The release gate for `v1.2.4`. Command: **`pnpm mutation:full`**, run cold on a hosted runner by the
+`Mutation (full)` workflow dispatched on `main` at `9659132`, the commit that merged the fixes
+for four places that answered success while what the caller asked for was absent. Run
+[41345796905](https://github.com/bymaxone/nest-config/actions/runs/41345796905); the job
+concluded `success`.
+
+| Metric                      | Value         |
+| --------------------------- | ------------- |
+| **Mutation score**          | **100.00 %**  |
+| Killed                      | 402           |
+| Surviving mutants           | 0             |
+| Timeout                     | 2             |
+| Ignored                     | 50            |
+| Break threshold             | 100 % -> PASS |
+| CompileError (type-invalid) | 236           |
+
+Score = `404 / 404`. The denominator grew from 341 to 404 with the code added since `1.2.3`: the
+check for an `env` override that cannot name a variable, the refusal of a present but
+`undefined` or `null` source, the refusal of a test override that matches no leaf, and the
+zero-width acronym boundary. Every added mutant is killed; nothing was silenced. A run on the
+change that introduced them, before the message of the source refusal was asserted whole, scored
+99.75 % with one surviving string mutant and failed the per-push gate; the next commit killed it.

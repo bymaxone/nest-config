@@ -287,12 +287,12 @@ These rules apply to every phase. Phase sections only add rules specific to them
 - **Scope (in):** Stryker baseline run; survivor analysis and test hardening in one
   concentrated pass; documentation of genuine equivalents in
   `docs/mutation_testing_results.md`; final run at or above the break threshold of
-  95; npm publish dry run resolving against the public registry; provenance release
+  100; npm publish dry run resolving against the public registry; provenance release
   from CI via OIDC; version tag and changelog entry.
 - **Scope (out):** new features of any kind; API changes require reopening earlier
   phases.
 - **Definition of Done:**
-  - Mutation score at or above 95 with `break: 95` configured.
+  - Mutation score at or above 100 with `break: 100` configured.
   - Equivalent mutants documented with reasons; no blanket disables.
   - `pnpm publish --dry-run` succeeds; the real release publishes
     `@bymax-one/nest-config@0.1.0` with provenance from CI.

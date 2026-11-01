@@ -13,6 +13,9 @@ as the GitHub Release body, so each released version needs a matching
 
 ### Changed
 
+- **The mutation gate is 100.** `thresholds.break` moves from 95 to 100, and `high` and `low` with it,
+  because a cold run on `main` now reads 341 of 341 with no survivor. Tooling only: nothing to apply in
+  a derived backend.
 - **The camelCase-to-variable converter has no equivalent mutant.** The acronym boundary is now a
   zero-width lookaround instead of a capturing group with a quantifier whose shrunken form no input
   could tell apart. Every derived variable name is unchanged: a new spec compares the converter

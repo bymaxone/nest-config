@@ -19,10 +19,11 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // display) measured against the brotli'd .mjs bundle: what a consumer's
 // bundler/CDN ships. Brotli, not gzip, to match real wire compression.
 //
-// Bymax bundle-size convention: the .mjs ships UNMINIFIED with JSDoc (tsup
-// `minify: false`) on purpose, readable stack traces and source inside a
-// consumer's node_modules outweigh a few KB on a backend lib that never
-// reaches a browser. The budget is a bloat tripwire, not a hard design
+// Bymax bundle-size convention: the .mjs ships UNMINIFIED, without comments
+// (tsup `minify: false`, then scripts/strip-bundle-comments.mjs) on purpose,
+// readable stack traces and source inside a consumer's node_modules outweigh a
+// few KB on a backend lib that never reaches a browser, and the documentation
+// lives in the .d.ts. The budget is a bloat tripwire, not a hard design
 // ceiling: raise it (and say why here) when growth is legitimate, tighten it
 // when the artifact shrinks.
 //

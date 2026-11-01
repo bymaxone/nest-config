@@ -441,7 +441,7 @@ Contract:
 
 ### 9.2 Build
 
-tsup produces both module formats without `emitDecoratorMetadata`; therefore every injection site uses explicit `@Inject(token)`, a family-wide invariant. Bundles ship unminified with JSDoc intact: these are server-side artifacts where readable stack traces outweigh byte counts.
+tsup produces both module formats without `emitDecoratorMetadata`; therefore every injection site uses explicit `@Inject(token)`, a family-wide invariant. Bundles ship unminified and with their comments stripped after tsup (license notices and `// src/` region markers stay), and the documentation people read comes from the `.d.ts` files: these are server-side artifacts where readable stack traces outweigh byte counts.
 
 ### 9.3 Publishing
 

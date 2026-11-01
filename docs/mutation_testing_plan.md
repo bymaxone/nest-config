@@ -200,11 +200,10 @@ Stryker does not know — which matches nothing, so the directive silences nothi
 looking like it does. Stryker warns about that case, but only during a mutation run, which
 is too late to block the change that introduced it.
 
-These comments ship in the unminified bundle. The measured cost is small — seven directives
-cost 0.10 kB brotli in a server subpath of roughly 13 kB — because brotli compresses their
-repeated prefixes almost for free. Where a bundle budget is genuinely tight, the budget is
-raised deliberately in the same change with the measurement recorded beside it, rather than
-the documentation being dropped: a budget exists to catch code bloat, and the reason a
-mutant survives is not bloat.
+These comments live in the source: the build strips comments from the shipped
+bundles (`scripts/strip-bundle-comments.mjs`), so a directive costs nothing in a bundle or
+against a bundle budget. Where a budget is genuinely tight, it is raised deliberately in the
+same change with the measurement recorded beside it, rather than the documentation being
+dropped: a budget exists to catch code bloat, and the reason a mutant survives is not bloat.
 
 This policy is identical across the `@bymax-one/nest-*` libraries.

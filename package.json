@@ -54,7 +54,7 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "pnpm clean && tsup",
+    "build": "pnpm clean && tsup && node scripts/strip-bundle-comments.mjs",
     "check:api": "node scripts/check-api-surface.mjs",
     "check:exports": "attw --pack . --profile strict",
     "check:lint-graph": "node scripts/check-lint-graph-rules.mjs",

@@ -40,8 +40,9 @@ export type ConfigOverrides<TShape extends EnvShape> = {
 /**
  * Whether a value is a plain object: one whose prototype is `Object.prototype` or none.
  *
- * Arrays, `Map`, `Date` and class instances are objects too, but reading their own entries
- * as a namespace's leaves applies nothing, or applies the indices of an array as paths.
+ * Arrays, `Map`, `Date` and class instances are objects too, but their own entries are not
+ * leaves: a `Map` or a `Date` has none, an array's are its indices, and an instance's are fields
+ * that were never written as overrides.
  *
  * @param value - The value to test.
  * @returns True when the value is a plain object.

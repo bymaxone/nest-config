@@ -151,3 +151,96 @@ describe('createTestConfig with an override namespace that is not an object', ()
     ])
   })
 })
+
+describe('createTestConfig with an override namespace that is not a plain object', () => {
+  class Extra {
+    public readonly url = 'x'
+  }
+
+  it.each([
+    ['null', null],
+    ['an array', ['x']],
+    ['an empty array', []],
+    ['a Map', new Map([['url', 'x']])],
+    ['a Date', new Date(0)],
+    ['a class instance', new Extra()]
+  ])('reports %s as one issue naming the namespace', (_name, value) => {
+    /**
+     * A namespace override must be a plain object. Anything else, however it is shaped, is one
+     * namespace-level issue by name: never a raw TypeError, never one issue per index, and never
+     * an override that applies nothing and says nothing.
+     */
+    const thrown = outcome(() => createTestConfig(schema, { database: value } as never))
+
+    expect(thrown).toBeInstanceOf(BymaxConfigValidationError)
+    const { issues } = thrown as BymaxConfigValidationError
+    expect(issues).toHaveLength(1)
+    expect(issues[0]?.path).toBe('database')
+    expect(issues[0]?.code).toBe(ConfigErrorCode.INVALID)
+    expect(issues[0]?.message).toBe('the override for `database` must be an object')
+  })
+
+  it('reports a null or an array namespace beside an unmatched path, in order', () => {
+    /** The shape problems and the unmatched paths are one report. */
+    const thrown = outcome(() =>
+      createTestConfig(schema, { database: null, extra: ['x'], ghost: { y: '1' } } as never)
+    )
+
+    expect((thrown as BymaxConfigValidationError).issues.map((issue) => issue.path)).toEqual([
+      'database',
+      'extra',
+      'ghost.y'
+    ])
+  })
+
+  it('fails the testing module the same way for a null namespace', () => {
+    /** The testing module prepares through the same function. */
+    const thrown = outcome(() => configTestingModule(schema, { database: null } as never))
+
+    expect(thrown).toBeInstanceOf(BymaxConfigValidationError)
+  })
+
+  it('accepts a namespace made with a null prototype', () => {
+    /** A record with no prototype is still a plain object of values. */
+    const namespace = Object.assign(Object.create(null) as object, { url: 'x' })
+
+    expect(createTestConfig(schema, { database: namespace } as never).database.url).toBe('x')
+  })
+})
+
+describe('createTestConfig with overrides that are not a plain object', () => {
+  it.each([
+    ['a string', 'ab'],
+    ['an array', []],
+    ['a Map', new Map()],
+    ['a number', 5]
+  ])('reports %s as one issue', (_name, value) => {
+    /**
+     * The overrides argument itself must be a plain object. Anything else is one issue for the
+     * whole argument, never one namespace per character of a string.
+     */
+    const thrown = outcome(() => createTestConfig(schema, value as never))
+
+    expect(thrown).toBeInstanceOf(BymaxConfigValidationError)
+    const { issues } = thrown as BymaxConfigValidationError
+    expect(issues).toHaveLength(1)
+    expect(issues[0]?.path).toBe('(overrides)')
+    expect(issues[0]?.code).toBe(ConfigErrorCode.INVALID)
+    expect(issues[0]?.message).toBe('the overrides must be an object')
+  })
+
+  it.each([
+    ['undefined', undefined],
+    ['null', null]
+  ])('treats %s as no overrides', (_name, value) => {
+    /** Passing nothing is the same as passing no overrides. */
+    expect(createTestConfig(schema, value as never).database.url).toBe('a')
+  })
+
+  it('fails the testing module the same way for a string', () => {
+    /** The testing module prepares through the same function. */
+    expect(outcome(() => configTestingModule(schema, 'ab' as never))).toBeInstanceOf(
+      BymaxConfigValidationError
+    )
+  })
+})

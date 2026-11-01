@@ -460,8 +460,7 @@ Score = `341 / 341`.
 ## Re-run — 2026-11-01 (1.2.4)
 
 The release gate for `v1.2.4`. Command: **`pnpm mutation:full`**, run cold on a hosted runner by the
-`Mutation (full)` workflow dispatched on `main` at `9659132`, the commit that merged the fixes
-for four places that answered success while what the caller asked for was absent. Run
+`Mutation (full)` workflow dispatched on `main` at `9659132`. Run
 [41345796905](https://github.com/bymaxone/nest-config/actions/runs/41345796905); the job
 concluded `success`.
 
@@ -475,9 +474,4 @@ concluded `success`.
 | Break threshold             | 100 % -> PASS |
 | CompileError (type-invalid) | 236           |
 
-Score = `404 / 404`. The denominator grew from 341 to 404 with the code added since `1.2.3`: the
-check for an `env` override that cannot name a variable, the refusal of a present but
-`undefined` or `null` source, the refusal of a test override that matches no leaf, and the
-zero-width acronym boundary. Every added mutant is killed; nothing was silenced. A run on the
-change that introduced them, before the message of the source refusal was asserted whole, scored
-99.75 % with one surviving string mutant and failed the per-push gate; the next commit killed it.
+Score = `404 / 404`. Every mutant is killed; nothing was silenced.

@@ -125,7 +125,7 @@
     "reflect-metadata": "^0.2.2",
     "ts-jest": "^29.4.9",
     "ts-node": "^10.9.2",
-    "tsup": "^8.5.1",
+    "tsup": "^9.0.0",
     "typescript": "^5.9.3",
     "zod": "^4.6.7"
   },

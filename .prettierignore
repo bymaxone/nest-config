@@ -7,3 +7,8 @@ pnpm-lock.yaml
 dist/
 coverage/
 reports/
+
+# Kept byte-identical to the sibling libraries' copies, which are formatted at their print
+# width; reformatting here would make every later sync a diff.
+scripts/check-file-length.mjs
+src/check-file-length.spec.ts

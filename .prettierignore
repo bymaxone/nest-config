@@ -8,7 +8,7 @@ dist/
 coverage/
 reports/
 
-# Copied byte-for-byte from the sibling libraries (formatted at their print width); a local
-# reformat would make every later copy a diff.
+# Kept byte-identical to the sibling libraries' copies, which are formatted at their print
+# width; reformatting here would make every later sync a diff.
 scripts/check-file-length.mjs
 src/check-file-length.spec.ts

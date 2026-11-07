@@ -57,6 +57,7 @@
     "build": "pnpm clean && tsup && node scripts/strip-bundle-comments.mjs",
     "check:api": "node scripts/check-api-surface.mjs",
     "check:exports": "attw --pack . --profile strict",
+    "check:file-length": "node scripts/check-file-length.mjs",
     "check:lint-graph": "node scripts/check-lint-graph-rules.mjs",
     "check:mutants": "node scripts/check-mutation-directives.mjs",
     "check:published": "node scripts/check-published-surface.mjs",

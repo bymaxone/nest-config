@@ -19,13 +19,15 @@ import base from './jest.config.ts'
 const config: Config = {
   ...base,
   testEnvironment: '@stryker-mutator/jest-runner/jest-env/node',
-  // `check-api-surface.spec.ts`, `check-file-length.spec.ts` and `strip-bundle-comments.spec.ts` run a repository script on
+  // `check-api-surface.spec.ts`, `check-file-length.spec.ts`, `mutate-const-tables.spec.ts` and
+  // `strip-bundle-comments.spec.ts` run a repository script on
   // fixture directories and touch no code in `src`, so they kill no mutant; `pnpm test` still
   // runs them.
   testPathIgnorePatterns: [
     ...(base.testPathIgnorePatterns ?? ['/node_modules/']),
     '/check-api-surface\\.spec\\.ts$',
     '/check-file-length\\.spec\\.ts$',
+    '/mutate-const-tables\\.spec\\.ts$',
     '/strip-bundle-comments\\.spec\\.ts$'
   ]
 }

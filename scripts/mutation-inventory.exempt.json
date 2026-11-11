@@ -1,0 +1,22 @@
+[
+  {
+    "file": "src/check-api-surface.spec.ts",
+    "reason": "Tests scripts/check-api-surface.mjs, a CI tool outside the mutate list, by spawning it on fixture directories. It imports nothing from src/, so no mutant of src/ can select it."
+  },
+  {
+    "file": "src/check-file-length.spec.ts",
+    "reason": "Tests scripts/check-file-length.mjs, a CI tool outside the mutate list, by spawning it on throwaway git repositories. It imports nothing from src/, so no mutant of src/ can select it."
+  },
+  {
+    "file": "src/mutate-const-tables.spec.ts",
+    "reason": "Tests scripts/mutate-const-tables.mjs, a development tool outside the mutate list, by spawning it on fixture repositories. It imports nothing from src/, so no mutant of src/ can select it."
+  },
+  {
+    "file": "src/strip-bundle-comments.spec.ts",
+    "reason": "Tests scripts/strip-bundle-comments.mjs, a build step outside the mutate list, by running it on fixture bundles. It imports nothing from src/, so no mutant of src/ can select it."
+  },
+  {
+    "file": "src/types.spec.ts",
+    "reason": "Type-level assertions checked at compile time, with `import type` only from ./types. src/types.ts holds no runtime code and Stryker reports 0 mutants for it (mutation-full run 43080370783: no entry for src/types.ts), so no mutant can select this spec."
+  }
+]

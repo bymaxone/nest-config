@@ -33,6 +33,7 @@ jobs:
   full:
     uses: bymaxone/.github/.github/workflows/mutation-full.yml@v1
     with:
+      inventory: enforce
       # Measured cold: 6 min. Generous on purpose — nothing blocks on this job, so an
       # over-wide ceiling costs only the minutes it uses, while an under-tight one costs the
       # whole run and leaves the week without a measured baseline.

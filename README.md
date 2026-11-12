@@ -518,7 +518,7 @@ report.
 | Aggregation    | Every failure reported at once, so a fix cycle is one restart rather than one per variable                                                                                      |
 | Immutability   | Plain objects and arrays in the validated result are frozen before it is provided; a `Date`, `Map` or `Set` keeps its mutators                                                  |
 | Service state  | The root lives in a private field; serializing the injected service yields namespace names only                                                                                 |
-| Sources        | `process.env` only — no file, no network, no remote provider                                                                                                                    |
+| Sources        | `process.env` or the record you inject — no file, no network, no remote provider                                                                                                |
 | Type surface   | Dot paths checked against the schema at compile time; a typo is a build error, not a runtime `undefined`                                                                        |
 | Supply chain   | `dependencies: {}`; third-party Actions pinned by commit SHA (org-internal reusables by tag); CodeQL and OpenSSF Scorecard                                                      |
 

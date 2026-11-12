@@ -44,18 +44,10 @@ minimal.
 
 ### Why nest-config?
 
-- **A misconfigured process does not boot.** Validation runs before the application context
-  finishes building, so a service that is missing a secret never accepts the first request
-  that would need it.
-- **One round trip to fix the environment.** Every violation is collected and reported
-  together, not the first one that fails.
-- **Errors are value-free by contract.** Configuration is where the secrets are, and the
-  report is the artifact that gets logged and pasted into issues — so generated messages
-  carry the expected constraint and the schema's own enum options, never the received
-  value. Your own `custom` messages are the documented exception: they print as written.
-- **The schema is the type.** `get('database.url')` is `string` and `get('server.port')` is
-  `number` because the schema says so; a typo in a path is a build error, not a runtime
-  `undefined`.
+- **A misconfigured process does not boot**, so no request meets a missing secret.
+- **One round trip fixes the environment**: every violation is reported together.
+- **The report is safe to log and paste**: it never carries a received value.
+- **The schema is the type**: a typo in a path is a build error, not a runtime `undefined`.
 
 ---
 
@@ -438,18 +430,6 @@ reported. A closed namespace would have named that variable and refused to boot.
         │  happened to be set         │
         └─────────────────────────────┘
 ```
-
-### Design Principles
-
-| Principle                            | Description                                                                                                                                    |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| 💥 **Refuse to start**               | A misconfigured process is stopped before it serves a request, rather than discovering the gap at the first call that needs the value          |
-| 🤐 **Value-free by contract**        | A generated message carries the expected constraint and the schema's own options, never the received value                                     |
-| 📋 **Report everything at once**     | Validation collects every failure before throwing, so fixing an environment is one cycle instead of one per variable                           |
-| 🧊 **Frozen after validation**       | Nothing in the running process rewrites configuration under a component that already read it                                                   |
-| 🔤 **The schema is the type**        | Dot paths are checked against the schema at compile time, so a typo is a build error rather than a runtime `undefined`                         |
-| ⚙️ **Configuration over convention** | Everything goes through `forRoot`/`forRootAsync`. No file discovery, no magic paths, no hidden precedence rules                                |
-| 🧩 **One class identity**            | The module and `./testing` import the shared runtime by package specifier, so `ConfigService` is one injection token in ESM and CommonJS alike |
 
 ---
 

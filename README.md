@@ -46,7 +46,7 @@ minimal.
 
 - **A misconfigured process does not boot**, so no request meets a missing secret.
 - **One round trip fixes the environment**: every violation is reported together.
-- **The report is safe to log and paste**: it never carries a received value.
+- **The report is safe to log and paste**: generated messages never carry a received value.
 - **The schema is the type**: a typo in a path is a build error, not a runtime `undefined`.
 
 ---

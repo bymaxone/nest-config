@@ -29,7 +29,7 @@ const readme = readFileSync(join(__dirname, '..', 'README.md'), 'utf8')
 function quickStartBlocks(): ReadonlyArray<string> {
   const section = readme.slice(
     readme.indexOf('## 🚀 Quick Start'),
-    readme.indexOf('## 📖 API Reference')
+    readme.indexOf('## ⚙️ Configuration')
   )
   return Array.from(section.matchAll(/```typescript\n([\s\S]*?)```/g), (match) => match[1] ?? '')
 }

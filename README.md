@@ -441,15 +441,15 @@ reported. A closed namespace would have named that variable and refused to boot.
 
 ### Design Principles
 
-| Principle                            | Description                                                                                                                                                                                        |
-| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 💥 **Refuse to start**               | A misconfigured process is stopped before it serves a request, rather than discovering the gap at the first call that needs the value                                                              |
-| 🤐 **Value-free by contract**        | `errors.ts`, `env-validator.ts` and `report-formatter.ts` each state it for themselves: a generated message carries the expected constraint and the schema's own options, never the received value |
-| 📋 **Report everything at once**     | Validation collects every failure before throwing, so fixing an environment is one cycle instead of one per variable                                                                               |
-| 🧊 **Frozen after validation**       | Nothing in the running process rewrites configuration under a component that already read it                                                                                                       |
-| 🔤 **The schema is the type**        | Dot paths are checked against the schema at compile time, so a typo is a build error rather than a runtime `undefined`                                                                             |
-| ⚙️ **Configuration over convention** | Everything goes through `forRoot`/`forRootAsync`. No file discovery, no magic paths, no hidden precedence rules                                                                                    |
-| 🧩 **One class identity**            | The module and `./testing` import the shared runtime by package specifier, so `ConfigService` is one injection token in ESM and CommonJS alike                                                     |
+| Principle                            | Description                                                                                                                                    |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 💥 **Refuse to start**               | A misconfigured process is stopped before it serves a request, rather than discovering the gap at the first call that needs the value          |
+| 🤐 **Value-free by contract**        | A generated message carries the expected constraint and the schema's own options, never the received value                                     |
+| 📋 **Report everything at once**     | Validation collects every failure before throwing, so fixing an environment is one cycle instead of one per variable                           |
+| 🧊 **Frozen after validation**       | Nothing in the running process rewrites configuration under a component that already read it                                                   |
+| 🔤 **The schema is the type**        | Dot paths are checked against the schema at compile time, so a typo is a build error rather than a runtime `undefined`                         |
+| ⚙️ **Configuration over convention** | Everything goes through `forRoot`/`forRootAsync`. No file discovery, no magic paths, no hidden precedence rules                                |
+| 🧩 **One class identity**            | The module and `./testing` import the shared runtime by package specifier, so `ConfigService` is one injection token in ESM and CommonJS alike |
 
 ---
 
@@ -462,8 +462,7 @@ guaranteed to be printed, logged, and pasted into an issue. That shapes the whol
 
 Every message this library generates states the _expected_ constraint — the type, the
 allowed enum options taken from the schema, the bound — and never the received value.
-`env-validator` and `report-formatter` each say so in their own contracts, and
-sentinel-secret tests hold them to it. The messages you write yourself are the exception,
+Sentinel-secret tests hold the library to it. The messages you write yourself are the exception,
 covered below.
 
 ### The service does not serialize its configuration
@@ -533,7 +532,7 @@ report.
 - **Build:** tsup — ESM + CJS per subpath, with `.d.ts` _and_ `.d.cts` declarations,
   and one shared `./internal` bundle so the module and its testing entry point hold
   a single class identity
-- **Tests:** Jest, including sentinel-secret tests over the validator and the report formatter, + Stryker (mutation)
+- **Tests:** Jest + Stryker (mutation)
 - **TypeScript:** 5.x strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), zero `any`
 
 ---

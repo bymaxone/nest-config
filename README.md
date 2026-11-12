@@ -103,7 +103,7 @@ minimal.
 
 | Subpath      | Contents                                                                                                                                                                   |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.`          | `BymaxConfigModule`, `ConfigService`, `defineEnv`, `resolveSourceNames`, the DI tokens, `BymaxConfigValidationError` and every option type                                 |
+| `.`          | `BymaxConfigModule`, `ConfigService`, `defineEnv`, `resolveSourceNames`, the DI tokens, `BymaxConfigValidationError`, `ConfigErrorCode` and every option type              |
 | `./testing`  | `configTestingModule`, `createTestConfig` — a validated config for a test without booting the application's own                                                            |
 | `./internal` | The shared runtime both entry points build on. **Not public API**: it is in the `exports` map because it has to resolve at runtime, not because it is meant to be imported |
 
@@ -251,60 +251,7 @@ leaf unless its issue sets a `path`. Without one it is reported against the name
 with the variable column `(schema)` and an empty `path`. Zod does not run a namespace's own rule
 once one of that namespace's leaves has failed, so such a rule appears once the leaves are valid.
 
-## 📖 API Reference
-
-### `defineEnv(shape)`
-
-A thin, typed factory over `z.object(...)` that establishes the two-level
-namespace convention: top-level keys are namespaces, leaves are
-environment-derived values. It composes the caller's schemas as-is, never
-rewriting, cloning, or wrapping them, so coercion and defaults stay explicit
-consumer choices. Leaves use `z.coerce.*` because the source arrives as
-strings (the shape of `process.env`).
-
-Two things follow from that. `z.coerce.boolean()` is `Boolean(value)`: any non-empty string,
-including `'false'`, becomes `true`, so use `z.stringbool()` for a flag. And a variable set to the
-empty string is present, not missing: `z.string()` accepts it and `z.coerce.number()` turns it into
-`0`, so add `.min(1)` or a bound where empty should fail.
-
-A leaf that ends in `.catch(fallback)` replaces an invalid value with its fallback and reports no
-issue, so a mistyped variable reaches the application as the fallback; leave `.catch()` off a
-leaf whose failure should stop the boot.
-
-A leaf can override its derived variable name through schema metadata when a
-legacy name must be preserved:
-
-```typescript
-database: z.object({
-  // Reads DB_CONNECTION_STRING instead of the derived DATABASE_URL.
-  url: z.url().meta({ env: 'DB_CONNECTION_STRING' })
-})
-```
-
-The override is found wherever `meta` sits in the chain: `z.string().meta({ env: 'LEGACY' }).default('x')`
-and `z.string().default('x').meta({ env: 'LEGACY' })` both read `LEGACY`. When more than one layer sets it, the outermost usable one wins. An `env` that is present but
-is not a non-empty string (`''`, `undefined`, a number) cannot name a variable, so validation reports it
-as an issue instead of letting the leaf read the variable derived from its path, on any layer: an
-inner layer whose `env` is unusable is reported even when an outer layer's usable one wins. A leaf
-with no `env` at all is unaffected. `resolveSourceNames` skips an unusable `env` and answers the
-derived name.
-
-A namespace can declare itself **open**, which waives strict unknown-key
-detection for the rest of its prefix. Use it when the prefix is shared with
-another program that reads its own variables — see
-[Strict mode and shared prefixes](#strict-mode-and-shared-prefixes):
-
-```typescript
-// OTEL_ENABLED is read and validated; every other OTEL_* variable belongs to
-// the OpenTelemetry SDK, which reads it natively.
-otel: z.object({ enabled: z.stringbool().default(false) }).meta({ open: true })
-```
-
-Only the literal `true` opens a namespace. Any other value, and any metadata
-without the key, leaves detection in force.
-
-Write `.meta({ open: true })` last: methods that build a new object schema, such as `.strict()`,
-`.extend()` or `.pick()`, drop the metadata and close the namespace again.
+## ⚙️ Configuration
 
 ### `BymaxConfigModule`
 
@@ -452,6 +399,295 @@ reported. A closed namespace would have named that variable and refused to boot.
 > unbinds the declared `OTEL_ENABLED`, whose `.default()` then manufactures a
 > plausible value while the variable silently stops being read.
 
+## 🏗️ Architecture
+
+```
+                          process.env
+                     (or the record you inject)
+                                │
+                                ▼
+            ┌───────────────────────────────────────┐
+            │              defineEnv                │
+            │  namespaces at the top, Zod v4 leaves │
+            └───────────────────┬───────────────────┘
+                                │
+                                ▼
+            ┌───────────────────────────────────────┐
+            │        createValidatedConfig          │
+            │   runs ONCE, at bootstrap, and        │
+            │   collects EVERY failure first        │
+            └─────────┬─────────────────┬───────────┘
+                      │                 │
+                 all valid          any invalid
+                      │                 │
+                      ▼                 ▼
+              deep-frozen        BymaxConfigValidationError
+              BYMAX_CONFIG       one aggregated boot-time report
+                      │                 │
+                      ▼                 ▼
+               ConfigService     the process does not start
+          get('db.host') typed          │
+          from the schema itself   no request is ever served
+                      │                 with a missing secret
+                      ▼
+        ┌─────────────────────────────┐
+        │  ./testing                  │
+        │  same pipeline, explicit    │
+        │  source — a test cannot     │
+        │  pass because a variable    │
+        │  happened to be set         │
+        └─────────────────────────────┘
+```
+
+### Design Principles
+
+| Principle                            | Description                                                                                                                                    |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 💥 **Refuse to start**               | A misconfigured process is stopped before it serves a request, rather than discovering the gap at the first call that needs the value          |
+| 🤐 **Value-free by contract**        | A generated message carries the expected constraint and the schema's own options, never the received value                                     |
+| 📋 **Report everything at once**     | Validation collects every failure before throwing, so fixing an environment is one cycle instead of one per variable                           |
+| 🧊 **Frozen after validation**       | Nothing in the running process rewrites configuration under a component that already read it                                                   |
+| 🔤 **The schema is the type**        | Dot paths are checked against the schema at compile time, so a typo is a build error rather than a runtime `undefined`                         |
+| ⚙️ **Configuration over convention** | Everything goes through `forRoot`/`forRootAsync`. No file discovery, no magic paths, no hidden precedence rules                                |
+| 🧩 **One class identity**            | The module and `./testing` import the shared runtime by package specifier, so `ConfigService` is one injection token in ESM and CommonJS alike |
+
+---
+
+## 🔐 Security Model
+
+Configuration is where the secrets are, and a validation report is the one artifact
+guaranteed to be printed, logged, and pasted into an issue. That shapes the whole contract.
+
+### Errors are value-free by contract
+
+Every message this library generates states the _expected_ constraint — the type, the
+allowed enum options taken from the schema, the bound — and never the received value.
+Sentinel-secret tests hold the library to it. The messages you write yourself are the exception,
+covered below.
+
+### The service does not serialize its configuration
+
+`ConfigService` keeps the validated root in an ECMAScript private field, so
+`JSON.stringify`, `Object.entries`, object spread and `util.inspect` cannot reach the
+values. Those are the paths taken by code that renders an injected provider it was handed
+incidentally — a logger formatting its arguments, an error reporter capturing the scope of
+a throw. `toJSON` returns the declared namespace names, so the omission reads as deliberate
+rather than as an empty object. Reading on purpose is unaffected: `get`, `has` and the
+`getAll` escape hatch return the real values.
+
+### Failing fast is the security property
+
+A service that starts with a missing `JWT_SECRET` and discovers it at the first login is a
+service that has already accepted traffic it cannot authenticate. The whole schema is
+validated before the application context finishes building, so a misconfigured deployment
+does not serve one request.
+
+### The validated object is frozen
+
+Plain objects and arrays are deep-frozen before the object enters the container, so nothing
+in the running process rewrites those values under a component that already read them.
+
+A `Date`, a `Map` or a `Set` leaf is frozen as an object but is **not** made immutable:
+`setTime`, `Map.prototype.set` and `Set.prototype.add` still work, because the state they
+change lives in internal slots that `Object.freeze` cannot reach, and the entries of a `Map` or
+`Set` are not visited. Prefer a string or number leaf, or a `.transform` to a plain value, where
+immutability matters.
+
+### Nothing is read from anywhere but the source you name
+
+`process.env` by default, or the injectable record you provide. No file, no network, no
+remote provider — there is no path by which configuration arrives from somewhere you did
+not choose.
+
+### Your own messages are yours
+
+Value-free applies to this library's reports. A `custom` issue from your own `.check`,
+`.refine` or `.superRefine` is printed as written — it is schema text, and it is the only
+place a conditional or cross-field rule can state itself. That also means the message is
+yours to keep value-free: if it interpolates the received value, that value reaches the
+report.
+
+---
+
+## 🛡️ Security Table
+
+| Layer          | Implementation                                                                                                                                                                  |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Error messages | Expected constraint only — type, schema-declared enum options, bounds; never the received value. A `custom` message from your own schema is the exception: it prints as written |
+| Failure mode   | Refuse to start; the whole schema is validated before the context finishes building                                                                                             |
+| Aggregation    | Every failure reported at once, so a fix cycle is one restart rather than one per variable                                                                                      |
+| Immutability   | Plain objects and arrays in the validated result are frozen before it is provided; a `Date`, `Map` or `Set` keeps its mutators                                                  |
+| Service state  | The root lives in a private field; serializing the injected service yields namespace names only                                                                                 |
+| Sources        | `process.env` or the record you inject — no file, no network, no remote provider                                                                                                |
+| Type surface   | Dot paths checked against the schema at compile time; a typo is a build error, not a runtime `undefined`                                                                        |
+| Supply chain   | `dependencies: {}`; third-party Actions pinned by commit SHA (org-internal reusables by tag); CodeQL and OpenSSF Scorecard                                                      |
+
+---
+
+## 🧱 Tech Stack
+
+- **Runtime:** Node.js 24+
+- **Framework:** NestJS 11 (`ConfigurableModuleBuilder`, `@Global()`, `Symbol()` tokens)
+- **Validation:** Zod `^4.6.6` (peer) — the schema language, the coercion and the error source
+- **Build:** tsup — ESM + CJS per subpath, with `.d.ts` _and_ `.d.cts` declarations,
+  and one shared `./internal` bundle so the module and its testing entry point hold
+  a single class identity
+- **Tests:** Jest + Stryker (mutation)
+- **TypeScript:** 5.x strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), zero `any`
+
+---
+
+## 🧪 Testing & Quality
+
+Configuration decides whether a process may start at all, so the suite is held to a bar
+beyond "the tests pass".
+
+- ✅ **100% line coverage** — statements, branches, functions and lines, enforced as a gate
+- ✅ **100.00% mutation score** — verified with [Stryker](https://stryker-mutator.io/) at
+  `break: 100`; provable equivalents carry their reason inline and nothing else survives
+  ([report](./docs/mutation_testing_results.md))
+- ✅ **The value-free guarantee is tested, not assumed** — a sentinel secret is placed in a
+  source and the assertion is that it appears nowhere in the rendered report or in the thrown
+  error; the schema under test writes no `custom` message, so what is proven is the guarantee
+  this package makes for its own generated text
+- ✅ **The README is executed** — `check:published` compiles its snippets against the built
+  package, and the Quick Start runs as written
+
+```bash
+pnpm test          # unit suite
+pnpm test:cov      # unit suite with the 100% coverage gate
+pnpm mutation      # Stryker mutation testing (break: 100)
+pnpm typecheck     # tsc strict check
+pnpm lint          # ESLint
+```
+
+### Testing helpers
+
+`@bymax-one/nest-config/testing` removes every excuse for touching
+`process.env` in tests. `createTestConfig` synthesizes a complete valid
+source from the schema (defaults where declared, deterministic placeholder
+values elsewhere), applies selective overrides, then runs the exact
+production pipeline (validate, freeze), so a test exercises the same code
+path a running application does.
+
+```typescript
+// Leaves createTestConfig fills without an override:
+defineEnv({
+  text: z.object({ a: z.string().min(8), b: z.email(), c: z.url(), d: z.uuid() }),
+  time: z.object({
+    at: z.iso.datetime(),
+    on: z.iso.date(),
+    clock: z.iso.time(),
+    when: z.coerce.date()
+  }),
+  scalar: z.object({
+    n: z.coerce.number().int().min(1),
+    flag: z.stringbool(),
+    kind: z.enum(['a', 'b']),
+    fixed: z.literal('x')
+  })
+})
+```
+
+A leaf no placeholder can be known to satisfy, such as a
+`z.string().regex(...)` or a `.refine(...)` rule, makes the helper throw a
+`BymaxConfigValidationError` whose issue says `no placeholder satisfies this leaf` and names it
+(`pass an override for region.code`); give that leaf an override and the helper builds.
+
+```typescript
+import { createTestConfig } from '@bymax-one/nest-config/testing'
+import { envSchema } from './config/env.schema'
+
+const config = createTestConfig(envSchema, {
+  database: { url: 'postgres://localhost:5432/test' }
+})
+```
+
+`configTestingModule` registers the production `BymaxConfigModule` with a
+synthesized source, ready to drop into a Nest `TestingModule` graph:
+
+```typescript
+import { Test } from '@nestjs/testing'
+import { configTestingModule } from '@bymax-one/nest-config/testing'
+import { envSchema } from './config/env.schema'
+import { FeatureProvider } from './feature.provider'
+
+const moduleRef = await Test.createTestingModule({
+  imports: [configTestingModule(envSchema, { server: { port: 8080 } })],
+  providers: [FeatureProvider]
+}).compile()
+```
+
+Overrides mirror the `namespace.leaf` shape with every key optional and typed from the schema. Each value is converted with `String(value)` before validation, so give
+a leaf what its environment variable would hold; an object becomes `'[object Object]'`, and an override
+of `undefined` is ignored, so a defaulted leaf cannot be unset. An override whose path matches no leaf
+of the schema throws, listing every such path, even when its value is `undefined`; a namespace given
+something other than a plain object is reported once, by name, and so is an overrides argument that is
+not a plain object; passing `undefined` or `null` for the whole argument means no overrides. Neither helper takes `strict`, a
+custom `source`, a hook or `isGlobal`: `configTestingModule` registers the module globally, and a
+failure case (a missing variable, a strict violation) is built with
+`BymaxConfigModule.forRoot({ schema, source, strict: true })` and a source you write.
+
+Placeholder synthesis never fabricates values that could accidentally pass a
+secret-strength constraint; length and format constraints are honored. The
+subpath has no Jest dependency and works with any runner, though the family
+standard is Jest.
+
+## 📖 API Reference
+
+### `defineEnv(shape)`
+
+A thin, typed factory over `z.object(...)` that establishes the two-level
+namespace convention: top-level keys are namespaces, leaves are
+environment-derived values. It composes the caller's schemas as-is, never
+rewriting, cloning, or wrapping them, so coercion and defaults stay explicit
+consumer choices. Leaves use `z.coerce.*` because the source arrives as
+strings (the shape of `process.env`).
+
+Two things follow from that. `z.coerce.boolean()` is `Boolean(value)`: any non-empty string,
+including `'false'`, becomes `true`, so use `z.stringbool()` for a flag. And a variable set to the
+empty string is present, not missing: `z.string()` accepts it and `z.coerce.number()` turns it into
+`0`, so add `.min(1)` or a bound where empty should fail.
+
+A leaf that ends in `.catch(fallback)` replaces an invalid value with its fallback and reports no
+issue, so a mistyped variable reaches the application as the fallback; leave `.catch()` off a
+leaf whose failure should stop the boot.
+
+A leaf can override its derived variable name through schema metadata when a
+legacy name must be preserved:
+
+```typescript
+database: z.object({
+  // Reads DB_CONNECTION_STRING instead of the derived DATABASE_URL.
+  url: z.url().meta({ env: 'DB_CONNECTION_STRING' })
+})
+```
+
+The override is found wherever `meta` sits in the chain: `z.string().meta({ env: 'LEGACY' }).default('x')`
+and `z.string().default('x').meta({ env: 'LEGACY' })` both read `LEGACY`. When more than one layer sets it, the outermost usable one wins. An `env` that is present but
+is not a non-empty string (`''`, `undefined`, a number) cannot name a variable, so validation reports it
+as an issue instead of letting the leaf read the variable derived from its path, on any layer: an
+inner layer whose `env` is unusable is reported even when an outer layer's usable one wins. A leaf
+with no `env` at all is unaffected. `resolveSourceNames` skips an unusable `env` and answers the
+derived name.
+
+A namespace can declare itself **open**, which waives strict unknown-key
+detection for the rest of its prefix. Use it when the prefix is shared with
+another program that reads its own variables — see
+[Strict mode and shared prefixes](#strict-mode-and-shared-prefixes):
+
+```typescript
+// OTEL_ENABLED is read and validated; every other OTEL_* variable belongs to
+// the OpenTelemetry SDK, which reads it natively.
+otel: z.object({ enabled: z.stringbool().default(false) }).meta({ open: true })
+```
+
+Only the literal `true` opens a namespace. Any other value, and any metadata
+without the key, leaves detection in force.
+
+Write `.meta({ open: true })` last: methods that build a new object schema, such as `.strict()`,
+`.extend()` or `.pick()`, drop the metadata and close the namespace again.
+
 ### `ConfigService<TConfig>`
 
 The typed, injectable accessor over the frozen configuration object.
@@ -492,24 +728,20 @@ error catalog below for every value.
 
 ### Reporting the failure
 
-`onValidationError` receives `ReadonlyArray<ConfigIssue>` — four string fields per
-issue, JSON-serializable, with no error to unwrap. Every description this package
-generates is value-free, so it can go straight into a log as structured data. The
-exception is the one described above: a `custom` message written by your own schema
-is printed as written, so if one of yours interpolates a value, reviewing it before
-it reaches a log is the schema author's job, not this package's.
+`onValidationError` receives `ReadonlyArray<ConfigIssue>`: four string fields per issue,
+JSON-serializable, with no error to unwrap. Every description this package generates is
+value-free, so it can go straight into a log as structured data; a `custom` message written by
+your own schema is printed as written, so reviewing it is the schema author's job.
 
 The hook may be asynchronous: a promise it returns is awaited before the boot fails, so a
 report on its way to a log sink is not cut off by the process exiting. There is no timeout, so
 a hook that never settles holds the boot. If the hook throws or rejects, the boot still fails
 with the original validation error, unchanged in class, `code`, `issues` and `message`, and the
-hook's error is attached to it as `error.cause` (non-enumerable, so `code` and `issues` stay
-the only own enumerable properties).
+hook's error is attached to it as `error.cause` (non-enumerable).
 
-If you also log the thrown error from a bootstrap `catch`, how you pass it decides
-what survives. `code` and `issues` are the **only two own enumerable properties** of
-`BymaxConfigValidationError`; `name`, `message` and `stack` are non-enumerable, as
-on any `Error`. That splits the outcome three ways — all three measured:
+If you also log the thrown error from a bootstrap `catch`, the logging call decides what
+survives. `code` and `issues` are the **only two own enumerable properties** of
+`BymaxConfigValidationError`; `name`, `message` and `stack` are non-enumerable, as on any `Error`:
 
 | Which representation reaches the sink                                                                   | The report (`message`) | `code` and `issues` |
 | ------------------------------------------------------------------------------------------------------- | ---------------------- | ------------------- |
@@ -517,62 +749,22 @@ on any `Error`. That splits the outcome three ways — all three measured:
 | `error.stack`                                                                                           | ✅ inside the string   | ❌                  |
 | `JSON.stringify(error)`, `{ ...error }`                                                                 | ❌                     | ✅                  |
 
-Recognizing an `Error` is not enough on its own: extracting `name`, `message` and
-`stack` is what preserves the report, and copying the own enumerables is a separate
-step that preserves `code` and `issues`. A serializer that does only the second is
-the third row — `code` and `issues` and no report at all — so if you build the log
-record by hand, add `message` explicitly.
-
-**Which representation the sink sees is decided by your logging call, and that call
-is library-specific.** These are measured, not assumed:
+A serializer must extract `name`, `message` and `stack` to keep the report, and copy the own
+enumerables to keep `code` and `issues`; if you build the log record by hand, add `message`
+explicitly.
 
 ```typescript
 console.error('configuration invalid', error) // report, code and issues
 pino.error({ err: error }, 'configuration invalid') // report, code and issues
 pino.error('configuration invalid', error) // the error is dropped entirely
-
-// @bymax-one/nest-logger 1.2.6-1.2.9: wrap it, explicitly (see the note below)
-nestLogger.error('BOOT_FAILED', new Error('bootstrap failed', { cause: error }))
 ```
 
-Pino only applies error serialization when the error is the merging object or sits
-under `err`; passed as a trailing argument it is treated as an interpolation value,
-and nothing about the failure reaches the entry.
-
-> [!NOTE]
-> **`@bymax-one/nest-logger` 1.2.6 through 1.2.9 dropped this error when it was logged
-> directly.** Its redactor left `_redactionFailed: true` and no `err` field at all —
-> no report, no `code`, no `issues`. The trigger was the definition rather than any
-> freezing: this error defines `code` and `issues` as non-writable, non-configurable
-> own properties, and the redactor's clone inherited those descriptors, so rewriting
-> the object-valued one with a walked copy failed. A locked scalar was unaffected,
-> which is why `code` alone never reproduced it.
->
-> Fixed in **1.3.0**, measured rather than taken on report: a real failure logged
-> directly now arrives with `type, message, stack, code, issues`, the full issue array
-> and the report intact, and this error is left untouched. Measured affected: 1.2.6, 1.2.7
-> and 1.2.9 — 1.2.8 was never published, and on 1.2.2 and earlier this call shape does not
-> attach the error at all, so the defect does not arise there in this form. On an affected
-> version, wrap it — a `catch` receives this error unchanged, since the
-> module rethrows the instance it caught, so wrapping is an explicit
-> `new Error(message, { cause: error })` rather than a side effect of catching. A
-> lockfile pinned below 1.3.0 does not pick the fix up from an ordinary install, so the
-> update has to be deliberate.
-
-Wrapping the error as the `cause` of an error you construct keeps all of it wherever the
-serializer walks the chain — measured against `@bymax-one/nest-logger` 1.2.7 and
-1.2.9, where a fifteen-issue report crosses the chain with `code`, every issue and
-the full multi-line `message` intact.
-
-Before any logger exists — which is where this failure usually lands, since a `catch`
-in `main.ts` runs before the logging module is registered — `console.error` is the
-reporter, and Node's inspector prints the stack and then appends the own enumerables.
-So `console.error(message, error)` shows the report, the `code` and the expanded
-`issues` list, while `console.error(message, error.stack)` shows the report alone.
-
-Losing the machine-readable half is easy to miss precisely because the report keeps
-arriving: `code` is what separates a configuration failure from any other boot
-failure, and `issues` is what an alert or a dashboard keys on per variable.
+Pino applies error serialization only when the error is the merging object or sits under `err`;
+as a trailing argument it is an interpolation value. Use `@bymax-one/nest-logger` ≥ 1.3.0 to log
+the error directly. Before any logger exists, which is where this failure usually lands (a `catch`
+in `main.ts` runs before the logging module is registered), `console.error(message, error)`
+shows the report, the `code` and the `issues`; `console.error(message, error.stack)` shows the
+report alone.
 
 ### Injection tokens
 
@@ -666,265 +858,7 @@ it('documents every variable the schema reads in .env.example', () => {
 | `BYMAX_CONFIG_INVALID`     | Failed its constraint, or shares a variable (issue code). |
 | `BYMAX_CONFIG_UNKNOWN_KEY` | Strict mode: source variable matches no declared leaf.    |
 
-## 🏗️ Architecture
-
-```
-                          process.env
-                     (or the record you inject)
-                                │
-                                ▼
-            ┌───────────────────────────────────────┐
-            │              defineEnv                │
-            │  namespaces at the top, Zod v4 leaves │
-            └───────────────────┬───────────────────┘
-                                │
-                                ▼
-            ┌───────────────────────────────────────┐
-            │        createValidatedConfig          │
-            │   runs ONCE, at bootstrap, and        │
-            │   collects EVERY failure first        │
-            └─────────┬─────────────────┬───────────┘
-                      │                 │
-                 all valid          any invalid
-                      │                 │
-                      ▼                 ▼
-              deep-frozen        BymaxConfigValidationError
-              BYMAX_CONFIG       one aggregated boot-time report
-                      │                 │
-                      ▼                 ▼
-               ConfigService     the process does not start
-          get('db.host') typed          │
-          from the schema itself   no request is ever served
-                      │                 with a missing secret
-                      ▼
-        ┌─────────────────────────────┐
-        │  ./testing                  │
-        │  same pipeline, explicit    │
-        │  source — a test cannot     │
-        │  pass because a variable    │
-        │  happened to be set         │
-        └─────────────────────────────┘
-```
-
-Validation happens at bootstrap and nowhere else. There is no lazy read, no cache to
-invalidate, and no path where a request-time lookup can discover that an environment
-variable was missing — by then the process would already have refused to start.
-
-`./testing` builds the same validated object from an explicit record, so a test that
-needs configuration does not need the application's real environment, and cannot
-accidentally pass because a variable happened to be set on the machine.
-
-### Design Principles
-
-| Principle                            | Description                                                                                                                                                                                        |
-| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 💥 **Refuse to start**               | A misconfigured process is stopped before it serves a request, rather than discovering the gap at the first call that needs the value                                                              |
-| 🤐 **Value-free by contract**        | `errors.ts`, `env-validator.ts` and `report-formatter.ts` each state it for themselves: a generated message carries the expected constraint and the schema's own options, never the received value |
-| 📋 **Report everything at once**     | Validation collects every failure before throwing, so fixing an environment is one cycle instead of one per variable                                                                               |
-| 🧊 **Frozen after validation**       | Nothing in the running process rewrites configuration under a component that already read it                                                                                                       |
-| 🔤 **The schema is the type**        | Dot paths are checked against the schema at compile time, so a typo is a build error rather than a runtime `undefined`                                                                             |
-| ⚙️ **Configuration over convention** | Everything goes through `forRoot`/`forRootAsync`. No file discovery, no magic paths, no hidden precedence rules                                                                                    |
-| 🧩 **One class identity**            | The module and `./testing` import the shared runtime by package specifier, so `ConfigService` is one injection token in ESM and CommonJS alike                                                     |
-
----
-
-## 🔐 Security Model
-
-Configuration is where the secrets are, and a validation report is the one artifact
-guaranteed to be printed, logged, and pasted into an issue. That shapes the whole contract.
-
-### Errors are value-free by contract
-
-Every message this library generates states the _expected_ constraint — the type, the
-allowed enum options taken from the schema, the bound — and never the received value.
-`env-validator` and `report-formatter` each say so in their own contracts, and
-sentinel-secret tests hold them to it. The messages you write yourself are the exception,
-covered below.
-
-### The service does not serialize its configuration
-
-`ConfigService` keeps the validated root in an ECMAScript private field, so
-`JSON.stringify`, `Object.entries`, object spread and `util.inspect` cannot reach the
-values. Those are the paths taken by code that renders an injected provider it was handed
-incidentally — a logger formatting its arguments, an error reporter capturing the scope of
-a throw. `toJSON` returns the declared namespace names, so the omission reads as deliberate
-rather than as an empty object. Reading on purpose is unaffected: `get`, `has` and the
-`getAll` escape hatch return the real values.
-
-### Failing fast is the security property
-
-A service that starts with a missing `JWT_SECRET` and discovers it at the first login is a
-service that has already accepted traffic it cannot authenticate. The whole schema is
-validated before the application context finishes building, so a misconfigured deployment
-does not serve one request.
-
-### The validated object is frozen
-
-Plain objects and arrays are deep-frozen before the object enters the container, so nothing
-in the running process rewrites those values under a component that already read them.
-
-A `Date`, a `Map` or a `Set` leaf is frozen as an object but is **not** made immutable:
-`setTime`, `Map.prototype.set` and `Set.prototype.add` still work, because the state they
-change lives in internal slots that `Object.freeze` cannot reach, and the entries of a `Map` or
-`Set` are not visited. Wrapping them in a read-only proxy was measured and rejected: it fails
-`util.types.isDate`, reports `[object Object]` to `Object.prototype.toString`, cannot be given to
-`structuredClone`, and does not satisfy `assert.deepStrictEqual` against a real `Date`. Prefer a
-string or number leaf, or a `.transform` to a plain value, where immutability matters.
-
-### Nothing is read from anywhere but the source you name
-
-`process.env` by default, or the injectable record you provide. No file, no network, no
-remote provider — there is no path by which configuration arrives from somewhere you did
-not choose.
-
-### Your own messages are yours
-
-Value-free applies to this library's reports. A `custom` issue from your own `.check`,
-`.refine` or `.superRefine` is printed as written — it is schema text, and it is the only
-place a conditional or cross-field rule can state itself. That also means the message is
-yours to keep value-free: if it interpolates the received value, that value reaches the
-report.
-
----
-
-## 🛡️ Security Table
-
-| Layer          | Implementation                                                                                                                                                                  |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Error messages | Expected constraint only — type, schema-declared enum options, bounds; never the received value. A `custom` message from your own schema is the exception: it prints as written |
-| Failure mode   | Refuse to start; the whole schema is validated before the context finishes building                                                                                             |
-| Aggregation    | Every failure reported at once, so a fix cycle is one restart rather than one per variable                                                                                      |
-| Immutability   | Plain objects and arrays in the validated result are frozen before it is provided; a `Date`, `Map` or `Set` keeps its mutators                                                  |
-| Service state  | The root lives in a private field; serializing the injected service yields namespace names only                                                                                 |
-| Sources        | `process.env` only — no file, no network, no remote provider                                                                                                                    |
-| Type surface   | Dot paths checked against the schema at compile time; a typo is a build error, not a runtime `undefined`                                                                        |
-| Supply chain   | `dependencies: {}`; third-party Actions pinned by commit SHA (org-internal reusables by tag); CodeQL and OpenSSF Scorecard                                                      |
-
-> [!IMPORTANT]
-> **Value-free applies to this library's own reports.** A `custom` message from your
-> schema's `.check`, `.refine` or `.superRefine` is printed as written — including a
-> value, if you interpolate one into it.
-
----
-
-## 🧱 Tech Stack
-
-- **Runtime:** Node.js 24+
-- **Framework:** NestJS 11 (`ConfigurableModuleBuilder`, `@Global()`, `Symbol()` tokens)
-- **Validation:** Zod `^4.6.6` (peer) — the schema language, the coercion and the error source
-- **Build:** tsup — ESM + CJS per subpath, with `.d.ts` _and_ `.d.cts` declarations,
-  and one shared `./internal` bundle so the module and its testing entry point hold
-  a single class identity
-- **Tests:** Jest, including sentinel-secret tests over the validator and the report formatter, + Stryker (mutation)
-- **TypeScript:** 5.x strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), zero `any`
-
----
-
-## 🧪 Testing & Quality
-
-Configuration decides whether a process may start at all, so the suite is held to a bar
-beyond "the tests pass".
-
-- ✅ **100% line coverage** — statements, branches, functions and lines, enforced as a gate
-- ✅ **100.00% mutation score** — verified with [Stryker](https://stryker-mutator.io/) at
-  `break: 100`; provable equivalents carry their reason inline and nothing else survives
-  ([report](./docs/mutation_testing_results.md))
-- ✅ **The value-free guarantee is tested, not assumed** — a sentinel secret is placed in a
-  source and the assertion is that it appears nowhere in the rendered report or in the thrown
-  error, because a guarantee about what is _absent_ is the one thing an ordinary assertion
-  about output does not cover; the schema under test writes no `custom` message, so what is
-  proven is the guarantee this package makes for its own generated text
-- ✅ **Published-artifact gates** — `check:exports` resolves the types the way each module
-  system does, `check:runtime` loads every subpath from the packed tarball in ESM and
-  CommonJS, `check:published` compiles this README's snippets against `dist/`, and `check:api`
-  requires an "Apply to a derived backend" CHANGELOG note when the built declarations change
-- ✅ **Every suppression carries its reason** — no coverage directives anywhere; each
-  `// Stryker disable` in the production source names, after the `:` Stryker reads it from,
-  why the mutant it silences is behaviour-preserving, and `check:mutants` proves those
-  reasons parse so they reach the mutation report rather than the `Ignored using a comment`
-  fallback
-
-```bash
-pnpm test          # unit suite
-pnpm test:cov      # unit suite with the 100% coverage gate
-pnpm mutation      # Stryker mutation testing (break: 100)
-pnpm typecheck     # tsc strict check
-pnpm lint          # ESLint
-```
-
-### Testing helpers
-
-`@bymax-one/nest-config/testing` removes every excuse for touching
-`process.env` in tests. `createTestConfig` synthesizes a complete valid
-source from the schema (defaults where declared, deterministic placeholder
-values elsewhere), applies selective overrides, then runs the exact
-production pipeline (validate, freeze), so a test exercises the same code
-path a running application does.
-
-```typescript
-// Leaves createTestConfig fills without an override:
-defineEnv({
-  text: z.object({ a: z.string().min(8), b: z.email(), c: z.url(), d: z.uuid() }),
-  time: z.object({
-    at: z.iso.datetime(),
-    on: z.iso.date(),
-    clock: z.iso.time(),
-    when: z.coerce.date()
-  }),
-  scalar: z.object({
-    n: z.coerce.number().int().min(1),
-    flag: z.stringbool(),
-    kind: z.enum(['a', 'b']),
-    fixed: z.literal('x')
-  })
-})
-```
-
-A leaf no placeholder can be known to satisfy, such as a
-`z.string().regex(...)` or a `.refine(...)` rule, makes the helper throw a
-`BymaxConfigValidationError` whose issue says `no placeholder satisfies this leaf` and names it
-(`pass an override for region.code`); give that leaf an override and the helper builds.
-
-```typescript
-import { createTestConfig } from '@bymax-one/nest-config/testing'
-import { envSchema } from './config/env.schema'
-
-const config = createTestConfig(envSchema, {
-  database: { url: 'postgres://localhost:5432/test' }
-})
-```
-
-`configTestingModule` registers the production `BymaxConfigModule` with a
-synthesized source, ready to drop into a Nest `TestingModule` graph:
-
-```typescript
-import { Test } from '@nestjs/testing'
-import { configTestingModule } from '@bymax-one/nest-config/testing'
-import { envSchema } from './config/env.schema'
-import { FeatureProvider } from './feature.provider'
-
-const moduleRef = await Test.createTestingModule({
-  imports: [configTestingModule(envSchema, { server: { port: 8080 } })],
-  providers: [FeatureProvider]
-}).compile()
-```
-
-Overrides mirror the `namespace.leaf` shape with every key optional and typed from the schema. Each value is converted with `String(value)` before validation, so give
-a leaf what its environment variable would hold; an object becomes `'[object Object]'`, and an override
-of `undefined` is ignored, so a defaulted leaf cannot be unset. An override whose path matches no leaf
-of the schema throws, listing every such path, even when its value is `undefined`; a namespace given
-something other than a plain object is reported once, by name, and so is an overrides argument that is
-not a plain object; passing `undefined` or `null` for the whole argument means no overrides. Neither helper takes `strict`, a
-custom `source`, a hook or `isGlobal`: `configTestingModule` registers the module globally, and a
-failure case (a missing variable, a strict violation) is built with
-`BymaxConfigModule.forRoot({ schema, source, strict: true })` and a source you write.
-
-Placeholder synthesis never fabricates values that could accidentally pass a
-secret-strength constraint; length and format constraints are honored. The
-subpath has no Jest dependency and works with any runner, though the family
-standard is Jest.
-
-## 🚫 Known Limitations
+## 🚫 What This Library Does NOT Do
 
 1. **Two-level namespace convention.** The path-inference utilities
    (`Path<T>`, `PathValue<T, P>`) target `namespace.leaf` schemas. Deeper
@@ -950,7 +884,6 @@ standard is Jest.
 
 Pull requests are welcome. Please open an issue first for significant changes.
 
-- Read [`docs/technical_specification.md`](./docs/technical_specification.md) for architecture decisions.
 - Run the full gate listed in [`CONTRIBUTING.md`](./CONTRIBUTING.md) before opening a PR.
 - Conventional Commits are enforced by `commitlint.config.cjs`.
 

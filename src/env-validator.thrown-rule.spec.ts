@@ -42,7 +42,7 @@ describe('a transform that throws', () => {
   it('is reported as one aggregated issue that carries no part of the thrown message', () => {
     /**
      * `JSON.parse` quotes the text it could not read: `"SUPERSECRETVALUE123" is not valid JSON`.
-     * Without a guard that SyntaxError left the validator as it was, with the secret in it.
+     * The report must carry none of that text: only the class of what was thrown.
      */
     const error = failureOf(() => validateEnv(parseJson, { FEATURE_FLAGS: SECRET }))
 
@@ -233,7 +233,7 @@ describe('a thrown rule at the module boundary', () => {
   })
 
   it('runs the observability hook with the value-free issue', async () => {
-    /** The hook runs only for the aggregated error, so a raw throw never reached it. */
+    /** The hook runs for the aggregated error, so a thrown rule must arrive as one. */
     const hook = jest.fn()
 
     await expect(

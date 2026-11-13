@@ -426,6 +426,58 @@ export function unusableOverrideIssues<TShape extends EnvShape>(
   })
 }
 
+/** A constructor name that is plain code: an identifier, which a thrown object cannot smuggle text into. */
+const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/
+
+/**
+ * The class name of a thrown Error, when it is plain code.
+ *
+ * Only an Error is named: a rule can throw data (the parsed received value, say), and a
+ * `constructor` property of data is input, not code. The name is read from the prototype, so
+ * an own `constructor` property an Error was given is not consulted. Reading it runs whatever
+ * the thrown value defines (a getter, a proxy trap), and that code can throw too, so a failed
+ * read is no name at all.
+ *
+ * @param thrown - Whatever a rule threw.
+ * @returns The class name when the value is an Error and the name is an identifier, otherwise
+ * undefined.
+ */
+function thrownClassName(thrown: unknown): string | undefined {
+  try {
+    if (!(thrown instanceof Error)) return undefined
+    const name = (Object.getPrototypeOf(thrown) as { constructor: { name: unknown } }).constructor
+      .name
+    return typeof name === 'string' && IDENTIFIER.test(name) ? name : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * The issue for a schema rule that threw instead of reporting.
+ *
+ * A thrown message can quote the received value (`JSON.parse` does), and Zod does not catch it,
+ * so it would leave the validator as it is: raw, with the value in it, and without the hook
+ * running. It is withheld, and the issue names only the class of what was thrown, when that
+ * class has an identifier for a name. A throw carries no leaf path, so it is reported for the
+ * schema as a whole, and the leaves Zod had not yet reached cannot be reported.
+ *
+ * @param thrown - Whatever the rule threw.
+ * @returns The value-free issue for the whole schema.
+ */
+function toThrownRuleIssue(thrown: unknown): ConfigIssue {
+  const name = thrownClassName(thrown)
+  return {
+    path: '',
+    variable: '(schema)',
+    code: ConfigErrorCode.INVALID,
+    message:
+      name === undefined
+        ? 'a rule threw a value that is not an Error; the value is withheld because it can carry the value'
+        : `a rule threw ${name}; its message is withheld because it can carry the value`
+  }
+}
+
 /**
  * Validate a flat source against a schema in a single pass.
  *
@@ -442,7 +494,7 @@ export function unusableOverrideIssues<TShape extends EnvShape>(
  * @param source - The flat source record, typically the process environment.
  * @param options - Optional behavior flags, such as strict unknown-key detection.
  * @returns The parsed, typed configuration output.
- * @throws {BymaxConfigValidationError} When two leaves read one variable, or any variable
+ * @throws {BymaxConfigValidationError} When two leaves read one variable, a rule throws, or any variable
  * is missing, invalid, or (under strict) an unrecognized declared-prefix variable.
  * @example
  * ```typescript
@@ -460,10 +512,15 @@ export function validateEnv<TShape extends EnvShape>(
   const sourceMap = new Map(Object.entries(source))
   const namespaces = Object.keys(schema.shape)
   const candidate = buildCandidate(namespaces, collectPresentLeaves(bindings, sourceMap))
-  const result = schema.safeParse(candidate)
   const prefixes = resolveNamespacePrefixes(schema)
   const unknown = options?.strict === true ? detectUnknownKeys(prefixes, bindings, sourceMap) : []
   const overrides = unusableOverrideIssues(schema, bindings)
+  let result: ReturnType<typeof schema.safeParse>
+  try {
+    result = schema.safeParse(candidate)
+  } catch (thrown) {
+    throw new BymaxConfigValidationError([...overrides, toThrownRuleIssue(thrown), ...unknown])
+  }
   if (result.success) {
     if (unknown.length === 0 && overrides.length === 0) return result.data
     throw new BymaxConfigValidationError([...overrides, ...unknown])

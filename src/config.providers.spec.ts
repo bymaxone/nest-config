@@ -17,7 +17,6 @@ import type { BymaxConfigModuleOptions } from './config.options'
 import { bymaxConfigProvider, createValidatedConfig } from './config.providers'
 import { defineEnv } from './define-env'
 import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
-import type { EnvSchema } from './types'
 
 const schema = defineEnv({
   server: z.object({ port: z.coerce.number().int().min(1) })
@@ -253,26 +252,27 @@ describe('the BYMAX_CONFIG provider factory and the validation hook', () => {
     /**
      * Non-validation failure bypasses observability.
      *
-     * The hook exists to report validation issues; an unexpected error that is not a
-     * BymaxConfigValidationError (here a schema transform that throws) carries no issue
-     * list, so it must propagate untouched and leave the hook uncalled.
+     * The hook exists to report validation issues; an error that is not a
+     * BymaxConfigValidationError carries no issue list, so it must propagate untouched and
+     * leave the hook uncalled. A schema rule that throws is reported as a validation issue,
+     * so this failure comes from reading the schema itself: a namespace whose metadata cannot
+     * be read.
      */
-    const throwingSchema = defineEnv({
-      server: z.object({
-        port: z.string().transform(() => {
-          throw new Error('transform failed')
-        })
-      })
+    const namespace = z.object({ port: z.string() })
+    Object.defineProperty(namespace, 'meta', {
+      value: () => {
+        throw new RangeError('meta failed')
+      }
     })
     const hook = jest.fn()
 
     const outcome = provide({
-      schema: throwingSchema as EnvSchema,
+      schema: defineEnv({ server: namespace }),
       source: { SERVER_PORT: 'x' },
       onValidationError: hook
     })
 
-    await expect(outcome).rejects.toThrow('transform failed')
+    await expect(outcome).rejects.toThrow(RangeError)
     await expect(outcome).rejects.not.toBeInstanceOf(BymaxConfigValidationError)
     expect(hook).not.toHaveBeenCalled()
   })

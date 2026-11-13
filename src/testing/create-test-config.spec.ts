@@ -195,11 +195,10 @@ describe('createTestConfig when a rule on a namespace or on the schema fails', (
 })
 
 describe('createTestConfig when the schema itself throws', () => {
-  it('rethrows an error that is not a validation error, untouched', () => {
+  it('reports a rule that throws as one issue for the schema, with no override guidance', () => {
     /**
-     * Only a BymaxConfigValidationError carries issues to explain. A transform that throws
-     * its own error is not one, so it reaches the caller as it was thrown instead of being
-     * wrapped in guidance about overrides.
+     * A transform that throws is reported by the validator as one withheld issue for the whole
+     * schema. It names no leaf, so there is no override to suggest.
      */
     const exploding = defineEnv({
       s: z.object({
@@ -209,8 +208,41 @@ describe('createTestConfig when the schema itself throws', () => {
       })
     })
 
-    expect(() => createTestConfig(exploding)).toThrow(RangeError)
-    expect(() => createTestConfig(exploding)).not.toThrow(BymaxConfigValidationError)
+    let error: BymaxConfigValidationError | undefined
+    try {
+      createTestConfig(exploding)
+    } catch (thrown) {
+      error = thrown as BymaxConfigValidationError
+    }
+
+    expect(error).toBeInstanceOf(BymaxConfigValidationError)
+    expect(error?.issues).toEqual([
+      expect.objectContaining({
+        path: '',
+        variable: '(schema)',
+        message: 'a rule threw RangeError; its message is withheld because it can carry the value'
+      })
+    ])
+    expect(error?.message).not.toContain('transform failed')
+    expect(error?.message).not.toContain('pass an override')
+  })
+
+  it('rethrows an error that is not a validation error, untouched', () => {
+    /**
+     * Only a BymaxConfigValidationError carries issues to explain. An error from reading the
+     * schema itself, here a namespace whose metadata cannot be read, reaches the caller as it
+     * was thrown instead of being wrapped in guidance about overrides.
+     */
+    const namespace = z.object({ v: z.string() })
+    Object.defineProperty(namespace, 'meta', {
+      value: () => {
+        throw new RangeError('meta failed')
+      }
+    })
+    const broken = defineEnv({ s: namespace })
+
+    expect(() => createTestConfig(broken)).toThrow(RangeError)
+    expect(() => createTestConfig(broken)).not.toThrow(BymaxConfigValidationError)
   })
 })
 

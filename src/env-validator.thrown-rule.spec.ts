@@ -38,6 +38,11 @@ function failureOf(run: () => unknown): BymaxConfigValidationError {
   throw new Error('expected the validation to fail')
 }
 
+/** An Error subclass whose class name is exactly the given text. */
+function errorClass(className: string): new () => Error {
+  return Object.defineProperty(class extends Error {}, 'name', { value: className })
+}
+
 describe('a transform that throws', () => {
   it('is reported as one aggregated issue that carries no part of the thrown message', () => {
     /**
@@ -123,7 +128,7 @@ describe('a transform that throws', () => {
     'names the class %s of what was thrown',
     (className) => {
       /** Any identifier is code, not input: one character, digits, `_` and `$` all qualify. */
-      const thrown = new (Object.defineProperty(class {}, 'name', { value: className }))()
+      const thrown = new (errorClass(className))()
       const schema = defineEnv({
         feature: z.object({
           key: z.string().transform(() => {
@@ -143,21 +148,24 @@ describe('a transform that throws', () => {
   it.each([
     [
       'a constructor getter that throws',
-      () => ({
-        get constructor(): never {
-          throw new Error(`bad ${SECRET}`)
-        }
-      })
+      () => {
+        class Failing extends Error {}
+        Object.defineProperty(Failing.prototype, 'constructor', {
+          get(): never {
+            throw new Error(`bad ${SECRET}`)
+          }
+        })
+        return new Failing()
+      }
     ],
     [
       'a constructor name getter that throws',
-      () => ({
-        constructor: {
-          get name(): never {
+      () =>
+        new (Object.defineProperty(class extends Error {}, 'name', {
+          get(): never {
             throw new Error(`bad ${SECRET}`)
           }
-        }
-      })
+        }))()
     ]
   ])('does not let reading %s escape the report', (_kind, make) => {
     /**
@@ -180,17 +188,54 @@ describe('a transform that throws', () => {
     expect(error.message).not.toContain(SECRET)
   })
 
-  it('does not take a class name that is not an identifier as a name', () => {
-    /** A constructor name is code, but a thrown object can carry any string there. */
-    const impostor = Object.defineProperty(function Thrown() {}, 'name', {
-      value: `bad name ${SECRET}`
+  it('does not take a name from data a rule throws', () => {
+    /**
+     * A rule can throw the parsed input itself: `{"constructor":{"name":"<secret>"}}` is an
+     * identifier-shaped name that came from the received value, so only an Error is named.
+     */
+    const schema = defineEnv({
+      feature: z.object({
+        key: z.string().transform((text) => {
+          throw JSON.parse(text) as object
+        })
+      })
     })
+
+    const error = failureOf(() =>
+      validateEnv(schema, { FEATURE_KEY: JSON.stringify({ constructor: { name: SECRET } }) })
+    )
+
+    expect(error.issues.map((issue) => issue.message)).toEqual([
+      'a rule threw a value that is not an Error; the value is withheld because it can carry the value'
+    ])
+    expect(error.message).not.toContain(SECRET)
+  })
+
+  it('names the class of the prototype, not a constructor property the error carries', () => {
+    /** An Error given an own `constructor` property from data is still named by its class. */
+    const schema = defineEnv({
+      feature: z.object({
+        key: z.string().transform((text) => {
+          throw Object.assign(new RangeError('x'), { constructor: { name: text } })
+        })
+      })
+    })
+
+    const error = failureOf(() => validateEnv(schema, { FEATURE_KEY: SECRET }))
+
+    expect(error.issues.map((issue) => issue.message)).toEqual([
+      'a rule threw RangeError; its message is withheld because it can carry the value'
+    ])
+    expect(error.message).not.toContain(SECRET)
+  })
+
+  it('does not take a class name that is not an identifier as a name', () => {
+    /** A class name is code, but nothing stops it from holding any string. */
+    const impostor = errorClass(`bad name ${SECRET}`)
     const schema = defineEnv({
       feature: z.object({
         key: z.string().transform(() => {
-          throw Object.create(impostor.prototype as object, {
-            constructor: { value: impostor }
-          }) as object
+          throw new impostor()
         })
       })
     })

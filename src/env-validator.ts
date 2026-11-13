@@ -430,21 +430,23 @@ export function unusableOverrideIssues<TShape extends EnvShape>(
 const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/
 
 /**
- * The class name of a thrown value, when it is plain code.
+ * The class name of a thrown Error, when it is plain code.
  *
- * Reading it runs whatever the thrown value defines (a getter, a proxy trap), and that code can
- * throw too, so a failed read is no name at all. `null` and an object with no constructor fail the
- * read the same way.
+ * Only an Error is named: a rule can throw data (the parsed received value, say), and a
+ * `constructor` property of data is input, not code. The name is read from the prototype, so
+ * an own `constructor` property an Error was given is not consulted. Reading it runs whatever
+ * the thrown value defines (a getter, a proxy trap), and that code can throw too, so a failed
+ * read is no name at all.
  *
  * @param thrown - Whatever a rule threw.
- * @returns The constructor name when it is an identifier, otherwise undefined.
+ * @returns The class name when the value is an Error and the name is an identifier, otherwise
+ * undefined.
  */
 function thrownClassName(thrown: unknown): string | undefined {
   try {
-    const name =
-      typeof thrown === 'object'
-        ? (thrown as { constructor: { name: unknown } }).constructor.name
-        : undefined
+    if (!(thrown instanceof Error)) return undefined
+    const name = (Object.getPrototypeOf(thrown) as { constructor: { name: unknown } }).constructor
+      .name
     return typeof name === 'string' && IDENTIFIER.test(name) ? name : undefined
   } catch {
     return undefined

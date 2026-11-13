@@ -11,6 +11,24 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.6] - 2026-11-13
+
+### Changed
+
+- **The package is built with tsup 9.** The six JavaScript bundles (`index`, `testing` and `internal`,
+  each in ESM and CommonJS) are byte-identical to 1.2.5. The only difference in `dist/` is how the two
+  `./internal` declaration files spell their export list: one `export { ... }` with inline `type`
+  modifiers became an `export { ... }` of values plus an `export type { ... }` of types, naming the
+  same exports. Nothing to apply in a derived backend.
+- **The README is shorter and in the house section order.** The `.` row of the subpath table now lists
+  `ConfigErrorCode`, the Security Table says the source is `process.env` or the record you inject, and
+  the nest-logger bug history is one line: use `@bymax-one/nest-logger` 1.3.0 or later. Each property
+  is stated once, in Features.
+- **Tooling only:** a CI check fails a tracked source file over 800 lines unless it is on a shrinking
+  baseline, a development tool mutates `as const` tables one entry at a time, the mutation inventory
+  now fails a unit test that did not run in the mutation run, and the dev dependencies and pinned
+  GitHub Actions moved forward. No runtime source changed.
+
 ## [1.2.5] - 2026-11-01
 
 ### Fixed
@@ -586,4 +604,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.3]: https://github.com/bymaxone/nest-config/compare/v1.2.2...v1.2.3
 [1.2.4]: https://github.com/bymaxone/nest-config/compare/v1.2.3...v1.2.4
 [1.2.5]: https://github.com/bymaxone/nest-config/compare/v1.2.4...v1.2.5
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.5...HEAD
+[1.2.6]: https://github.com/bymaxone/nest-config/compare/v1.2.5...v1.2.6
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.6...HEAD

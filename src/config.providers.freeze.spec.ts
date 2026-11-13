@@ -48,7 +48,10 @@ describe('a binary leaf', () => {
     ['a Buffer', 'c2VjcmV0LWtleQ==', 'secret-key'],
     ['an empty Buffer', '', '']
   ])('boots with %s decoded from base64', (_kind, encoded, expected) => {
-    /** `Buffer.from(text, 'base64')` is the usual way to read a key; freezing it used to throw. */
+    /**
+     * Freezing a non-empty Buffer directly throws, so the pipeline leaves the view unfrozen and
+     * freezes the object that holds it.
+     */
     const config = createValidatedConfig({ schema: decoded, source: { AUTH_KEY: encoded } })
 
     expect(config.auth.key.toString()).toBe(expected)

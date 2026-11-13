@@ -140,6 +140,46 @@ describe('a transform that throws', () => {
     }
   )
 
+  it.each([
+    [
+      'a constructor getter that throws',
+      () => ({
+        get constructor(): never {
+          throw new Error(`bad ${SECRET}`)
+        }
+      })
+    ],
+    [
+      'a constructor name getter that throws',
+      () => ({
+        constructor: {
+          get name(): never {
+            throw new Error(`bad ${SECRET}`)
+          }
+        }
+      })
+    ]
+  ])('does not let reading %s escape the report', (_kind, make) => {
+    /**
+     * The class name is read from what the rule threw, which can run code of its own. A getter
+     * that throws must not replace the report with its own raw error.
+     */
+    const schema = defineEnv({
+      feature: z.object({
+        key: z.string().transform(() => {
+          throw make()
+        })
+      })
+    })
+
+    const error = failureOf(() => validateEnv(schema, { FEATURE_KEY: 'x' }))
+
+    expect(error.issues.map((issue) => issue.message)).toEqual([
+      'a rule threw a value that is not an Error; the value is withheld because it can carry the value'
+    ])
+    expect(error.message).not.toContain(SECRET)
+  })
+
   it('does not take a class name that is not an identifier as a name', () => {
     /** A constructor name is code, but a thrown object can carry any string there. */
     const impostor = Object.defineProperty(function Thrown() {}, 'name', {

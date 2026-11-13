@@ -430,6 +430,28 @@ export function unusableOverrideIssues<TShape extends EnvShape>(
 const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/
 
 /**
+ * The class name of a thrown value, when it is plain code.
+ *
+ * Reading it runs whatever the thrown value defines (a getter, a proxy trap), and that code can
+ * throw too, so a failed read is no name at all. `null` and an object with no constructor fail the
+ * read the same way.
+ *
+ * @param thrown - Whatever a rule threw.
+ * @returns The constructor name when it is an identifier, otherwise undefined.
+ */
+function thrownClassName(thrown: unknown): string | undefined {
+  try {
+    const name =
+      typeof thrown === 'object'
+        ? (thrown as { constructor: { name: unknown } }).constructor.name
+        : undefined
+    return typeof name === 'string' && IDENTIFIER.test(name) ? name : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * The issue for a schema rule that threw instead of reporting.
  *
  * A thrown message can quote the received value (`JSON.parse` does), and Zod does not catch it,
@@ -442,18 +464,15 @@ const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/
  * @returns The value-free issue for the whole schema.
  */
 function toThrownRuleIssue(thrown: unknown): ConfigIssue {
-  const constructorName =
-    typeof thrown === 'object' && thrown !== null
-      ? (thrown as { constructor?: { name?: unknown } }).constructor?.name
-      : undefined
-  const named = typeof constructorName === 'string' && IDENTIFIER.test(constructorName)
+  const name = thrownClassName(thrown)
   return {
     path: '',
     variable: '(schema)',
     code: ConfigErrorCode.INVALID,
-    message: named
-      ? `a rule threw ${constructorName}; its message is withheld because it can carry the value`
-      : 'a rule threw a value that is not an Error; the value is withheld because it can carry the value'
+    message:
+      name === undefined
+        ? 'a rule threw a value that is not an Error; the value is withheld because it can carry the value'
+        : `a rule threw ${name}; its message is withheld because it can carry the value`
   }
 }
 

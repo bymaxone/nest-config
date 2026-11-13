@@ -253,26 +253,20 @@ describe('the BYMAX_CONFIG provider factory and the validation hook', () => {
     /**
      * Non-validation failure bypasses observability.
      *
-     * The hook exists to report validation issues; an unexpected error that is not a
-     * BymaxConfigValidationError (here a schema transform that throws) carries no issue
-     * list, so it must propagate untouched and leave the hook uncalled.
+     * The hook exists to report validation issues; an error that is not a
+     * BymaxConfigValidationError carries no issue list, so it must propagate untouched and
+     * leave the hook uncalled. A rule that throws is no longer one of these: it is reported as
+     * a validation issue. A source that is present but undefined still is.
      */
-    const throwingSchema = defineEnv({
-      server: z.object({
-        port: z.string().transform(() => {
-          throw new Error('transform failed')
-        })
-      })
-    })
     const hook = jest.fn()
 
     const outcome = provide({
-      schema: throwingSchema as EnvSchema,
-      source: { SERVER_PORT: 'x' },
+      schema,
+      source: undefined as unknown as Record<string, string>,
       onValidationError: hook
     })
 
-    await expect(outcome).rejects.toThrow('transform failed')
+    await expect(outcome).rejects.toThrow(TypeError)
     await expect(outcome).rejects.not.toBeInstanceOf(BymaxConfigValidationError)
     expect(hook).not.toHaveBeenCalled()
   })

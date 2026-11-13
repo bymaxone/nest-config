@@ -633,6 +633,13 @@ A leaf that ends in `.catch(fallback)` replaces an invalid value with its fallba
 issue, so a mistyped variable reaches the application as the fallback; leave `.catch()` off a
 leaf whose failure should stop the boot.
 
+A rule that throws instead of reporting an issue, such as a `.transform` that calls `JSON.parse`,
+still fails the boot, as one issue for the whole schema: `a rule threw SyntaxError; its message is
+withheld because it can carry the value`. The thrown message is dropped because it can quote the
+received value, and Zod stops at the rule that threw, so the leaves after it are not reported. Report a
+failure from the rule with `.refine` or `ctx.issues.push` instead of throwing, and the report stays
+complete.
+
 A leaf can override its derived variable name through schema metadata when a
 legacy name must be preserved:
 

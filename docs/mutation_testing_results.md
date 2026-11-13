@@ -1,6 +1,6 @@
 # Mutation Testing Results: @bymax-one/nest-config
 
-> **Last run:** 2026-11-01
+> **Last run:** 2026-11-13
 > **Command:** `pnpm mutation:full` (Stryker 9, jest runner, `coverageAnalysis: perTest`, `ignoreStatic: true`, `break: 100`) — the cold command, which the release gate requires; `pnpm mutation` reuses stored verdicts and cannot establish it
 > **Report:** [`../reports/mutation/mutation.html`](../reports/mutation/mutation.html)
 > **Plan:** [`mutation_testing_plan.md`](./mutation_testing_plan.md)
@@ -482,6 +482,25 @@ The release gate for `v1.2.5`. Command: **`pnpm mutation:full`**, run cold on a 
 `Mutation (full)` workflow dispatched on `main` at `9a64d2d`. Run
 [41358217705](https://github.com/bymaxone/nest-config/actions/runs/41358217705); the job
 concluded `success`.
+
+| Metric                      | Value         |
+| --------------------------- | ------------- |
+| **Mutation score**          | **100.00 %**  |
+| Killed                      | 444           |
+| Surviving mutants           | 0             |
+| Timeout                     | 2             |
+| Ignored                     | 51            |
+| Break threshold             | 100 % -> PASS |
+| CompileError (type-invalid) | 249           |
+
+Score = `446 / 446`.
+
+## Re-run — 2026-11-13 (1.2.6)
+
+The release gate for `v1.2.6`. Command: **`pnpm mutation:full`**, run cold on a hosted runner by the
+`Mutation (full)` workflow dispatched on `main` at `1b3f4ce`. Run
+[43084916520](https://github.com/bymaxone/nest-config/actions/runs/43084916520); the job
+concluded `success`. No runtime source changed between that commit and the release commit.
 
 | Metric                      | Value         |
 | --------------------------- | ------------- |

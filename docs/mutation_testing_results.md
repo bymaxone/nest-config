@@ -500,8 +500,7 @@ Score = `446 / 446`.
 The release gate for `v1.2.6`. Command: **`pnpm mutation:full`**, run cold on a hosted runner by the
 `Mutation (full)` workflow dispatched on `main` at `1b3f4ce`. Run
 [43084916520](https://github.com/bymaxone/nest-config/actions/runs/43084916520); the job
-concluded `success`. No runtime source changed between that commit and the release commit, and the
-unit-test inventory check reported all 292 tests run, with 5 spec files exempt.
+concluded `success`. No runtime source changed between that commit and the release commit.
 
 | Metric                      | Value         |
 | --------------------------- | ------------- |

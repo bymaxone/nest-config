@@ -473,6 +473,9 @@ change lives in internal slots that `Object.freeze` cannot reach, and the entrie
 `Set` are not visited. Prefer a string or number leaf, or a `.transform` to a plain value, where
 immutability matters.
 
+A `Buffer`, a typed array or a `DataView` is left as it is: `Object.freeze` throws on a view with
+elements, so a base64-decoded key stays writable. The object that holds it is frozen.
+
 ### Nothing is read from anywhere but the source you name
 
 `process.env` by default, or the injectable record you provide. No file, no network, no

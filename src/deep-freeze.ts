@@ -29,7 +29,10 @@ function isFreezable(value: unknown): value is Record<string, unknown> {
  *
  * What it does not do: a `Date`, a `Map` or a `Set` keeps its mutators, because the state
  * they change lives in internal slots that `Object.freeze` cannot reach, and the entries of
- * a `Map` or `Set` are not own enumerable properties, so they are not visited. Replacing
+ * a `Map` or `Set` are not own enumerable properties, so they are not visited.
+ * A typed array, a `Buffer` or a `DataView` is left as it is: `Object.freeze` throws on a view
+ * with elements (`Cannot freeze array buffer views with elements`), and a decoded key is a
+ * common leaf, so its elements stay writable. Replacing
  * those values with a read-only wrapper was measured and rejected: a `Proxy` around a
  * `Date` that refuses `setX` fails `util.types.isDate`, reports `[object Object]` to
  * `Object.prototype.toString`, cannot be passed to `structuredClone`, and does not satisfy
@@ -46,7 +49,7 @@ function isFreezable(value: unknown): value is Record<string, unknown> {
  * ```
  */
 export function deepFreeze<T>(value: T): Readonly<T> {
-  if (!isFreezable(value) || Object.isFrozen(value)) {
+  if (!isFreezable(value) || Object.isFrozen(value) || ArrayBuffer.isView(value)) {
     return value as Readonly<T>
   }
 

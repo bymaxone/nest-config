@@ -28,10 +28,9 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // when the artifact shrinks.
 //
 // Calibration history (newest first):
-//   - The internal subpath grew to 4.60 KiB brotli (4712 bytes) when validation gained its
-//     value-free reporting of a throwing rule, the refusal of `z.coerce.boolean()` and the
-//     capped report column. Each is code the subpath has to carry. The budget is that
-//     measurement plus about 9 %, 5 KiB.
+//   - The internal subpath measures 4.60 KiB brotli (4712 bytes): the validation engine with its
+//     value-free reporting of a throwing rule, its refusal of `z.coerce.boolean()` and its capped
+//     report column. The budget is that measurement plus about 9 %, 5 KiB.
 //   - The internal subpath carries nearly all of the code, so it has its own budget. Measured
 //     after the build strips the comments: 4.13 KiB brotli (4226 bytes). The budget is that
 //     measurement plus about 11 %, 4.6 KiB.

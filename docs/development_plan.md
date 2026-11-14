@@ -107,7 +107,8 @@ These rules apply to every phase. Phase sections only add rules specific to them
    `@throws`, and `@example` where applicable. File headers carry `@fileoverview`
    and `@layer`.
 9. **Conventional Commits.** `feat:`, `fix:`, `test:`, `docs:`, `chore:`,
-   `refactor:`; commit subjects drive the semver bump at release.
+   `refactor:`. Commit subjects do not drive a version bump: the number carries
+   no compatibility information while the API is pre-stable.
 10. **Security defaults.** Only `node:` prefixed builtins; ESLint restricted imports
     ban `dotenv`, bare `crypto`, and the family-wide denied packages. Validation
     errors never echo environment values (spec §6.1), and tests assert it.

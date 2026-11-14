@@ -6,10 +6,11 @@
  *   1. Build artifacts exist for every subpath (ESM, CJS, .d.ts)
  *   2. Named exports resolve from ESM for every subpath
  *   3. Named exports resolve from CJS for every subpath
- *   4. The packed tarball contains only dist/ + meta files
- *   5. A minimal consumer, scaffolded in an OS temp dir, installs the packed
- *      tarball via a `file:` dependency and resolves every subpath from both
- *      ESM and CJS through the published `exports` map
+ *   4. The tarball contains only dist/ + meta files (the listing of `PACKAGE_TARBALL`, or an
+ *      `npm pack` of the working tree without it)
+ *   5. A minimal consumer, scaffolded in an OS temp dir, installs the tarball via a `file:`
+ *      dependency, with `--ignore-scripts`, and resolves every subpath from both ESM and CJS
+ *      through the published `exports` map
  *
  * Exit codes:
  *   0: all assertions pass
@@ -18,18 +19,33 @@
  *
  * Usage:
  *   pnpm build && node scripts/dogfood-smoke-test.mjs
+ *   PACKAGE_TARBALL=/path/to/package.tgz node scripts/dogfood-smoke-test.mjs
  */
 
 import { existsSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
-import { execSync, spawnSync } from 'node:child_process'
+import { execFileSync, execSync, spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const require = createRequire(import.meta.url)
 const pkg = require(resolve(ROOT, 'package.json'))
+
+// `PACKAGE_TARBALL` names the tarball a release gate has already packed: the package is inspected
+// from that file and installed by the consumer from it, not read from the working tree. Without it
+// the script inspects `dist/` and packs the working tree, for a run on a developer machine.
+const TARBALL = process.env['PACKAGE_TARBALL'] ?? ''
+let packageRoot = ROOT
+if (TARBALL !== '') {
+  // Inside the repository, so Node resolves the peer dependencies from its `node_modules`. It is
+  // removed when the process exits, whatever the exit code.
+  const extracted = mkdtempSync(join(ROOT, '.dogfood-package-'))
+  process.on('exit', () => rmSync(extracted, { recursive: true, force: true }))
+  execFileSync('tar', ['-xzf', TARBALL, '-C', extracted, '--strip-components=1'])
+  packageRoot = extracted
+}
 
 // The subpaths this package publishes, kept in sync with package.json "exports".
 const SUBPATHS = ['.', './testing']
@@ -116,7 +132,7 @@ function checkBuildArtifacts() {
   for (const subpath of SUBPATHS) {
     const { esmTypes, cjsTypes, esm, cjs } = distArtifactsFor(subpath)
     for (const f of [esmTypes, cjsTypes, esm, cjs]) {
-      const abs = resolve(ROOT, f)
+      const abs = resolve(packageRoot, f)
       if (!existsSync(abs)) {
         console.error(`Missing build artifact: ${f}. Run "pnpm build" first.`)
         process.exit(2)
@@ -132,7 +148,7 @@ async function checkNamedExports() {
     const expected = EXPECTED_EXPORTS[subpath]
 
     section(`2. ESM named exports: ${subpath}`)
-    const esmModule = await import(resolve(ROOT, esm))
+    const esmModule = await import(resolve(packageRoot, esm))
     for (const name of expected) {
       if (name in esmModule) pass(`export ${name}`)
       else fail(`Missing export: ${name}`)
@@ -140,7 +156,7 @@ async function checkNamedExports() {
     if (expected.length === 0) pass('no named exports declared yet')
 
     section(`3. CJS named exports: ${subpath}`)
-    const cjsModule = require(resolve(ROOT, cjs))
+    const cjsModule = require(resolve(packageRoot, cjs))
     for (const name of expected) {
       if (name in cjsModule) pass(`cjs export ${name}`)
       else fail(`Missing CJS export: ${name}`)
@@ -150,6 +166,15 @@ async function checkNamedExports() {
 }
 
 function packTarball() {
+  if (TARBALL !== '') {
+    // The member names of the file that is published, without the `package/` prefix npm adds.
+    const files = execFileSync('tar', ['-tzf', TARBALL], { encoding: 'utf8' })
+      .split('\n')
+      .map((line) => line.replace(/^package\//, '').trim())
+      .filter((line) => line !== '' && line !== 'package')
+      .map((path) => ({ path }))
+    return { tarballPath: TARBALL, files }
+  }
   packOutDir = mkdtempSync(join(tmpdir(), 'dogfood-pack-'))
   const packJson = execSync(`npm pack --json --pack-destination "${packOutDir}"`, {
     cwd: ROOT,
@@ -160,7 +185,7 @@ function packTarball() {
 }
 
 function checkTarballContents(files) {
-  section('4. Tarball contents (npm pack)')
+  section(TARBALL === '' ? '4. Tarball contents (npm pack)' : '4. Tarball contents')
   const unexpectedFiles = files
     .map((f) => f.path)
     .filter((f) => !ALLOWED_TARBALL_PATHS.some((prefix) => f === prefix || f.startsWith(prefix)))
@@ -180,7 +205,8 @@ function scaffoldConsumer(tarballPath) {
     dependencies: { [pkg.name]: `file:${tarballPath}` }
   }
   writeFileSync(resolve(consumerDir, 'package.json'), JSON.stringify(consumerPkgJson, null, 2))
-  return spawnSync('pnpm', ['install', '--no-frozen-lockfile'], {
+  // `--ignore-scripts`: no install script of the package or of anything it pulls in runs here.
+  return spawnSync('pnpm', ['install', '--no-frozen-lockfile', '--ignore-scripts'], {
     cwd: consumerDir,
     encoding: 'utf8',
     timeout: 60_000

@@ -139,4 +139,35 @@ describe('deepFreeze', () => {
     frozen.names.add('b')
     expect(frozen.names.size).toBe(2)
   })
+
+  it.each([
+    ['a Buffer', () => Buffer.from('c2VjcmV0LWtleQ==', 'base64')],
+    ['a Uint8Array', () => new TextEncoder().encode('key')],
+    ['a Float64Array', () => new Float64Array([1, 2])],
+    ['an empty Buffer', () => Buffer.alloc(0)],
+    ['a DataView', () => new DataView(new ArrayBuffer(4))]
+  ])('leaves %s as it is and freezes what holds it', (_kind, make) => {
+    /**
+     * Freezing a typed array with elements throws (`Cannot freeze array buffer views with
+     * elements`), and a base64-decoded key is a common leaf. A view keeps its elements writable,
+     * like a Date, a Map or a Set keeps its mutators; the object around it is frozen.
+     */
+    const view = make()
+    const holder = { key: view }
+
+    const frozen = deepFreeze(holder)
+
+    expect(frozen.key).toBe(view)
+    expect(Object.isFrozen(frozen)).toBe(true)
+  })
+
+  it('keeps the elements of a typed array writable', () => {
+    /** The documented limit: the bytes of a view cannot be frozen. */
+    const bytes = new Uint8Array([1, 2, 3])
+
+    deepFreeze({ bytes })
+    bytes[0] = 9
+
+    expect(bytes[0]).toBe(9)
+  })
 })

@@ -15,7 +15,7 @@ import type { FactoryProvider } from '@nestjs/common'
 import type { BymaxConfigModuleOptions } from './config.options'
 import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { deepFreeze } from './deep-freeze'
-import { validateEnv } from './env-validator'
+import { toWithheldIssue, validateEnv } from './env-validator'
 import { BymaxConfigValidationError } from './errors'
 import type { EnvOutput, EnvSchema, EnvShape } from './types'
 
@@ -59,7 +59,8 @@ async function reportIssues(
  * @typeParam TShape - The two-level schema shape.
  * @param options - The resolved module options (schema, source, strict).
  * @returns The validated, deep-frozen configuration output.
- * @throws {BymaxConfigValidationError} When the source fails the schema.
+ * @throws {BymaxConfigValidationError} When the source fails the schema, or when freezing the
+ * validated result throws.
  * @throws {TypeError} When `source` is present with the value `undefined` or `null`, which would
  * otherwise validate `process.env` in place of the source that failed to load.
  * @example
@@ -80,7 +81,14 @@ export function createValidatedConfig<TShape extends EnvShape>(
     )
   }
   const source = options.source ?? process.env
-  return deepFreeze(validateEnv(options.schema, source, { strict: options.strict === true }))
+  const validated = validateEnv(options.schema, source, { strict: options.strict === true })
+  try {
+    return deepFreeze(validated)
+  } catch (thrown) {
+    throw new BymaxConfigValidationError([
+      toWithheldIssue('freezing the validated configuration', thrown)
+    ])
+  }
 }
 
 /**

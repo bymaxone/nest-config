@@ -454,18 +454,19 @@ function thrownClassName(thrown: unknown): string | undefined {
 }
 
 /**
- * The issue for a schema rule that threw instead of reporting.
+ * The issue for a step of validation that threw instead of reporting.
  *
  * A thrown message can quote the received value (`JSON.parse` does), and Zod does not catch it,
  * so it would leave the validator as it is: raw, with the value in it, and without the hook
  * running. It is withheld, and the issue names only the class of what was thrown, when that
- * class has an identifier for a name. A throw carries no leaf path, so it is reported for the
- * schema as a whole, and the leaves Zod had not yet reached cannot be reported.
+ * is an Error with an identifier for a name. A throw carries no leaf path, so it is reported for
+ * the schema as a whole, and the leaves Zod had not yet reached cannot be reported.
  *
- * @param thrown - Whatever the rule threw.
+ * @param subject - What threw, as the start of the message: `a rule`, say.
+ * @param thrown - Whatever it threw.
  * @returns The value-free issue for the whole schema.
  */
-function toThrownRuleIssue(thrown: unknown): ConfigIssue {
+export function toWithheldIssue(subject: string, thrown: unknown): ConfigIssue {
   const name = thrownClassName(thrown)
   return {
     path: '',
@@ -473,8 +474,8 @@ function toThrownRuleIssue(thrown: unknown): ConfigIssue {
     code: ConfigErrorCode.INVALID,
     message:
       name === undefined
-        ? 'a rule threw a value that is not an Error; the value is withheld because it can carry the value'
-        : `a rule threw ${name}; its message is withheld because it can carry the value`
+        ? `${subject} threw a value that is not an Error; the value is withheld because it can carry the value`
+        : `${subject} threw ${name}; its message is withheld because it can carry the value`
   }
 }
 
@@ -519,7 +520,11 @@ export function validateEnv<TShape extends EnvShape>(
   try {
     result = schema.safeParse(candidate)
   } catch (thrown) {
-    throw new BymaxConfigValidationError([...overrides, toThrownRuleIssue(thrown), ...unknown])
+    throw new BymaxConfigValidationError([
+      ...overrides,
+      toWithheldIssue('a rule', thrown),
+      ...unknown
+    ])
   }
   if (result.success) {
     if (unknown.length === 0 && overrides.length === 0) return result.data

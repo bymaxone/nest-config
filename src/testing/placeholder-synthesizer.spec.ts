@@ -367,6 +367,19 @@ describe('synthesizePlaceholderSource', () => {
     expect(source.FEATURES_VERBOSE).toBe('true')
   })
 
+  it('emits the boolean token for a leaf that is a plain boolean node', () => {
+    // Scenario: a boolean node (not a string-to-boolean pipe) resolves to the fixed `true`
+    // token. The synthesizer reads only the schema, so it answers for a coercing boolean even
+    // though validation refuses that rule; the case is the walk's own, not validation's.
+    const schema = defineEnv({
+      gate: z.object({ plain: z.boolean(), coerced: z.coerce.boolean() })
+    })
+    expect(synthesizePlaceholderSource(schema)).toEqual({
+      GATE_PLAIN: 'true',
+      GATE_COERCED: 'true'
+    })
+  })
+
   it('lets an exact length win over a redundant minimum on the same string', () => {
     // Scenario: a string declaring both length(5) and min(3) must honor the
     // exact length, producing five filler characters (the minimum is subsumed),

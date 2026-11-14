@@ -455,6 +455,13 @@ a throw. `toJSON` returns the declared namespace names, so the omission reads as
 rather than as an empty object. Reading on purpose is unaffected: `get`, `has` and the
 `getAll` escape hatch return the real values.
 
+The raw root, whether injected through `BYMAX_CONFIG` or returned by `getAll`, prints
+`[BymaxConfig: values redacted]` under `util.inspect`, so `console.log(config)`, `util.format`
+and a logger that renders its arguments show no value. The marker is a non-enumerable property:
+`Object.keys`, spread and equality see the same keys as before. It stops there. `JSON.stringify`
+of the root, a namespace printed directly (`console.log(config.auth)`) and a leaf you log yourself
+still show their values, so keep them out of log lines.
+
 ### Failing fast is the security property
 
 A service that starts with a missing `JWT_SECRET` and discovers it at the first login is a

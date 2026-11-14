@@ -513,3 +513,23 @@ concluded `success`. No runtime source changed between that commit and the relea
 | CompileError (type-invalid) | 249           |
 
 Score = `446 / 446`.
+
+## Re-run — 2026-11-14 (1.2.7)
+
+The release gate for `v1.2.7`. Command: **`pnpm mutation:full`**, run cold on a hosted runner by the
+`Mutation (full)` workflow dispatched on `main` at `a539799`. Run
+[43572655628](https://github.com/bymaxone/nest-config/actions/runs/43572655628); the job concluded
+`success`, and the inventory check reported that all 379 unit tests ran in the mutation run, with
+5 exempt spec files left out. No runtime source changed between that commit and the release commit.
+
+| Metric                      | Value         |
+| --------------------------- | ------------- |
+| **Mutation score**          | **100.00 %**  |
+| Killed                      | 481           |
+| Surviving mutants           | 0             |
+| Timeout                     | 3             |
+| Ignored                     | 57            |
+| Break threshold             | 100 % -> PASS |
+| CompileError (type-invalid) | 281           |
+
+Score = `484 / 484`.

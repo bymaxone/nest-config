@@ -10,6 +10,8 @@
  * @layer Provider
  */
 
+import { inspect } from 'node:util'
+
 import type { FactoryProvider } from '@nestjs/common'
 
 import type { BymaxConfigModuleOptions } from './config.options'
@@ -18,6 +20,29 @@ import { deepFreeze } from './deep-freeze'
 import { toWithheldIssue, validateEnv } from './env-validator'
 import { BymaxConfigValidationError } from './errors'
 import type { EnvOutput, EnvSchema, EnvShape } from './types'
+
+/** What `util.inspect` prints for the configuration root, in place of its values. */
+const REDACTED_ROOT = '[BymaxConfig: values redacted]'
+
+/**
+ * Make the configuration root print a marker instead of its values.
+ *
+ * `console.log`, `util.format` and Nest's text `ConsoleLogger` render an object through
+ * `util.inspect`, and the root holds every secret the application declared. A JSON logger (pino,
+ * Nest's `ConsoleLogger` with `json: true`) serializes the enumerable keys instead and prints the
+ * values; the marker does not reach it. The marker is keyed by
+ * `util.inspect.custom` and defined with the defaults of `Object.defineProperty`: not
+ * enumerable, not writable, not configurable. `Object.keys`, spread, `JSON.stringify` and
+ * equality therefore exclude it. It covers the root only: a namespace printed directly shows
+ * its values, as does anything that serializes the root to JSON. It is defined before the freeze.
+ *
+ * @param root - The validated output, not yet frozen.
+ * @returns The same reference.
+ */
+function redactOnInspect<T extends object>(root: T): T {
+  Object.defineProperty(root, inspect.custom, { value: () => REDACTED_ROOT })
+  return root
+}
 
 /**
  * Run the observability hook, wait for it, and keep its failure from changing the outcome.
@@ -83,7 +108,7 @@ export function createValidatedConfig<TShape extends EnvShape>(
   const source = options.source ?? process.env
   const validated = validateEnv(options.schema, source, { strict: options.strict === true })
   try {
-    return deepFreeze(validated)
+    return deepFreeze(redactOnInspect(validated))
   } catch (thrown) {
     throw new BymaxConfigValidationError([
       toWithheldIssue('freezing the validated configuration', thrown)

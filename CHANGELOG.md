@@ -11,7 +11,7 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
-## [1.2.7]
+## [1.2.7] - 2026-11-14
 
 ### Fixed
 

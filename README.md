@@ -457,10 +457,10 @@ rather than as an empty object. Reading on purpose is unaffected: `get`, `has` a
 
 The raw root, whether injected through `BYMAX_CONFIG` or returned by `getAll`, prints
 `[BymaxConfig: values redacted]` under `util.inspect`, so `console.log(config)`, `util.format`
-and a logger that renders its arguments show no value. The marker is a non-enumerable property:
-`Object.keys`, spread and equality see the same keys as before. It stops there. `JSON.stringify`
-of the root, a namespace printed directly (`console.log(config.auth)`) and a leaf you log yourself
-still show their values, so keep them out of log lines.
+and a logger that renders its arguments show no value. The marker is a non-enumerable property,
+so `Object.keys`, spread and equality do not include it. It stops there. `JSON.stringify` of the
+root, a namespace printed directly (`console.log(config.auth)`) and a leaf you log yourself
+show their values, so keep them out of log lines.
 
 ### Failing fast is the security property
 

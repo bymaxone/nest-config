@@ -31,8 +31,8 @@ const REDACTED_ROOT = '[BymaxConfig: values redacted]'
  * root holds every secret the application declared. The marker is keyed by
  * `util.inspect.custom` and defined with the defaults of `Object.defineProperty`: not
  * enumerable, not writable, not configurable. `Object.keys`, spread, `JSON.stringify` and
- * equality therefore see the keys they saw before. It covers the root only: `JSON.stringify`
- * and a namespace printed directly still show their values. It is defined before the freeze.
+ * equality therefore exclude it. It covers the root only: `JSON.stringify` and a namespace
+ * printed directly show their values. It is defined before the freeze.
  *
  * @param root - The validated output, not yet frozen.
  * @returns The same reference.

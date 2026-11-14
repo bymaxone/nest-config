@@ -4,7 +4,7 @@
  * Layer: unit and integration.
  * Goal: pin that `util.inspect` of the validated root, which is what `console.log` and most
  * loggers use, prints a redacted marker instead of the values; that the marker is a
- * non-enumerable property, so enumeration, spread and equality see the same keys as before; and
+ * non-enumerable property, so enumeration, spread and equality exclude it; and
  * what it does not cover (`JSON.stringify`, a namespace printed directly).
  * Mocks: none.
  */
@@ -105,7 +105,7 @@ describe('the validated configuration root when it is printed', () => {
   })
 
   it('does not redact JSON.stringify, which the marker cannot cover', () => {
-    /** Documented limit: serialization walks the enumerable keys, which are unchanged. */
+    /** Documented limit: serialization walks the enumerable keys, and the marker is not one of them. */
     const config = createValidatedConfig({ schema, source })
 
     expect(JSON.stringify(config)).toContain(SECRET)
@@ -119,7 +119,7 @@ describe('the validated configuration root when it is printed', () => {
   })
 
   it('redacts the root the module injects and the one ConfigService returns', async () => {
-    /** Both routes to the raw root print the marker, and the service still reads values. */
+    /** Both routes to the raw root print the marker, and the service reads the values. */
     const moduleRef = await Test.createTestingModule({
       imports: [BymaxConfigModule.forRoot({ schema, source })]
     }).compile()

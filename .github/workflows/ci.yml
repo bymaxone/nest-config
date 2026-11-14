@@ -94,6 +94,13 @@ jobs:
         # land on declarations for the wrong module format. `attw` packs the
         # tarball and resolves every entry point the way each resolution mode does.
         run: pnpm check:exports
+      - name: Published surface (README, CHANGELOG, exported types)
+        # Compiles every README snippet against the types a consumer resolves through `dist/`,
+        # checks the README links and anchors, and requires a CHANGELOG section for each released
+        # version, so a README defect fails on the pull request instead of inside the release build.
+        # It reads `dist/`, so it runs after the build, and it lists the git tags, which the full
+        # history fetched above provides.
+        run: pnpm check:published
       - name: Consumer runtime
         # The only gate that boots NestJS against the packed tarball, in ESM and
         # in CommonJS. Entry points are separate bundles, so a module both reach

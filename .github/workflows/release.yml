@@ -1,6 +1,6 @@
-# Canonical shape of an npm release (the org template, `bymaxone/.github` v1.10.8): the code that
-# builds runs without a credential, and the job that holds the credential runs no code from the
-# package. The file name matters, see "npm trusted publishing" below.
+# Canonical shape of an npm release: the code that builds runs without a credential, and the job
+# that holds the credential runs no code from the package. The file name matters, see "npm trusted
+# publishing" below.
 #
 # Why two jobs
 #   `build` installs dependencies, runs the gates and packs. That runs a lot of code (the dependency

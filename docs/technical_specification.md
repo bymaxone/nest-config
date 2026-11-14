@@ -225,7 +225,7 @@ export type AppConfig = typeof envSchema.infer
 
 Contract:
 
-- Input values arrive as strings (the shape of `process.env`), so leaves use `z.coerce.*` for numbers and booleans; `defineEnv` documents and encourages this, it does not rewrite schemas behind the caller's back.
+- Input values arrive as strings (the shape of `process.env`), so leaves use `z.coerce.*` for numbers and `z.stringbool()` for booleans (`z.coerce.boolean()` reads `'false'` as `true`, so validation refuses it); `defineEnv` documents and encourages this, it does not rewrite schemas behind the caller's back.
 - Environment variable names map to leaves through the schema's own key mapping: each leaf declares its source variable explicitly via the standard Zod pipeline (see 4.2), keeping the mapping visible and greppable.
 - `defineEnv` returns the Zod schema augmented with an `infer` phantom property for ergonomic type extraction; at runtime it is the schema itself.
 

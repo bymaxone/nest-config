@@ -628,9 +628,10 @@ consumer choices. Leaves use `z.coerce.*` because the source arrives as
 strings (the shape of `process.env`).
 
 Two things follow from that. `z.coerce.boolean()` is `Boolean(value)`: any non-empty string,
-including `'false'`, becomes `true`, so use `z.stringbool()` for a flag. And a variable set to the
-empty string is present, not missing: `z.string()` accepts it and `z.coerce.number()` turns it into
-`0`, so add `.min(1)` or a bound where empty should fail.
+including `'false'`, becomes `true`, so the boot refuses a leaf built on it, under any wrapper
+(`.default`, `.optional`, `.pipe`), as an issue that names the leaf; use `z.stringbool()` for a
+flag. And a variable set to the empty string is present, not missing: `z.string()` accepts it and
+`z.coerce.number()` turns it into `0`, so add `.min(1)` or a bound where empty should fail.
 
 A leaf that ends in `.catch(fallback)` replaces an invalid value with its fallback and reports no
 issue, so a mistyped variable reaches the application as the fallback; leave `.catch()` off a

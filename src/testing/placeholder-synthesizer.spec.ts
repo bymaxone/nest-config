@@ -52,7 +52,7 @@ const representativeSchema = defineEnv({
   }),
   features: z.object({
     // Boolean: synthesized to a fixed coercible placeholder.
-    verbose: z.coerce.boolean()
+    verbose: z.stringbool()
   })
 })
 
@@ -202,7 +202,7 @@ describe('synthesizePlaceholderSource', () => {
   it('emits a coercible placeholder for boolean leaves', () => {
     // Scenario: a boolean leaf becomes a value the coercion accepts.
     const source = synthesizePlaceholderSource(representativeSchema)
-    expect(z.coerce.boolean().safeParse(source.FEATURES_VERBOSE).success).toBe(true)
+    expect(z.stringbool().safeParse(source.FEATURES_VERBOSE).success).toBe(true)
   })
 
   it('is deterministic: two runs produce a deep-equal source', () => {
@@ -474,7 +474,14 @@ describe('synthesizePlaceholderSource formats beyond url and email', () => {
     // Scenario: only a pipe that reads a string and yields a boolean (what z.stringbool()
     // is) takes the boolean token; a numeric input is synthesized as a number, so `true`
     // is not handed to a coercing number.
-    const schema = defineEnv({ gate: z.object({ on: z.coerce.number().pipe(z.coerce.boolean()) }) })
+    const schema = defineEnv({
+      gate: z.object({
+        on: z.codec(z.coerce.number(), z.boolean(), {
+          decode: (count) => count === 1,
+          encode: (flag) => (flag ? 1 : 0)
+        })
+      })
+    })
     const source = synthesizePlaceholderSource(schema)
     expect(source.GATE_ON).toBe('1')
     expect(validateEnv(schema, source)).toEqual({ gate: { on: true } })

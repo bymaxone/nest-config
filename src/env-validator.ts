@@ -16,6 +16,7 @@ import type { z } from 'zod'
 import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
 import type { ConfigIssue } from './errors'
 import {
+  findCoercedBooleanLeaves,
   findUnusableEnvOverrides,
   resolveNamespacePrefixes,
   resolveSourceNames
@@ -426,6 +427,30 @@ export function unusableOverrideIssues<TShape extends EnvShape>(
   })
 }
 
+/**
+ * Describe every leaf built on `z.coerce.boolean()`.
+ *
+ * That rule reads `'false'` and `'0'` as `true`, so the leaf cannot turn a feature off. The
+ * refusal is a mistake in the schema, decided before the parse and reported beside the
+ * violations of the source. The message names the rule and its replacement, never a value.
+ *
+ * @param schema - A schema produced by `defineEnv`.
+ * @param bindings - Every leaf binding of the schema, from `resolveSourceNames`.
+ * @returns One issue per affected leaf, in schema order.
+ */
+export function coercedBooleanIssues<TShape extends EnvShape>(
+  schema: EnvSchema<TShape>,
+  bindings: ReadonlyArray<SourceBinding>
+): ConfigIssue[] {
+  const variables = new Map(bindings.map((binding) => [binding.path, binding.variable]))
+  return findCoercedBooleanLeaves(schema).map((path) => ({
+    path,
+    variable: variables.get(path) as string,
+    code: ConfigErrorCode.INVALID,
+    message: "uses z.coerce.boolean(), where 'false' parses to true; use z.stringbool()"
+  }))
+}
+
 /** A constructor name that is plain code: an identifier, which a thrown object cannot smuggle text into. */
 const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/
 
@@ -515,7 +540,10 @@ export function validateEnv<TShape extends EnvShape>(
   const candidate = buildCandidate(namespaces, collectPresentLeaves(bindings, sourceMap))
   const prefixes = resolveNamespacePrefixes(schema)
   const unknown = options?.strict === true ? detectUnknownKeys(prefixes, bindings, sourceMap) : []
-  const overrides = unusableOverrideIssues(schema, bindings)
+  const overrides = [
+    ...unusableOverrideIssues(schema, bindings),
+    ...coercedBooleanIssues(schema, bindings)
+  ]
   let result: ReturnType<typeof schema.safeParse>
   try {
     result = schema.safeParse(candidate)

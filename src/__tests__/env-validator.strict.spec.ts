@@ -170,7 +170,7 @@ describe('validateEnv strict mode with an open namespace', () => {
   const openSchema = defineEnv({
     // Shares the OTEL_ prefix with an OpenTelemetry SDK that reads its own
     // variables natively, so the namespace waives detection for the rest.
-    otel: z.object({ enabled: z.coerce.boolean().default(false) }).meta({ open: true }),
+    otel: z.object({ enabled: z.stringbool().default(false) }).meta({ open: true }),
     database: z.object({ url: z.url() })
   })
 
@@ -268,7 +268,7 @@ describe('validateEnv strict mode with an open namespace', () => {
      * silently open every narrower namespace beneath it.
      */
     const nestedSchema = defineEnv({
-      otel: z.object({ enabled: z.coerce.boolean().default(false) }).meta({ open: true }),
+      otel: z.object({ enabled: z.stringbool().default(false) }).meta({ open: true }),
       otelExporter: z.object({ timeoutMs: z.coerce.number().int().default(10_000) })
     })
     const error = captureError(nestedSchema, { OTEL_EXPORTER_TYPO: 'oops' }, { strict: true })

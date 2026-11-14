@@ -210,6 +210,62 @@ export function findUnusableEnvOverrides<TShape extends EnvShape = EnvShape>(
   return unusable
 }
 
+/** A schema node as far as the coercion walk needs it: what it is and what it wraps. */
+interface CoercionNode {
+  readonly _zod: {
+    readonly def: {
+      readonly type: string
+      readonly coerce?: unknown
+      readonly innerType?: CoercionNode
+      readonly in?: CoercionNode
+      readonly out?: CoercionNode
+    }
+  }
+}
+
+/**
+ * Whether a schema is, or wraps, a boolean that coerces its input.
+ *
+ * `z.coerce.boolean()` is a boolean node whose definition carries `coerce: true`, and it parses
+ * every non-empty string, `'false'` and `'0'` included, to `true`. `.default`, `.optional`,
+ * `.nullable`, `.readonly`, `.catch`, `.prefault` and `.nonoptional` build a node around it,
+ * and `.pipe` and `.transform` hold it on either side of a pipe, so the walk goes inward through
+ * `innerType`, `in` and `out`. A check method such as `.refine` keeps the same node.
+ *
+ * @param node - The schema node to inspect.
+ * @returns True when a coercing boolean sits anywhere in the wrapped chain.
+ */
+function wrapsCoercedBoolean(node: CoercionNode | undefined): boolean {
+  if (node === undefined) return false
+  const def = node._zod.def
+  if (def.type === 'boolean' && def.coerce === true) return true
+  return (
+    wrapsCoercedBoolean(def.innerType) ||
+    wrapsCoercedBoolean(def.in) ||
+    wrapsCoercedBoolean(def.out)
+  )
+}
+
+/**
+ * Find the leaves built on `z.coerce.boolean()`.
+ *
+ * Environment values are strings, and that rule reads any non-empty string as `true`, so a leaf
+ * that means to turn a feature off with `'false'` or `'0'` turns it on instead. `z.stringbool()`
+ * is the rule that reads those words as written.
+ *
+ * @param schema - A schema produced by `defineEnv`.
+ * @returns The path of every affected leaf, in schema order.
+ */
+export function findCoercedBooleanLeaves<TShape extends EnvShape = EnvShape>(
+  schema: EnvSchema<TShape>
+): readonly string[] {
+  return Object.entries(schema.shape).flatMap(([namespace, namespaceSchema]) =>
+    Object.entries(namespaceSchema.shape)
+      .filter(([, leafSchema]) => wrapsCoercedBoolean(leafSchema))
+      .map(([leafKey]) => `${namespace}.${leafKey}`)
+  )
+}
+
 /**
  * Resolve the shared source-variable prefix of every declared namespace.
  *

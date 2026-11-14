@@ -158,7 +158,7 @@ describe('resolveNamespacePrefixes derivation', () => {
      * waive the rest of that prefix.
      */
     const schema = defineEnv({
-      otel: z.object({ enabled: z.coerce.boolean().default(false) }).meta({ open: true }),
+      otel: z.object({ enabled: z.stringbool().default(false) }).meta({ open: true }),
       database: z.object({ url: z.url() })
     })
 

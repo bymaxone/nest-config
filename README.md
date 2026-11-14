@@ -518,6 +518,50 @@ report.
 
 ---
 
+## ✅ Production Checklist
+
+Each item names what goes wrong and the fix. The sections linked from it hold the detail.
+
+- **No `.default()` on a secret.** A default manufactures a value when the variable is missing,
+  so a deploy that lost `AUTH_JWT_SECRET` boots with the placeholder instead of refusing. Leave
+  secrets required; keep `.default()` for settings that have a safe value.
+- **Set `strict: true`.** A variable that starts with a declared namespace prefix but names no
+  leaf (`AUTH_JWT_SECERT`) then fails the boot instead of being ignored. Read
+  [Strict mode and shared prefixes](#strict-mode-and-shared-prefixes) before enabling it.
+- **Report a failed rule with `.refine` or `ctx.issues.push`, not a `throw`.** A rule that throws
+  still fails the boot, but as one issue for the whole schema with its message withheld, and the
+  leaves after it are not reported. See [Failing fast](#failing-fast-is-the-security-property).
+- **The real environment wins over a `.env` file.** With Node's `--env-file` (measured on Node
+  24), a variable already set in the process environment is not replaced by the file, so a value
+  set by the orchestrator shadows a stale `.env` baked into an image. A blank `NAME=` line in the
+  file lands as the empty string when nothing else sets it.
+- **No secrets in a committed `.env`.** Commit `.env.example` with names and no values, and
+  supply secrets through the platform. Keeping the example honest is a test, shown under
+  [`resolveSourceNames(schema)`](#resolvesourcenamesschema).
+- **`onValidationError` has no timeout.** A hook that never settles holds the boot. Give the call
+  to your log sink its own timeout.
+- **Never log the root or a namespace.** The root prints a redacted marker under `util.inspect`,
+  but a JSON logger (`pino`, Nest's `ConsoleLogger` with `json: true`) prints every value, and so
+  does a namespace. Log leaf names, and use your logger's key-based redaction.
+- **`z.coerce.number()` turns `""` and `" "` into `0`.** A variable set to blank is present, not
+  missing. Where `0` is invalid, add `.min(1)` or a bound, or treat a blank as unset:
+
+  ```typescript
+  const unsetWhenBlank = (value: unknown): unknown =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value
+
+  const port = z.preprocess(unsetWhenBlank, z.coerce.number().int().min(1).max(65535).default(3000))
+  ```
+
+- **Use `z.stringbool()` for a flag.** `z.coerce.boolean()` reads `'false'` and `'0'` as `true`, so
+  the boot refuses it. Detection covers a `z.coerce.boolean()` leaf directly or under a wrapper
+  such as `.optional`, `.default` or `.pipe`; one inside a union, array or lazy schema isn't
+  detected, so use `z.stringbool()` there.
+- **Copy a binary leaf that must not change.** A `Buffer`, typed array or `DataView` in the
+  config is left unfrozen, so its bytes stay writable; copy it if it must not change.
+
+---
+
 ## 🧱 Tech Stack
 
 - **Runtime:** Node.js 24+

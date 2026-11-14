@@ -129,6 +129,74 @@ describe('formatIssueReport count agreement', () => {
   })
 })
 
+describe('formatIssueReport with a very long variable name', () => {
+  /** An issue whose variable is `length` characters long, beside a short one. */
+  const issuesWithName = (length: number): ConfigIssue[] => [
+    {
+      path: 'feature.long',
+      variable: 'V'.repeat(length),
+      code: ConfigErrorCode.MISSING,
+      message: 'missing required value'
+    },
+    {
+      path: 'feature.short',
+      variable: 'FEATURE_SHORT',
+      code: ConfigErrorCode.MISSING,
+      message: 'missing required value'
+    }
+  ]
+
+  it('does not pad every line to the width of a 128 KiB name', () => {
+    /**
+     * Report size.
+     *
+     * The column is capped, so one pathological name costs its own length once and the other
+     * lines stay padded to the cap. Padding each line to the longest name would multiply it by the
+     * issue count.
+     */
+    const name = 128 * 1024
+    const lines = formatIssueReport(issuesWithName(name)).split('\n')
+
+    expect(lines[3]).toBe(`  ${'FEATURE_SHORT'.padEnd(66)}missing required value`)
+    expect(lines.join('\n').length).toBeLessThan(name + 500)
+  })
+
+  it('keeps a gutter between a name over the cap and its message', () => {
+    /** The over-long name is listed whole, and its message still starts after two spaces. */
+    const lines = formatIssueReport(issuesWithName(128 * 1024)).split('\n')
+
+    expect(lines[2]).toBe(`  ${'V'.repeat(128 * 1024)}  missing required value`)
+  })
+
+  it.each([
+    [20, 22],
+    [63, 65],
+    [64, 66],
+    [65, 66],
+    [66, 66],
+    [200, 66]
+  ])(
+    'pads the other lines of a report with a %i-character name to a column of %i',
+    (length, column) => {
+      /** The column grows with the longest name up to 64 characters plus the gutter, then stops. */
+      const lines = formatIssueReport(issuesWithName(length)).split('\n')
+
+      expect(lines[3]).toBe(`  ${'FEATURE_SHORT'.padEnd(column)}missing required value`)
+    }
+  )
+
+  it.each([
+    [64, 2],
+    [65, 2],
+    [100, 2]
+  ])('separates a %i-character name from its message by %i spaces', (length, gutter) => {
+    /** A name at or over the cap still ends in the gutter, never against its message. */
+    const line = formatIssueReport(issuesWithName(length)).split('\n')[2] as string
+
+    expect(line).toBe(`  ${'V'.repeat(length)}${' '.repeat(gutter)}missing required value`)
+  })
+})
+
 describe('formatIssueReport value-free guarantee', () => {
   it('never echoes a sentinel secret value into the report or the error', () => {
     /**

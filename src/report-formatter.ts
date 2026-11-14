@@ -22,6 +22,7 @@ interface ReportableIssue {
 
 const REPORT_INDENT = '  '
 const MIN_VARIABLE_COLUMN = 20
+const MAX_VARIABLE_COLUMN = 64
 const VARIABLE_GUTTER = 2
 const REPORT_HEADER = 'environment validation failed'
 const REPORT_FOOTER = 'Fix the variables above and restart the process.'
@@ -51,8 +52,8 @@ function nameOf(issue: ReportableIssue): string {
 /**
  * Compute the padded width of the variable-name column.
  *
- * Grows to fit the longest variable name but never falls below a minimum, so a
- * gutter always separates the name from the constraint description.
+ * Grows to fit the longest variable name, between a minimum and a maximum. The maximum keeps one
+ * very long name from padding every other line to its length; the name is still listed whole.
  *
  * @param issues - The issues to be rendered.
  * @returns The column width, in characters, including the trailing gutter.
@@ -64,7 +65,7 @@ function computeColumnWidth(issues: ReadonlyArray<ReportableIssue>): number {
   for (const issue of issues) {
     longest = Math.max(longest, nameOf(issue).length)
   }
-  return longest + VARIABLE_GUTTER
+  return Math.min(longest, MAX_VARIABLE_COLUMN) + VARIABLE_GUTTER
 }
 
 /**
@@ -72,10 +73,13 @@ function computeColumnWidth(issues: ReadonlyArray<ReportableIssue>): number {
  *
  * @param issue - The issue to render.
  * @param columnWidth - Shared variable-column width for alignment.
- * @returns The indented, padded `variable + message` line.
+ * @returns The indented, padded `variable + message` line. A name wider than the column is not
+ * cut, and still ends in the gutter.
  */
 function formatIssueLine(issue: ReportableIssue, columnWidth: number): string {
-  return `${REPORT_INDENT}${nameOf(issue).padEnd(columnWidth)}${issue.message}`
+  const name = nameOf(issue)
+  const padded = name.padEnd(Math.max(columnWidth, name.length + VARIABLE_GUTTER))
+  return `${REPORT_INDENT}${padded}${issue.message}`
 }
 
 /**

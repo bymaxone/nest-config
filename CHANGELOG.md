@@ -11,6 +11,80 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.7] - 2026-11-14
+
+### Fixed
+
+- **A schema rule that throws is one issue of the aggregated error.** A `.transform` that calls
+  `JSON.parse`, or a `.refine` that throws, used to escape the validator as the raw exception, with
+  the received value in its message, outside the report and without running `onValidationError`. It is
+  now one `BYMAX_CONFIG_INVALID` issue for the whole schema, with an empty `path` and the variable
+  `(schema)`: `a rule threw SyntaxError; its message is withheld because it can carry the value`. Only
+  the class name of an `Error` is named, and only when it is plain code. The hook runs, the override
+  and unknown-key issues of the same boot are still reported, and the leaves after the throw are not.
+
+  #### Apply to a derived backend
+
+  A boot that failed with a raw `SyntaxError` or `TypeError` from a rule now fails with a
+  `BymaxConfigValidationError`: update a `catch` that matched the raw class, and expect
+  `onValidationError` to run for it. Report a failed rule with `.refine` or `ctx.issues.push`, which
+  names the leaf, instead of throwing. A test that expected `createTestConfig` to rethrow a rule's
+  exception now receives the one withheld issue.
+
+- **A `Buffer`, a typed array or a `DataView` leaf no longer crashes the boot.** `deepFreeze` threw
+  `Cannot freeze array buffer views with elements` on a decoded key such as
+  `z.string().transform((s) => Buffer.from(s, 'base64'))`, as a raw `TypeError` outside the report.
+  Such a view is now returned as it is, so its bytes stay writable, and the object that holds it is
+  frozen. Any other value whose freezing throws is reported as one withheld issue, like a throwing
+  rule: `freezing the validated configuration threw TypeError; its message is withheld because it can
+carry the value`.
+
+  #### Apply to a derived backend
+
+  A schema that decodes a secret to a `Buffer` now boots. Copy the view where it must not change. A
+  boot that crashed with the raw `TypeError` now reports one `BymaxConfigValidationError`, and
+  `onValidationError` runs.
+
+- **One very long variable name no longer pads every line of the report.** The variable column grows
+  with the longest name up to 64 characters, then stops; a longer name is listed whole and still ends
+  in the two-space gutter. A 128 KiB name beside a short one used to make every other line as long.
+  Nothing to apply in a derived backend.
+
+### Changed
+
+- **A leaf built on `z.coerce.boolean()` is refused at boot.** That rule is `Boolean(value)`, so
+  `'false'` and `'0'` parse to `true` and a flag can never be turned off. The boot now reports each such
+  leaf, directly or under a wrapper such as `.optional`, `.default`, `.pipe` or `.transform`, as one
+  `BYMAX_CONFIG_INVALID` issue that names the leaf: `uses z.coerce.boolean(), where 'false' parses to
+true; use z.stringbool()`. `z.coerce.number()` is not refused; the README's Production Checklist
+  covers its blank-string trap.
+
+  #### Apply to a derived backend
+
+  Search the schemas for `z.coerce.boolean()` and replace it with `z.stringbool()`, which reads
+  `'false'` and `'0'` as `false`; a flag that relied on `'false'` meaning `true` changes value. A
+  `z.coerce.boolean()` inside a union, array or lazy schema is not detected, so use `z.stringbool()`
+  there too. Fixtures in tests that used the refused rule need the same replacement.
+
+- **The raw configuration root prints `[BymaxConfig: values redacted]` under `util.inspect`.** It
+  carries a non-enumerable property keyed by `util.inspect.custom`, so `console.log(config)`,
+  `util.format` and Nest's text `ConsoleLogger` show no value, whether the root is injected through
+  `BYMAX_CONFIG` or returned by `ConfigService.getAll()`. `Object.keys`, spread, `JSON.stringify` and
+  equality are unchanged. A JSON logger (`pino`, Nest's `ConsoleLogger` with `json: true`), a namespace
+  printed directly and `JSON.stringify` of the root still show their values.
+
+  #### Apply to a derived backend
+
+  Code that logged the root to read it now sees the marker: read leaves through `ConfigService.get`.
+  Never log the root or a namespace to a JSON logger; use its key-based redaction for anything that can
+  reach it.
+
+- **The README has a Production Checklist.** One section after the Security Table lists the ways a
+  production boot goes wrong and the fix for each. Documentation only.
+- **Tooling only:** `release.yml` is the org npm-release template, so the job that holds the publish
+  credential installs nothing and runs no package script, and the gates run against the tarball that is
+  published; the budget for the internal bundle is 4.73 KiB brotli.
+
 ## [1.2.6] - 2026-11-13
 
 ### Changed
@@ -605,4 +679,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.4]: https://github.com/bymaxone/nest-config/compare/v1.2.3...v1.2.4
 [1.2.5]: https://github.com/bymaxone/nest-config/compare/v1.2.4...v1.2.5
 [1.2.6]: https://github.com/bymaxone/nest-config/compare/v1.2.5...v1.2.6
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.6...HEAD
+[1.2.7]: https://github.com/bymaxone/nest-config/compare/v1.2.6...v1.2.7
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.7...HEAD

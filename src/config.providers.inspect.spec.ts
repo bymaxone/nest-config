@@ -2,10 +2,10 @@
  * Unit and integration tests for how the raw configuration root prints.
  *
  * Layer: unit and integration.
- * Goal: pin that `util.inspect` of the validated root, which is what `console.log` and most
- * loggers use, prints a redacted marker instead of the values; that the marker is a
+ * Goal: pin that `util.inspect` of the validated root, which is what `console.log`, `util.format`
+ * and Nest's text `ConsoleLogger` use, prints a redacted marker instead of the values; that the marker is a
  * non-enumerable property, so enumeration, spread and equality exclude it; and
- * what it does not cover (`JSON.stringify`, a namespace printed directly).
+ * what it does not cover (`JSON.stringify`, a JSON logger, a namespace printed directly).
  * Mocks: none.
  */
 
@@ -13,6 +13,7 @@ import { Console } from 'node:console'
 import { Writable } from 'node:stream'
 import { format, inspect } from 'node:util'
 
+import { ConsoleLogger } from '@nestjs/common'
 import { Test } from '@nestjs/testing'
 import { z } from 'zod'
 
@@ -80,6 +81,33 @@ describe('the validated configuration root when it is printed', () => {
       format('%o %O %s %j', config, config, config, config.server)
     ]).not.toEqual(expect.arrayContaining([expect.stringContaining(SECRET)]))
     expect(`${String(config)}`).not.toContain(SECRET)
+  })
+
+  it("shows no value through Nest's ConsoleLogger in text mode, and shows them in json mode", () => {
+    /**
+     * Nest's default logger renders objects with util.inspect, so the marker applies; with
+     * `json: true` it serializes the enumerable keys, which a JSON logger such as pino also does,
+     * so the values are printed. The second half pins the documented limit.
+     */
+    const config = createValidatedConfig({ schema, source })
+    const written: string[] = []
+    const write = jest.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
+      written.push(String(chunk))
+      return true
+    })
+
+    try {
+      new ConsoleLogger('probe', { colors: false }).log({ config })
+      const text = written.join('')
+      written.length = 0
+      new ConsoleLogger('probe', { colors: false, json: true }).log({ config })
+
+      expect(text).toContain('[BymaxConfig: values redacted]')
+      expect(text).not.toContain(SECRET)
+      expect(written.join('')).toContain(SECRET)
+    } finally {
+      write.mockRestore()
+    }
   })
 
   it('keeps the marker out of every enumeration of the root', () => {

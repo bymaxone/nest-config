@@ -27,12 +27,14 @@ const REDACTED_ROOT = '[BymaxConfig: values redacted]'
 /**
  * Make the configuration root print a marker instead of its values.
  *
- * `console.log`, `util.format` and most loggers render an object through `util.inspect`, and the
- * root holds every secret the application declared. The marker is keyed by
+ * `console.log`, `util.format` and Nest's text `ConsoleLogger` render an object through
+ * `util.inspect`, and the root holds every secret the application declared. A JSON logger (pino,
+ * Nest's `ConsoleLogger` with `json: true`) serializes the enumerable keys instead and prints the
+ * values; the marker does not reach it. The marker is keyed by
  * `util.inspect.custom` and defined with the defaults of `Object.defineProperty`: not
  * enumerable, not writable, not configurable. `Object.keys`, spread, `JSON.stringify` and
- * equality therefore exclude it. It covers the root only: `JSON.stringify` and a namespace
- * printed directly show their values. It is defined before the freeze.
+ * equality therefore exclude it. It covers the root only: a namespace printed directly shows
+ * its values, as does anything that serializes the root to JSON. It is defined before the freeze.
  *
  * @param root - The validated output, not yet frozen.
  * @returns The same reference.

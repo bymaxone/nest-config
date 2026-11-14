@@ -456,11 +456,15 @@ rather than as an empty object. Reading on purpose is unaffected: `get`, `has` a
 `getAll` escape hatch return the real values.
 
 The raw root, whether injected through `BYMAX_CONFIG` or returned by `getAll`, prints
-`[BymaxConfig: values redacted]` under `util.inspect`, so `console.log(config)`, `util.format`
-and a logger that renders its arguments show no value. The marker is a non-enumerable property,
-so `Object.keys`, spread and equality do not include it. It stops there. `JSON.stringify` of the
-root, a namespace printed directly (`console.log(config.auth)`) and a leaf you log yourself
-show their values, so keep them out of log lines.
+`[BymaxConfig: values redacted]` under `util.inspect`. Measured: `console.log(config)`,
+`util.format` and Nest's default text `ConsoleLogger` show no value. The marker is a
+non-enumerable property, so `Object.keys`, spread and equality do not include it.
+
+It stops there. A JSON logger serializes the enumerable keys, so `pino`
+(`logger.info({ config })`) and Nest's `ConsoleLogger` with `json: true` print every value, as do
+`JSON.stringify` of the root, a namespace printed directly (`console.log(config.auth)`) and a
+leaf you log yourself. Never log the root or a namespace; log leaf names, and use your logger's
+key-based redaction for anything that can reach it.
 
 ### Failing fast is the security property
 

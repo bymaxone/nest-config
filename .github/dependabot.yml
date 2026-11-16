@@ -106,3 +106,7 @@ updates:
       bymax-agents-sync:
         patterns:
           - 'bymaxone/.github/.github/workflows/agents-sync.yml'
+    ignore:
+      # A new major is a deliberate migration, never an automatic bump.
+      - dependency-name: 'bymaxone/.github*'
+        update-types: ['version-update:semver-major']

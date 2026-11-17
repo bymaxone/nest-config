@@ -34,3 +34,7 @@ src/check-double-assertions.spec.ts
 # The link check of the published-surface gate is the family template's file, kept byte-identical
 # to the template; the repository's prettier config would reformat it.
 scripts/published-surface-links.mjs
+
+# The mutation-scope spec is the family template's file, kept byte-identical to the template; the
+# library's own facts live in src/stryker-scope.data.ts, which is formatted normally.
+src/stryker-scope.spec.ts

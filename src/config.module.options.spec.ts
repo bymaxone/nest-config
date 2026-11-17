@@ -118,14 +118,17 @@ describe('registration options read as defaults', () => {
     }
   )
 
-  it('forRoot calls an onValidationError hook that is set, with the issues', async () => {
+  it('forRoot calls an onValidationError hook that is set once, with the issues it throws', async () => {
     const hook = jest.fn()
 
-    await expect(
-      boot(BymaxConfigModule.forRoot(options({ schema, source: {}, onValidationError: hook })))
-    ).rejects.toBeInstanceOf(BymaxConfigValidationError)
+    const error = await boot(
+      BymaxConfigModule.forRoot(options({ schema, source: {}, onValidationError: hook }))
+    ).catch((thrown: unknown) => thrown)
 
+    expect(error).toBeInstanceOf(BymaxConfigValidationError)
+    expect((error as BymaxConfigValidationError).issues).toHaveLength(1)
     expect(hook).toHaveBeenCalledTimes(1)
+    expect(hook).toHaveBeenCalledWith((error as BymaxConfigValidationError).issues)
   })
 
   it.each([

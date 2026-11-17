@@ -16,7 +16,7 @@
  * @layer Utility
  */
 
-import { resolveSourceNames } from '@bymax-one/nest-config/internal'
+import { assertNamespaces, resolveSourceNames } from '@bymax-one/nest-config/internal'
 import type { EnvLeaf, EnvSchema, EnvShape } from '@bymax-one/nest-config/internal'
 
 /** A single filler character, repeated to build clearly-placeholder strings. */
@@ -440,6 +440,7 @@ function synthesizeLeaf(leaf: EnvLeaf): string | undefined {
 export function synthesizePlaceholderSource<TShape extends EnvShape = EnvShape>(
   schema: EnvSchema<TShape>
 ): Record<string, string> {
+  assertNamespaces(schema)
   const valueByPath = new Map<string, string>()
   for (const [namespace, namespaceSchema] of Object.entries(schema.shape)) {
     for (const [leafKey, leafSchema] of Object.entries(namespaceSchema.shape)) {

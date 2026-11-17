@@ -12,7 +12,6 @@
 
 import {
   assertDistinctVariables,
-  assertNamespaces,
   BymaxConfigValidationError,
   ConfigErrorCode,
   createValidatedConfig,
@@ -211,7 +210,6 @@ export function prepareTestConfig<TShape extends EnvShape>(
   schema: EnvSchema<TShape>,
   overrides?: ConfigOverrides<TShape>
 ): { readonly source: Record<string, string>; readonly config: Readonly<EnvOutput<TShape>> } {
-  assertNamespaces(schema)
   const bindings = resolveSourceNames(schema)
   assertDistinctVariables(bindings)
   const unusable = unusableOverrideIssues(schema, bindings)

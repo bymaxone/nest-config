@@ -11,6 +11,7 @@
  * @layer Utility
  */
 
+import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
 import type { EnvNamespace, EnvSchema, EnvShape } from './types'
 
 /**
@@ -117,22 +118,32 @@ function deriveVariable(namespace: string, leafKey: string): string {
 }
 
 /**
- * Find the top-level keys of a schema that are not namespaces.
+ * Reject a schema that holds a top-level key which is not a namespace.
  *
- * A namespace is a Zod object whose `shape` the walk reads. The types allow nothing else at the
- * top level, so a key found here was written past them, and walking it would fail with a raw
- * `TypeError` rather than a report naming the key. The variable listed is the one the key itself
- * derives, the name its value would have been read from had it been a leaf.
+ * The types allow only `z.object` namespaces at the top level; a flat leaf reaches here only past
+ * them, and walking its missing `shape` would fail with a raw `TypeError`. Every offending key is
+ * reported, in declaration order, with the variable the key itself derives, so the operator sees a
+ * typed report that names it. Every walk of the schema starts here, so no caller reaches the shape
+ * of a key that has none.
  *
  * @param schema - A schema produced by `defineEnv`.
- * @returns One binding per offending key, in declaration order: its key and the derived variable.
+ * @throws {BymaxConfigValidationError} When any top-level key is not a namespace.
  */
-export function findNonNamespaces<TShape extends EnvShape = EnvShape>(
+export function assertNamespaces<TShape extends EnvShape = EnvShape>(
   schema: EnvSchema<TShape>
-): readonly SourceBinding[] {
-  return Object.entries(schema.shape as Record<string, { readonly shape?: unknown }>)
+): void {
+  const flat = Object.entries(schema.shape as Record<string, { readonly shape?: unknown }>)
     .filter(([, node]) => typeof node.shape !== 'object')
-    .map(([key]) => ({ path: key, variable: toScreamingSnake(key) }))
+    .map(([key]) => key)
+  if (flat.length === 0) return
+  throw new BymaxConfigValidationError(
+    flat.map((key) => ({
+      path: key,
+      variable: toScreamingSnake(key),
+      code: ConfigErrorCode.INVALID,
+      message: 'is not a namespace; declare it inside a z.object({ ... }) namespace'
+    }))
+  )
 }
 
 /**
@@ -165,6 +176,7 @@ export function findNonNamespaces<TShape extends EnvShape = EnvShape>(
 export function resolveSourceNames<TShape extends EnvShape = EnvShape>(
   schema: EnvSchema<TShape>
 ): readonly SourceBinding[] {
+  assertNamespaces(schema)
   return Object.entries(schema.shape).flatMap(([namespace, namespaceSchema]) =>
     Object.entries(namespaceSchema.shape).map(([leafKey, leafSchema]) => ({
       path: `${namespace}.${leafKey}`,

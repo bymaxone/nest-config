@@ -215,7 +215,7 @@ describe('formatIssueReport value-free guarantee', () => {
         message: 'too short (expected: string, minimum 32 characters)',
         value: sentinel
       }
-    ] as unknown as ConfigIssue[]
+    ]
 
     const report = formatIssueReport(issues)
     const error = new BymaxConfigValidationError(issues)

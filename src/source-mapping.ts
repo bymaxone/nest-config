@@ -131,7 +131,7 @@ export function findNonNamespaces<TShape extends EnvShape = EnvShape>(
   schema: EnvSchema<TShape>
 ): readonly SourceBinding[] {
   return Object.entries(schema.shape as Record<string, { readonly shape?: unknown }>)
-    .filter(([, node]) => typeof node.shape !== 'object' || node.shape === null)
+    .filter(([, node]) => typeof node.shape !== 'object')
     .map(([key]) => ({ path: key, variable: toScreamingSnake(key) }))
 }
 

@@ -58,6 +58,7 @@
     "check:api": "node scripts/check-api-surface.mjs",
     "check:exports": "attw --pack . --profile strict",
     "check:file-length": "node scripts/check-file-length.mjs",
+    "check:double-assertions": "node scripts/check-double-assertions.mjs",
     "check:function-length": "node scripts/check-function-length.mjs",
     "check:lint-graph": "node scripts/check-lint-graph-rules.mjs",
     "check:mutants": "node scripts/check-mutation-directives.mjs",

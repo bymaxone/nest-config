@@ -4,6 +4,10 @@
     "reason": "Tests scripts/check-api-surface.mjs, a CI tool outside the mutate list, by spawning it on fixture directories. It imports nothing from src/, so no mutant of src/ can select it."
   },
   {
+    "file": "src/check-double-assertions.spec.ts",
+    "reason": "Tests scripts/check-double-assertions.mjs, a CI tool outside the mutate list, by running it on throwaway git repositories. It imports nothing from src/, so no mutant of src/ can select it."
+  },
+  {
     "file": "src/check-file-length.spec.ts",
     "reason": "Tests scripts/check-file-length.mjs, a CI tool outside the mutate list, by spawning it on throwaway git repositories. It imports nothing from src/, so no mutant of src/ can select it."
   },

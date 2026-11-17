@@ -32,7 +32,8 @@ as the GitHub Release body, so each released version needs a matching
 
   #### Apply to a derived backend
   - A host that passed `isGlobal` or `strict` as a number, a string such as `"false"`, or any other
-    non-boolean now fails at registration. Pass the boolean. In 1.2.11 only `false` scoped the module and
+    non-boolean now fails: at registration, or, for a `strict` that a `forRootAsync` factory returns,
+    when the options provider resolves. Pass the boolean. In 1.2.11 only `false` scoped the module and
     every other value registered it globally, so a value that was not `false` meant global; replace it
     with `true`, or omit the option. Only `true` made `strict` strict, so any other value meant not
     strict; replace it with `false`, or omit the option.

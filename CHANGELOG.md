@@ -15,6 +15,29 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.9] - 2026-11-17
+
+### Fixed
+
+- **`resolveSourceNames` refuses a top-level key that is not a namespace.** 1.2.8 made `validateEnv` and
+  `createTestConfig` report such a key, such as `defineEnv({ mode: z.string() })`, as one
+  `BymaxConfigValidationError`, but the exported `resolveSourceNames`, and the testing helper that builds
+  a placeholder source, still failed with a raw `TypeError: Cannot convert undefined or null to object`
+  from the schema walk. Both now throw the same typed error, with the same issues, before they read the
+  shape of a key that has none. The key is still named in the `BYMAX_CONFIG_INVALID` issue.
+
+  #### Apply to a derived backend
+
+  A call to `resolveSourceNames` on such a schema now throws a `BymaxConfigValidationError` instead of a
+  raw `TypeError`: wrap the leaf in a `z.object` namespace, as
+  `defineEnv({ app: z.object({ mode: z.string() }) })`, and update a `catch` that matched the raw
+  `TypeError`. A schema the types accept is unaffected.
+
+### Changed
+
+- **Tooling only:** the function-length check is the family template, which also measures setup and
+  teardown hooks.
+
 ## [1.2.8] - 2026-11-17
 
 ### Fixed
@@ -711,4 +734,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.6]: https://github.com/bymaxone/nest-config/compare/v1.2.5...v1.2.6
 [1.2.7]: https://github.com/bymaxone/nest-config/compare/v1.2.6...v1.2.7
 [1.2.8]: https://github.com/bymaxone/nest-config/compare/v1.2.7...v1.2.8
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.8...HEAD
+[1.2.9]: https://github.com/bymaxone/nest-config/compare/v1.2.8...v1.2.9
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.9...HEAD

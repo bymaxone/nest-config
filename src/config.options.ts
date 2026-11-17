@@ -44,13 +44,14 @@ export interface BymaxConfigModuleOptions<TSchema extends EnvSchema = EnvSchema>
    * schema author's own `custom` message is passed through as written. It is
    * observability only and cannot suppress the failure: the validation error still
    * propagates when the hook throws or rejects, and the hook's error is attached to it
-   * as its non-enumerable `cause`.
+   * as its non-enumerable `cause`. `undefined` or `null` means no hook.
    */
-  readonly onValidationError?: (issues: ReadonlyArray<ConfigIssue>) => unknown
+  readonly onValidationError?: ((issues: ReadonlyArray<ConfigIssue>) => unknown) | null | undefined
 
   /**
    * When true, source variables that match a declared namespace prefix but no
-   * declared leaf produce `BYMAX_CONFIG_UNKNOWN_KEY` issues. Defaults to false.
+   * declared leaf produce `BYMAX_CONFIG_UNKNOWN_KEY` issues. Defaults to false, and so does
+   * `undefined` or `null`.
    *
    * The prefix is claimed whole, so a namespace sharing its prefix with another
    * program (`OTEL_` with an OpenTelemetry SDK, `REDIS_` with a compose file)
@@ -58,5 +59,5 @@ export interface BymaxConfigModuleOptions<TSchema extends EnvSchema = EnvSchema>
    * `meta({ open: true })` to waive the check for the rest of its prefix while
    * its own leaves stay bound and validated.
    */
-  readonly strict?: boolean
+  readonly strict?: boolean | null | undefined
 }

@@ -9,16 +9,17 @@
  */
 
 import { Module } from '@nestjs/common'
-import type { DynamicModule } from '@nestjs/common'
+import type { DynamicModule, Provider } from '@nestjs/common'
 
 import { ConfigurableModuleClass } from './config.module-definition'
 import type {
   BymaxConfigForRootAsyncOptions,
   BymaxConfigForRootOptions
 } from './config.module-definition'
+import type { BymaxConfigModuleOptions } from './config.options'
 import { bymaxConfigProvider } from './config.providers'
 import { ConfigService } from './config.service'
-import { BYMAX_CONFIG } from './config.tokens'
+import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 
 /**
  * Append items to a possibly-absent module-definition list.
@@ -53,25 +54,81 @@ function withoutNullish<TValues extends object>(values: TValues): Partial<TValue
 }
 
 /**
- * Read the synchronous registration options the module understands, by property access, so options
- * held by an object whose properties are accessors on its prototype (a class instance) are read
- * instead of lost to a copy of its own keys.
+ * Refuse a registration argument that is not an object.
+ *
+ * The message names the method and the type of what was passed, never the value: a primitive handed
+ * over by mistake can be a secret.
+ *
+ * @param options - What the host passed as the whole argument.
+ * @param method - The registration method, for the message.
+ * @throws {TypeError} When `options` is not an object.
+ */
+function assertOptionsObject(options: unknown, method: string): void {
+  if (typeof options === 'object' && options !== null) return
+  throw new TypeError(
+    `BymaxConfigModule.${method}: options must be an object, received ${options === null ? 'null' : typeof options}`
+  )
+}
+
+/**
+ * Read the options the module hands to the options token, by property access, so options held by an
+ * object whose properties are accessors on its prototype (a class instance) are read instead of
+ * lost to a copy of its own keys. Whatever else the object holds stays behind.
  *
  * `source` is the one option whose undefined or null is not a default: a `source` key that is
  * present is passed on as it is, so the provider refuses it instead of falling back to the process
  * environment, which would validate the wrong environment after a failed load.
  *
+ * @param options - The options a host passed, or its factory returned.
+ * @param method - The registration method, for the message of a refused argument.
+ * @returns A plain object holding the options the module reads.
+ */
+function readModuleOptions(
+  options: BymaxConfigModuleOptions,
+  method: string
+): BymaxConfigModuleOptions {
+  assertOptionsObject(options, method)
+  const { schema, source, onValidationError, strict } = options
+  const read: BymaxConfigModuleOptions = {
+    schema,
+    ...withoutNullish({ onValidationError, strict })
+  }
+  // The value decides first: options held by a Proxy with only a get trap answer `in` with nothing.
+  // The key is asked about only when its value is undefined, to tell a key set to undefined (refused)
+  // from an absent one (the process environment).
+  if (source !== undefined || 'source' in options) Object.assign(read, { source })
+  return read
+}
+
+/**
+ * Read the synchronous registration options the module understands: the options of the token and
+ * the `isGlobal` extra.
+ *
  * @param options - The options a host passed to `forRoot`.
  * @returns A plain object the builder can copy.
  */
 function readRegistration(options: BymaxConfigForRootOptions): BymaxConfigForRootOptions {
-  const { schema, onValidationError, strict, isGlobal } = options
-  const registration: BymaxConfigForRootOptions = {
-    schema,
-    ...withoutNullish({ onValidationError, strict, isGlobal })
-  }
-  if ('source' in options) Object.assign(registration, { source: options.source })
-  return registration
+  const read = readModuleOptions(options, 'forRoot')
+  const { isGlobal } = options
+  return { ...read, ...withoutNullish({ isGlobal }) }
+}
+
+/**
+ * Wrap the factory of the options provider so what it resolves passes through the same reader as the
+ * options of `forRoot`, whichever of a factory, a class or an existing provider produced it.
+ *
+ * @param provider - A provider of a generated definition.
+ * @returns The provider, with the options provider's factory wrapped.
+ */
+function readOptionsOf(provider: Provider): Provider {
+  if (Reflect.get(provider, 'provide') !== BYMAX_CONFIG_OPTIONS) return provider
+  const factory = Reflect.get(provider, 'useFactory')
+  if (typeof factory !== 'function') return provider
+  return {
+    ...provider,
+    useFactory: async (...args: unknown[]) =>
+      readModuleOptions((await factory(...args)) as BymaxConfigModuleOptions, 'forRootAsync')
+  } as Provider
 }
 
 /**
@@ -83,6 +140,7 @@ function readRegistration(options: BymaxConfigForRootOptions): BymaxConfigForRoo
 function readAsyncRegistration(
   options: BymaxConfigForRootAsyncOptions
 ): BymaxConfigForRootAsyncOptions {
+  assertOptionsObject(options, 'forRootAsync')
   const {
     useFactory,
     useClass,
@@ -153,7 +211,11 @@ export class BymaxConfigModule extends ConfigurableModuleClass {
   private static withConfigProvider(definition: DynamicModule): DynamicModule {
     return {
       ...definition,
-      providers: appendTo(definition.providers, bymaxConfigProvider, ConfigService),
+      providers: appendTo(
+        definition.providers?.map(readOptionsOf),
+        bymaxConfigProvider,
+        ConfigService
+      ),
       exports: appendTo(definition.exports, BYMAX_CONFIG, ConfigService)
     }
   }

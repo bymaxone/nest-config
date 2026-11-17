@@ -28,12 +28,13 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // when the artifact shrinks.
 //
 // Calibration history (newest first):
-//   - The internal subpath measures 5.01 KiB brotli (5132 bytes): the validation engine with its
+//   - The internal subpath measures 5.22 KiB brotli (5341 bytes): the validation engine with its
 //     value-free reporting of a throwing rule, its refusal of `z.coerce.boolean()` and of a
 //     top-level key that is not a namespace, its capped report column, the redacted print and
 //     JSON serialization of the configuration root, and the module's by-property-access read of
-//     its registration options. The budget is that measurement plus a few dozen bytes, 5.04 KiB,
-//     so the next growth of the subpath is looked at, not absorbed.
+//     its registration options, including the refusal of an argument that is not an object and the
+//     same read of what an asynchronous factory returns. The budget is that measurement plus a few
+//     dozen bytes, 5.25 KiB, so the next growth of the subpath is looked at, not absorbed.
 //   - The internal subpath carries nearly all of the code, so it has its own budget. Measured
 //     after the build strips the comments: 4.13 KiB brotli (4226 bytes). The budget is that
 //     measurement plus about 11 %, 4.6 KiB.
@@ -53,7 +54,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 //     real public API lands and the built artifact stabilizes.
 const BUDGETS = [
   { name: 'root (schema, module, service)', path: 'dist/index.mjs', brotli: 5.25 * 1024 },
-  { name: 'internal (validation engine)', path: 'dist/internal/index.mjs', brotli: 5.04 * 1024 },
+  { name: 'internal (validation engine)', path: 'dist/internal/index.mjs', brotli: 5.25 * 1024 },
   { name: 'testing (test doubles)', path: 'dist/testing/index.mjs', brotli: 7 * 1024 }
 ]
 

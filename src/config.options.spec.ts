@@ -73,11 +73,11 @@ describe('BymaxConfigModuleOptions', () => {
     type Cases = [
       Expect<Equal<Options['schema'], typeof schema>>,
       Expect<Equal<Options['source'], Record<string, string | undefined> | undefined>>,
-      Expect<Equal<Options['strict'], boolean | undefined>>,
+      Expect<Equal<Options['strict'], boolean | null | undefined>>,
       Expect<
         Equal<
           Options['onValidationError'],
-          ((issues: ReadonlyArray<ConfigIssue>) => unknown) | undefined
+          ((issues: ReadonlyArray<ConfigIssue>) => unknown) | null | undefined
         >
       >
     ]

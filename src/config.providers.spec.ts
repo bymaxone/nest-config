@@ -177,6 +177,17 @@ describe('the BYMAX_CONFIG provider factory and the validation hook', () => {
     expect(error.cause).toBeUndefined()
   })
 
+  it('treats a hook that is null as none: the validation error carries no swallowed cause', async () => {
+    /**
+     * The option types accept null for the hook, as the runtime does. Calling null would throw
+     * a TypeError that the hook guard swallows into the error's cause, so a null hook must be
+     * skipped like an absent one.
+     */
+    const error = await rejection({ schema, source: {}, onValidationError: null })
+
+    expect(error.cause).toBeUndefined()
+  })
+
   it('waits for an asynchronous hook to finish before the boot fails', async () => {
     /**
      * The hook's work belongs to the boot path. An asynchronous hook that ships the

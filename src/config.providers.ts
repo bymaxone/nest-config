@@ -66,7 +66,7 @@ async function reportIssues(
   hook: BymaxConfigModuleOptions['onValidationError'],
   error: BymaxConfigValidationError
 ): Promise<void> {
-  if (hook === undefined) return
+  if (hook === undefined || hook === null) return
   try {
     await hook(error.issues)
   } catch (hookError) {

@@ -20,3 +20,8 @@ scripts/function-length-key.mjs
 src/check-function-length.spec.ts
 src/check-function-length.baseline.spec.ts
 src/check-function-length.key.spec.ts
+
+# The spec-header check and its spec are the family template's files, kept byte-identical to
+# bymaxone/.github's copy: reformatting here would make every later sync a diff.
+scripts/check-spec-headers.mjs
+src/check-spec-headers.spec.ts

@@ -254,12 +254,12 @@ once one of that namespace's leaves has failed, so such a rule appears once the 
 
 `BymaxConfigModuleOptions`:
 
-| Field               | Type                                              | Required | Notes                                                                                                                                                                                                                            |
-| ------------------- | ------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `schema`            | `EnvSchema`                                       | yes      | Produced by `defineEnv`.                                                                                                                                                                                                         |
-| `source`            | `Record<string, string \| undefined>`             | no       | Defaults to `process.env` when the key is omitted; a key present with the value `undefined` or `null` throws at boot. Injectable for tests.                                                                                      |
-| `onValidationError` | `(issues: ReadonlyArray<ConfigIssue>) => unknown` | no       | Observability hook invoked before the fail-fast throw; a promise it returns is awaited. Cannot suppress the failure.                                                                                                             |
-| `strict`            | `boolean`                                         | no       | When true, source variables matching a namespace prefix but no declared leaf raise `BYMAX_CONFIG_UNKNOWN_KEY`. Defaults to `false`. Read [Strict mode and shared prefixes](#strict-mode-and-shared-prefixes) before enabling it. |
+| Field               | Type                                                        | Required | Notes                                                                                                                                                                                                                                                               |
+| ------------------- | ----------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema`            | `EnvSchema`                                                 | yes      | Produced by `defineEnv`.                                                                                                                                                                                                                                            |
+| `source`            | `Record<string, string \| undefined>`                       | no       | Defaults to `process.env` when the key is omitted; a key present with the value `undefined` or `null` throws at boot. Injectable for tests.                                                                                                                         |
+| `onValidationError` | `((issues: ReadonlyArray<ConfigIssue>) => unknown) \| null` | no       | Observability hook invoked before the fail-fast throw; a promise it returns is awaited. Cannot suppress the failure. `undefined` or `null` means no hook.                                                                                                           |
+| `strict`            | `boolean \| null`                                           | no       | When true, source variables matching a namespace prefix but no declared leaf raise `BYMAX_CONFIG_UNKNOWN_KEY`. Defaults to `false`, and so does `undefined` or `null`. Read [Strict mode and shared prefixes](#strict-mode-and-shared-prefixes) before enabling it. |
 
 `forRootAsync` resolves the source through another provider, for example a
 secrets-manager client composed with `process.env`:
@@ -292,11 +292,20 @@ class ConfigOptionsFactory {
 BymaxConfigModule.forRootAsync({ useClass: ConfigOptionsFactory })
 ```
 
-`isGlobal` defaults to `true` and can be set to `false` through the standard
-extras when an application intentionally scopes configuration to a submodule. An optional option key set to
-`undefined` or `null` means its default; `source` is the exception, as its row in the options table says, because a source that failed to load must not become
-`process.env`. The options are read by property access, so an object whose options are accessors, such
-as a class instance, works like a literal.
+`isGlobal` defaults to `true`. Only `false` scopes the module to a submodule, through the standard
+extras: every other value registers it globally, `undefined` and `null` (the default) included.
+
+An optional option key set to `undefined` or `null` means its default. `source` is the exception, as its
+row in the options table says, because a source that failed to load must not become `process.env`.
+
+The options are read by property access, so an object whose options are accessors, such as a class
+instance, works like a literal. `forRoot` and `forRootAsync` hand the `BYMAX_CONFIG_OPTIONS` token only
+`schema`, `source`, `onValidationError` and `strict`, whichever of `forRoot`, `useFactory`, `useClass` or
+`useExisting` produced them; any other key is left behind.
+
+The options must be objects: the argument of `forRoot` and `forRootAsync`, and what an asynchronous
+provider resolves to. A primitive, `null`, a function or a class with static options throws a `TypeError`
+that names the method and the type received, never the value.
 
 #### Strict mode and shared prefixes
 

@@ -75,6 +75,16 @@ jobs:
           else
             pnpm check:function-length
           fi
+      - name: No double assertions beyond the frozen baseline
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          # Compared with the base branch's baseline so the one it carries cannot admit a new site.
+          if [ -n "$BASE_REF" ]; then
+            pnpm check:double-assertions --base "origin/$BASE_REF"
+          else
+            pnpm check:double-assertions
+          fi
       - name: Spec files open with a purpose and layer header
         env:
           BASE_REF: ${{ github.base_ref }}

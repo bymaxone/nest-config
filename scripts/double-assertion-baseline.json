@@ -1,0 +1,7 @@
+{
+  "files": {
+    "src/errors.spec.ts": 1,
+    "src/report-formatter.spec.ts": 1,
+    "src/testing/placeholder-synthesizer.ts": 1
+  }
+}

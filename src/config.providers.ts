@@ -12,6 +12,7 @@
 
 import { inspect } from 'node:util'
 
+import { Logger } from '@nestjs/common'
 import type { FactoryProvider } from '@nestjs/common'
 
 import type { BymaxConfigModuleOptions } from './config.options'
@@ -19,7 +20,22 @@ import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { deepFreeze } from './deep-freeze'
 import { toWithheldIssue, validateEnv } from './env-validator'
 import { BymaxConfigValidationError } from './errors'
+import type { ConfigIssue } from './errors'
 import type { EnvOutput, EnvSchema, EnvShape } from './types'
+
+/** The stable code that opens the log line written when the validation fails. */
+const VALIDATION_FAILED_EVENT = 'CONFIG_VALIDATION_FAILED'
+
+/** The logger the validation failure is written to, under the module's own context. */
+const logger = new Logger('BymaxConfig')
+
+/**
+ * The options the provider receives from the module: the module's reader has already dropped a hook
+ * that was undefined or null, so what is left is a function or absent.
+ */
+type ProvidedOptions = Omit<BymaxConfigModuleOptions, 'onValidationError'> & {
+  readonly onValidationError?: (issues: ReadonlyArray<ConfigIssue>) => unknown
+}
 
 /** What `util.inspect` prints for the configuration root, in place of its values. */
 const REDACTED_ROOT = '[BymaxConfig: values redacted]'
@@ -63,10 +79,10 @@ function redactRoot<T extends object>(root: T): T {
  * @param error - The validation error whose issues the hook receives.
  */
 async function reportIssues(
-  hook: BymaxConfigModuleOptions['onValidationError'],
+  hook: ProvidedOptions['onValidationError'],
   error: BymaxConfigValidationError
 ): Promise<void> {
-  if (hook === undefined || hook === null) return
+  if (hook === undefined) return
   try {
     await hook(error.issues)
   } catch (hookError) {
@@ -127,17 +143,21 @@ export function createValidatedConfig<TShape extends EnvShape>(
  * validation failure the hook runs and is awaited before the aggregated error is rethrown,
  * aborting module resolution before any consumer provider is instantiated.
  *
+ * On a validation failure it writes one log line, the stable code and the number of issues and
+ * never a value, before the hook runs.
+ *
  * @param options - The resolved module options (schema, source, hook, strict).
  * @returns The validated, deep-frozen configuration output.
  * @throws {BymaxConfigValidationError} When the source fails the schema.
  */
 async function provideValidatedConfig(
-  options: BymaxConfigModuleOptions
+  options: ProvidedOptions
 ): Promise<Readonly<EnvOutput<EnvShape>>> {
   try {
     return createValidatedConfig(options)
   } catch (error) {
     if (error instanceof BymaxConfigValidationError) {
+      logger.error(`[${VALIDATION_FAILED_EVENT}] issues=${error.issues.length}`)
       await reportIssues(options.onValidationError, error)
     }
     throw error

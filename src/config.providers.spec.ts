@@ -11,6 +11,7 @@
  * real environment values are never mutated.
  */
 
+import { Logger } from '@nestjs/common'
 import { z } from 'zod'
 
 import type { BymaxConfigModuleOptions } from './config.options'
@@ -177,17 +178,6 @@ describe('the BYMAX_CONFIG provider factory and the validation hook', () => {
     expect(error.cause).toBeUndefined()
   })
 
-  it('treats a hook that is null as none: the validation error carries no swallowed cause', async () => {
-    /**
-     * The option types accept null for the hook, as the runtime does. Calling null would throw
-     * a TypeError that the hook guard swallows into the error's cause, so a null hook must be
-     * skipped like an absent one.
-     */
-    const error = await rejection({ schema, source: {}, onValidationError: null })
-
-    expect(error.cause).toBeUndefined()
-  })
-
   it('waits for an asynchronous hook to finish before the boot fails', async () => {
     /**
      * The hook's work belongs to the boot path. An asynchronous hook that ships the
@@ -286,5 +276,69 @@ describe('the BYMAX_CONFIG provider factory and the validation hook', () => {
     await expect(outcome).rejects.toThrow(RangeError)
     await expect(outcome).rejects.not.toBeInstanceOf(BymaxConfigValidationError)
     expect(hook).not.toHaveBeenCalled()
+  })
+})
+
+describe('the log event written when the validation fails', () => {
+  const multi = defineEnv({
+    server: z.object({
+      port: z.coerce.number().int().min(1),
+      host: z.string().min(40),
+      name: z.string()
+    })
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  it('writes one line with the stable code and the number of issues, before the hook runs', async () => {
+    const order: string[] = []
+    const error = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {
+      order.push('log')
+    })
+    const hook = jest.fn(() => {
+      order.push('hook')
+    })
+
+    const thrown = await rejection({
+      schema: multi,
+      source: { SERVER_HOST: 'short' },
+      onValidationError: hook
+    })
+
+    expect(thrown.issues).toHaveLength(3)
+    expect(error).toHaveBeenCalledTimes(1)
+    expect(error).toHaveBeenCalledWith('[CONFIG_VALIDATION_FAILED] issues=3')
+    expect(order).toEqual(['log', 'hook'])
+  })
+
+  it('carries no value the source held', async () => {
+    const sentinel = 'SeNtInEl-log-8d1f'
+    const error = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
+
+    await rejection({ schema: multi, source: { SERVER_HOST: sentinel, SERVER_PORT: sentinel } })
+
+    expect(String(error.mock.calls[0]?.[0])).not.toContain(sentinel)
+  })
+
+  it('writes nothing when the source is valid', async () => {
+    const error = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
+
+    await provide({ schema, source: { SERVER_PORT: '8080' } })
+
+    expect(error).not.toHaveBeenCalled()
+  })
+
+  it('writes nothing for an error that is not a validation error', async () => {
+    const error = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
+    const failing = defineEnv({ server: z.object({ port: z.coerce.number() }) })
+    jest.spyOn(failing, 'shape', 'get').mockImplementation(() => {
+      throw new TypeError('boom')
+    })
+
+    await expect(provide({ schema: failing, source: {} })).rejects.toThrow('boom')
+
+    expect(error).not.toHaveBeenCalled()
   })
 })

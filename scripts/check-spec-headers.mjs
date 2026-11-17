@@ -6,12 +6,13 @@
  *
  * A reader opens a spec without the source beside it, and the header is the one place that says what the file covers
  * and where it sits. The comment comes before the first statement, carries a layer marker (`@layer transport` or
- * `Layer: transport.`), and says something besides the marker. The layer is a word of the file's own choosing: the
+ * `Layer: transport.`), and says something besides the marker: at least a few words, not punctuation. The `@layer`
+ * tag opens its line and carries its layer word on that line. A shebang line ahead of the comment is skipped. The layer is a word of the file's own choosing: the
  * specs name the layer they test in their own terms, so the gate checks that one is named and not which. Nothing
  * else enforces the header.
  *
- * A spec that already lacks a header is listed in the baseline, so the check can be red for what a change
- * introduces without failing on what the repository inherits. The list is kept honest from both sides:
+ * The check is red for what a change introduces; a spec without a header is allowed only while it is
+ * on the baseline. The list is kept honest from both sides:
  *
  * - a spec without a valid header that is not on the baseline fails (a new offender);
  * - a baselined spec that now has a valid header, or is no longer tracked, fails until its entry is removed,
@@ -37,8 +38,18 @@ import { pathToFileURL } from 'node:url'
 /** Shortest text, outside the layer marker, that can still state a purpose. */
 const MIN_PURPOSE_LENGTH = 20
 
-/** A `Layer: x` sentence or an `@layer x` tag; the first word after it names the layer. */
-const LAYER_MARKER = /(?:\bLayer:|@layer)\s+([A-Za-z0-9-]+)/i
+/** Fewest words, outside the layer marker, that can still state a purpose: punctuation is not a word. */
+const MIN_PURPOSE_WORDS = 3
+
+/**
+ * The layer marker of one comment line: an `@layer x` tag that opens the line, or a `Layer: x` sentence. The
+ * layer word sits on the same line as its marker, so a bare `@layer` never borrows the next line's first
+ * word, and a sentence that merely mentions the tag is not one.
+ */
+const LAYER_MARKER = /^\s*@layer[ \t]+([A-Za-z0-9-]+)|\bLayer:[ \t]+([A-Za-z0-9-]+)/i
+
+/** A shebang line ahead of the header, as an executable script carries. */
+const SHEBANG = /^#![^\n]*\n/
 
 /** Tracked files named like a spec: `*.spec.ts` and `*.spec.tsx`, and the end-to-end `*-spec.ts`. */
 const SPEC_FILE = /(?:\.spec\.tsx?|-spec\.tsx?)$/
@@ -50,21 +61,22 @@ const SPEC_FILE = /(?:\.spec\.tsx?|-spec\.tsx?)$/
  * @returns {string | null} The problem in one sentence, or `null`.
  */
 export function headerProblem(source) {
-  const text = source.trimStart() // trimStart also drops a byte-order mark
+  const text = source.trimStart().replace(SHEBANG, '').trimStart() // trimStart also drops a byte-order mark
   const end = text.startsWith('/**') ? text.indexOf('*/') : -1
   if (end === -1) return 'does not open with a /** */ block comment'
-  const body = text
+  const lines = text
     .slice(3, end)
     .split('\n')
     .map((line) => line.replace(/^\s*\*\s?/, ''))
+  const at = lines.findIndex((line) => LAYER_MARKER.test(line))
+  if (at === -1) return 'header has no layer marker (`@layer <layer>` or `Layer: <layer>.`)'
+  const purpose = lines
+    .map((line, i) => (i === at ? line.replace(LAYER_MARKER, '') : line))
     .join(' ')
-  const marker = LAYER_MARKER.exec(body)
-  if (marker === null) return 'header has no layer marker (`@layer <layer>` or `Layer: <layer>.`)'
-  const purpose = body
-    .replace(LAYER_MARKER, '')
     .replace(/@fileoverview/gi, '')
     .trim()
-  if (purpose.length < MIN_PURPOSE_LENGTH)
+  const words = purpose.match(/[\p{L}\p{N}]+/gu) ?? []
+  if (purpose.length < MIN_PURPOSE_LENGTH || words.length < MIN_PURPOSE_WORDS)
     return 'header states a layer but not what the file tests'
   return null
 }

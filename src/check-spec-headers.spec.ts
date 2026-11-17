@@ -1,18 +1,18 @@
 /**
- * Pins `scripts/check-spec-headers.mjs`, the gate that makes every spec open with a block comment
+ * @fileoverview Pins `scripts/check-spec-headers.mjs`, the gate that makes every spec open with a block comment
  * stating a purpose and a layer. It is plain Node, so each case runs it the way CI does, as a child
  * process against a throwaway git repository whose tracked files are the specs under test, and asserts
  * the exit code and the printed problems.
  *
- * Layer: repository tooling, tests.
+ * @layer tests
  */
 import { execFileSync, spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 
 const SCRIPT = resolve(__dirname, '..', 'scripts', 'check-spec-headers.mjs')
-const SHIPPED_BASELINE = resolve(__dirname, '..', 'scripts', 'spec-header-baseline.json')
+const REPO_ROOT = resolve(__dirname, '..')
 
 interface Result {
   readonly status: number | null
@@ -87,6 +87,44 @@ describe('check-spec-headers', () => {
       }
     })
 
+    // Scenario: a layer marker with a purpose line that is only punctuation, or only filler. Expected: it
+    // fails as a header that names a layer and not what the file tests. Why: the purpose is the point of the
+    // header, and a run of dots or dashes is as long as a sentence without saying one.
+    it('refuses a purpose line that is only punctuation', () => {
+      for (const filler of ['...........................', '--------------------------', '* * * * * * * * * * * * *']) {
+        expect(problemOf(`/**\n * ${filler}\n * @layer transport\n */\n`)).toContain(
+          'states a layer but not what the file tests'
+        )
+      }
+    })
+
+    // Scenario: a bare `@layer` tag whose line has no value, with prose on the next line. Expected: it fails
+    // as a header with no layer marker. Why: the first word of the next line is not the layer, and joining
+    // the lines read it as one.
+    it('refuses a bare @layer tag, even when prose follows on the next line', () => {
+      expect(
+        problemOf('/**\n * What the widget spec covers in this file.\n * @layer\n * Further detail follows.\n */\n')
+      ).toContain('header has no layer marker')
+    })
+
+    // Scenario: a sentence that mentions the `@layer` tag without being one. Expected: it fails as a header
+    // with no layer marker. Why: the tag names the layer only when it opens its own line.
+    it('refuses a prose mention of @layer in the body as the marker', () => {
+      expect(
+        problemOf('/**\n * The widget spec covers what the @layer tag means in practice.\n */\n')
+      ).toContain('header has no layer marker')
+    })
+
+    // Scenario: an executable script's shebang line ahead of a valid header. Expected: it passes, and the same
+    // file without the header still fails. Why: the shebang is not part of the comment, so a header below it is
+    // still the first thing a reader sees; it is skipped, not a reason to refuse.
+    it('reads the header below a shebang line', () => {
+      expect(problemOf(`#!/usr/bin/env node\n${GOOD}`)).toBeNull()
+      expect(problemOf(`#!/usr/bin/env node\n${HEADERLESS}`)).toContain(
+        'does not open with a /** */ block comment'
+      )
+    })
+
     // Scenario: a spec that opens with code, with a line comment, and with a plain block comment.
     // Expected: each fails, saying it does not open with a JSDoc block. Why: the header is the first
     // thing a reader sees, and only a JSDoc block is read as one.
@@ -141,17 +179,25 @@ describe('check-spec-headers', () => {
   })
 
   describe('the baseline', () => {
-    // Scenario: the baseline the repository ships. Expected: it lists no file. Why: every tracked spec
-    // must have a valid header, so a spec without one is a new offender and fails.
-    it('ships empty, so a spec without a header fails', () => {
-      const shipped = JSON.parse(readFileSync(SHIPPED_BASELINE, 'utf8')) as { files: string[] }
+    // Scenario: an empty baseline and a headerless spec. Expected: it fails, naming the spec. Why: a spec without
+    // a valid header and not on the baseline is a new offender.
+    it('fails a headerless spec that is not on it', () => {
       const root = scratch({ 'src/new.spec.ts': HEADERLESS })
 
-      const result = run(root, readFileSync(SHIPPED_BASELINE, 'utf8'))
+      const result = run(root, '{"files":[]}')
 
-      expect(shipped.files).toEqual([])
       expect(result.status).toBe(1)
       expect(result.output).toContain('src/new.spec.ts: does not open with a /** */ block comment.')
+    })
+
+    // Scenario: this repository's own tracked specs against the baseline it ships. Expected: pass. Why: the
+    // baseline is the repository's own inherited list, whatever it holds, and it must stay exactly current.
+    it('holds for this repository against its own shipped baseline', () => {
+      const result = spawnSync(process.execPath, [SCRIPT, '--root', REPO_ROOT], { encoding: 'utf8' })
+
+      expect({ status: result.status, output: `${result.stdout}${result.stderr}` }).toMatchObject({
+        status: 0
+      })
     })
 
     // Scenario: a headerless spec that the baseline lists, beside one with a header. Expected: pass.

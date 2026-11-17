@@ -203,6 +203,27 @@ describe('resolveNamespacePrefixes derivation', () => {
   })
 })
 
+/** A schema with camelCase leaves, several namespaces and one `meta({ env })` override. */
+function representativeSchema(): ReturnType<typeof defineEnv> {
+  return defineEnv({
+    server: z.object({
+      port: z.coerce.number(),
+      nodeEnv: z.string()
+    }),
+    database: z.object({
+      url: z.url(),
+      poolSize: z.coerce.number()
+    }),
+    auth: z.object({
+      jwtSecret: z.string(),
+      accessTtlSeconds: z.coerce.number()
+    }),
+    legacy: z.object({
+      connectionString: z.url().meta({ env: 'DB_CONNECTION_STRING' })
+    })
+  })
+}
+
 describe('resolveSourceNames contract stability', () => {
   it('pins the full leaf-to-variable table for a representative schema', () => {
     /**
@@ -211,23 +232,7 @@ describe('resolveSourceNames contract stability', () => {
      * The complete mapping table is part of the package contract; a snapshot
      * makes any accidental change to derivation or ordering a visible failure.
      */
-    const schema = defineEnv({
-      server: z.object({
-        port: z.coerce.number(),
-        nodeEnv: z.string()
-      }),
-      database: z.object({
-        url: z.url(),
-        poolSize: z.coerce.number()
-      }),
-      auth: z.object({
-        jwtSecret: z.string(),
-        accessTtlSeconds: z.coerce.number()
-      }),
-      legacy: z.object({
-        connectionString: z.url().meta({ env: 'DB_CONNECTION_STRING' })
-      })
-    })
+    const schema = representativeSchema()
 
     expect(resolveSourceNames(schema)).toMatchInlineSnapshot(`
 [

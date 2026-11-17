@@ -15,6 +15,32 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.8] - 2026-11-17
+
+### Fixed
+
+- **A top-level key that is not a namespace is refused with a typed error.** A schema handed to
+  `defineEnv` with a flat leaf in the namespace position, such as `defineEnv({ mode: z.string() })`,
+  which the types reject, used to fail the boot with a raw `TypeError: Cannot convert undefined or null
+to object` from the schema walk. `validateEnv`, and so `forRoot`, and `createTestConfig` now report
+  every such key in one `BymaxConfigValidationError`, in declaration order, as a `BYMAX_CONFIG_INVALID`
+  issue: `is not a namespace; declare it inside a z.object({ ... }) namespace`. The issue's `variable`
+  is the one the key itself derives, and no source value is read or printed.
+
+  #### Apply to a derived backend
+
+  A boot that crashed with that `TypeError` now fails with a `BymaxConfigValidationError`: wrap the
+  leaf in a `z.object` namespace, as `defineEnv({ app: z.object({ mode: z.string() }) })`. A `catch`
+  that matched the raw `TypeError` needs the typed error instead. A schema the types accept is
+  unaffected.
+
+### Changed
+
+- **Tooling only:** CI now fails a function or a test body over 50 lines, and a spec without a purpose
+  and layer header, unless the file or function is on a baseline that can only shrink; the
+  `eslint-plugin-import-x` development dependency is at `^4.18.1`; the budget for the internal bundle
+  is 4.84 KiB brotli. No other source changed.
+
 ## [1.2.7] - 2026-11-14
 
 ### Fixed
@@ -684,4 +710,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.5]: https://github.com/bymaxone/nest-config/compare/v1.2.4...v1.2.5
 [1.2.6]: https://github.com/bymaxone/nest-config/compare/v1.2.5...v1.2.6
 [1.2.7]: https://github.com/bymaxone/nest-config/compare/v1.2.6...v1.2.7
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.7...HEAD
+[1.2.8]: https://github.com/bymaxone/nest-config/compare/v1.2.7...v1.2.8
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.8...HEAD

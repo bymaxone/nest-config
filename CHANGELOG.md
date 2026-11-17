@@ -15,12 +15,14 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.12] - 2026-11-17
+
 ### Added
 
 - **A stable log event for the validation failure.** When the provider throws a
   `BymaxConfigValidationError`, the module writes one object message through the Nest `Logger`, context
-  `BymaxConfig`, before the `onValidationError` hook runs: `{ event: 'CONFIG_VALIDATION_FAILED', message,
-issues }`, the number of issues and no value. The README has a Log Events table.
+  `BymaxConfig`, before the `onValidationError` hook runs: `{ event, message, issues }` with the event
+  `CONFIG_VALIDATION_FAILED`, the number of issues and no value. The README has a Log Events table.
 
 ### Changed
 
@@ -30,14 +32,23 @@ issues }`, the number of issues and no value. The README has a Log Events table.
 
   #### Apply to a derived backend
   - A host that passed `isGlobal` or `strict` as a number, a string such as `"false"`, or any other
-    non-boolean now fails at registration. Pass the boolean. In 1.2.11 only `false` scoped the module and
+    non-boolean now fails: at registration, or, for a `strict` that a `forRootAsync` factory returns,
+    when the options provider resolves. Pass the boolean. In 1.2.11 only `false` scoped the module and
     every other value registered it globally, so a value that was not `false` meant global; replace it
     with `true`, or omit the option. Only `true` made `strict` strict, so any other value meant not
     strict; replace it with `false`, or omit the option.
   - A log pipeline that matches the validation failure can match the `event` field,
     `CONFIG_VALIDATION_FAILED`, as well as the message text. The message is an object: an
-    `@bymax-one/nest-logger` older than 1.4.23 prints it as `[object Object]`, so update it before this
-    release; Nest's default logger prints it readably.
+    `@bymax-one/nest-logger` older than 1.4.23 prints it as `[object Object]`, so update it before
+    upgrading; Nest's default logger prints it readably.
+
+### Documentation
+
+- The README documents every public export and option against the published declarations: the type,
+  default and failure mode of each option and of the `forRootAsync` keys, the signatures of the testing
+  helpers, what the `./internal` subpath is for, and that the error codes are raised at boot with no HTTP
+  status. It no longer says that `./testing` builds its object from an explicit record: it synthesizes a
+  source from the schema and the overrides.
 
 ## [1.2.11] - 2026-11-17
 
@@ -831,4 +842,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.9]: https://github.com/bymaxone/nest-config/compare/v1.2.8...v1.2.9
 [1.2.10]: https://github.com/bymaxone/nest-config/compare/v1.2.9...v1.2.10
 [1.2.11]: https://github.com/bymaxone/nest-config/compare/v1.2.10...v1.2.11
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.11...HEAD
+[1.2.12]: https://github.com/bymaxone/nest-config/compare/v1.2.11...v1.2.12
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.12...HEAD

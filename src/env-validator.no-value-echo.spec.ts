@@ -46,51 +46,72 @@ function thrownBy(action: () => unknown): BymaxConfigValidationError {
   throw new Error('expected the call to throw')
 }
 
-/** The constraint kinds a leaf can fail, each with a leaf the sentinel violates. */
-const LEAVES: ReadonlyArray<readonly [string, z.ZodType]> = [
-  ['min length', z.string().min(64)],
-  ['max length', z.string().max(3)],
-  ['exact length', z.string().length(3)],
-  ['regex', z.string().regex(/^\d+$/)],
-  ['starts with', z.string().startsWith('prefix-')],
-  ['ends with', z.string().endsWith('-suffix')],
-  ['includes', z.string().includes('needle')],
-  ['email', z.email()],
-  ['url', z.url()],
-  ['uuid', z.uuid()],
-  ['ipv4', z.ipv4()],
-  ['base64', z.base64()],
-  ['jwt', z.jwt()],
-  ['iso datetime', z.iso.datetime()],
-  ['enum', z.enum(['development', 'test', 'production'])],
-  ['literal', z.literal('on')],
-  ['number', z.coerce.number()],
-  ['integer', z.coerce.number().int()],
-  ['number minimum', z.coerce.number().min(1)],
-  ['date', z.coerce.date()],
-  ['union', z.union([z.literal('a'), z.literal('b')])],
-  ['custom check without a message', z.string().refine(() => false)],
-  ['piped check', z.string().pipe(z.string().min(64))],
-  ['wrapped optional', z.string().min(64).optional()],
-  ['wrapped default', z.string().min(64).default('x'.repeat(64))]
+/**
+ * The constraint kinds a leaf can fail: the title, a leaf, the value that violates it and, where
+ * the value must get past an earlier check to reach the constraint, the message that proves which
+ * constraint rejected it. The numeric rows need a number, because a non-numeric value fails the
+ * base number check before `.int()` or `.min()` is reached.
+ */
+interface LeafRow {
+  readonly title: string
+  readonly leaf: z.ZodType
+  readonly value: string
+  readonly message?: string
+}
+
+/** One row of the table; the value defaults to the sentinel. */
+function row(title: string, leaf: z.ZodType, value = SENTINEL, message?: string): LeafRow {
+  return message === undefined ? { title, leaf, value } : { title, leaf, value, message }
+}
+
+const LEAVES: readonly LeafRow[] = [
+  row('min length', z.string().min(64)),
+  row('max length', z.string().max(3)),
+  row('exact length', z.string().length(3)),
+  row('regex', z.string().regex(/^\d+$/)),
+  row('starts with', z.string().startsWith('prefix-')),
+  row('ends with', z.string().endsWith('-suffix')),
+  row('includes', z.string().includes('needle')),
+  row('email', z.email()),
+  row('url', z.url()),
+  row('uuid', z.uuid()),
+  row('ipv4', z.ipv4()),
+  row('base64', z.base64()),
+  row('jwt', z.jwt()),
+  row('iso datetime', z.iso.datetime()),
+  row('enum', z.enum(['development', 'test', 'production'])),
+  row('literal', z.literal('on')),
+  row('number', z.coerce.number()),
+  row('integer', z.coerce.number().int(), '73.31941', 'invalid value (expected: int)'),
+  row('number minimum', z.coerce.number().min(1), '-90417', 'out of range (expected: number >= 1)'),
+  row('date', z.coerce.date()),
+  row('union', z.union([z.literal('a'), z.literal('b')])),
+  row(
+    'custom check without a message',
+    z.string().refine(() => false)
+  ),
+  row('piped check', z.string().pipe(z.string().min(64))),
+  row('wrapped optional', z.string().min(64).optional()),
+  row('wrapped default', z.string().min(64).default('x'.repeat(64)))
 ]
 
 describe('no refusal or validation issue prints a source value', () => {
   it.each(LEAVES)(
-    'a leaf that fails its %s check names the variable and not the value',
-    (_, leaf) => {
+    'a leaf that fails its $title check names the variable and not the value',
+    ({ leaf, value, message }) => {
       /**
        * The sentinel stands for a secret an operator mistyped into the wrong variable. Whatever
        * constraint rejects it, the report may describe the constraint and must not repeat it.
        */
       const schema = defineEnv({ app: z.object({ secret: leaf }) })
 
-      const error = thrownBy(() => validateEnv(schema, { APP_SECRET: SENTINEL }))
+      const error = thrownBy(() => validateEnv(schema, { APP_SECRET: value }))
 
       expect(error.issues.map((issue) => [issue.variable, issue.code])).toEqual([
         ['APP_SECRET', ConfigErrorCode.INVALID]
       ])
-      for (const text of surfacesOf(error)) expect(text).not.toContain(SENTINEL)
+      if (message !== undefined) expect(error.issues[0]?.message).toBe(message)
+      for (const text of surfacesOf(error)) expect(text).not.toContain(value)
     }
   )
 

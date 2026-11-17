@@ -25,22 +25,28 @@ import type { EnvOutput, EnvSchema, EnvShape } from './types'
 const REDACTED_ROOT = '[BymaxConfig: values redacted]'
 
 /**
- * Make the configuration root print a marker instead of its values.
+ * Make the configuration root print and serialize without its values.
  *
  * `console.log`, `util.format` and Nest's text `ConsoleLogger` render an object through
- * `util.inspect`, and the root holds every secret the application declared. A JSON logger (pino,
- * Nest's `ConsoleLogger` with `json: true`) serializes the enumerable keys instead and prints the
- * values; the marker does not reach it. The marker is keyed by
- * `util.inspect.custom` and defined with the defaults of `Object.defineProperty`: not
- * enumerable, not writable, not configurable. `Object.keys`, spread, `JSON.stringify` and
- * equality therefore exclude it. It covers the root only: a namespace printed directly shows
- * its values, as does anything that serializes the root to JSON. It is defined before the freeze.
+ * `util.inspect`, and the root holds every secret the application declared, so it carries a
+ * `util.inspect.custom` marker. A JSON logger, or `JSON.stringify`, serializes through `toJSON`
+ * when an object has one, so the root carries one that returns the declared namespace names and no
+ * value, as `ConfigService` does. Both are defined with the defaults of `Object.defineProperty`:
+ * not enumerable, not writable, not configurable. `Object.keys`, spread and equality therefore
+ * exclude them, and so does a copy made by spread or `Object.assign`, whose serialization shows
+ * the values again. A logger that spreads the enumerable keys of the root itself, as pino does
+ * when it is handed as the merge object, prints the values too. It covers the root only: a
+ * namespace printed or serialized directly shows its values. It is defined before the freeze, and
+ * `assertNamespaces` keeps a namespace from taking the name `toJSON`.
  *
  * @param root - The validated output, not yet frozen.
  * @returns The same reference.
  */
-function redactOnInspect<T extends object>(root: T): T {
+function redactRoot<T extends object>(root: T): T {
   Object.defineProperty(root, inspect.custom, { value: () => REDACTED_ROOT })
+  Object.defineProperty(root, 'toJSON', {
+    value: () => ({ service: 'BymaxConfig', namespaces: Object.keys(root) })
+  })
   return root
 }
 
@@ -108,7 +114,7 @@ export function createValidatedConfig<TShape extends EnvShape>(
   const source = options.source ?? process.env
   const validated = validateEnv(options.schema, source, { strict: options.strict === true })
   try {
-    return deepFreeze(redactOnInspect(validated))
+    return deepFreeze(redactRoot(validated))
   } catch (thrown) {
     throw new BymaxConfigValidationError([
       toWithheldIssue('freezing the validated configuration', thrown)

@@ -447,6 +447,11 @@ covered below.
 
 ### The service does not serialize its configuration
 
+> **Warning: `logger.info(config)` prints every value.** `pino` spreads the enumerable keys of an object
+> it is handed as the merge object itself, and the root's redaction is not an enumerable key. The safe
+> forms are `logger.info({ config })`, which prints the namespace names only, or better, log the names
+> yourself: `logger.info({ namespaces: Object.keys(config) })`. The same holds for a copy of the root.
+
 `ConfigService` keeps the validated root in an ECMAScript private field, so
 `JSON.stringify`, `Object.entries`, object spread and `util.inspect` cannot reach the
 values. Those are the paths taken by code that renders an injected provider it was handed
@@ -460,11 +465,21 @@ The raw root, whether injected through `BYMAX_CONFIG` or returned by `getAll`, p
 `util.format` and Nest's default text `ConsoleLogger` show no value. The marker is a
 non-enumerable property, so `Object.keys`, spread and equality do not include it.
 
-It stops there. A JSON logger serializes the enumerable keys, so `pino`
-(`logger.info({ config })`) and Nest's `ConsoleLogger` with `json: true` print every value, as do
-`JSON.stringify` of the root, a namespace printed directly (`console.log(config.auth)`) and a
-leaf you log yourself. Never log the root or a namespace; log leaf names, and use your logger's
-key-based redaction for anything that can reach it.
+The root also carries a non-enumerable `toJSON` that returns `{ service: 'BymaxConfig', namespaces }`,
+the declared namespace names and no value. `JSON.stringify(config)`, `JSON.stringify({ ctx: config })`,
+Nest's `ConsoleLogger` with `json: true` and `pino`'s `logger.info({ config })` therefore print the
+names only.
+
+It stops there:
+
+- A namespace printed or serialized directly (`console.log(config.auth)`,
+  `JSON.stringify(config.auth)`) and a leaf you log yourself show their values.
+- A copy of the root made by spread or `Object.assign` (`{ ...config }`) drops the non-enumerable
+  `toJSON` and `util.inspect` marker, so printing or serializing the copy shows the values again.
+
+Never log the root or a namespace; log leaf names, and use your logger's key-based redaction for
+anything that can reach it. A namespace cannot be named `toJSON`: the boot refuses it with a
+`BYMAX_CONFIG_INVALID` issue, because that name is the root's serializer.
 
 ### Failing fast is the security property
 
@@ -540,9 +555,10 @@ Each item names what goes wrong and the fix. The sections linked from it hold th
   [`resolveSourceNames(schema)`](#resolvesourcenamesschema).
 - **`onValidationError` has no timeout.** A hook that never settles holds the boot. Give the call
   to your log sink its own timeout.
-- **Never log the root or a namespace.** The root prints a redacted marker under `util.inspect`,
-  but a JSON logger (`pino`, Nest's `ConsoleLogger` with `json: true`) prints every value, and so
-  does a namespace. Log leaf names, and use your logger's key-based redaction.
+- **Never log the root or a namespace.** The root prints a redacted marker under `util.inspect` and
+  serializes to its namespace names under `JSON.stringify`, but a copy of it made by spread, a root
+  handed to `pino` as the merge object, and every namespace print their values. Log leaf names, and
+  use your logger's key-based redaction.
 - **`z.coerce.number()` turns `""` and `" "` into `0`.** A variable set to blank is present, not
   missing. Where `0` is invalid, add `.min(1)` or a bound, or treat a blank as unset:
 

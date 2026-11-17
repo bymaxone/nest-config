@@ -5,7 +5,7 @@
  * Goal: pin that `util.inspect` of the validated root, which is what `console.log`, `util.format`
  * and Nest's text `ConsoleLogger` use, prints a redacted marker instead of the values; that the marker is a
  * non-enumerable property, so enumeration, spread and equality exclude it; and
- * what it does not cover (`JSON.stringify`, a JSON logger, a namespace printed directly).
+ * what it does not cover (a namespace printed directly); JSON serialization of the root is pinned in config.providers.tojson.spec.ts.
  * Mocks: none.
  */
 
@@ -83,11 +83,10 @@ describe('the validated configuration root when it is printed', () => {
     expect(`${String(config)}`).not.toContain(SECRET)
   })
 
-  it("shows no value through Nest's ConsoleLogger in text mode, and shows them in json mode", () => {
+  it("shows no value through Nest's ConsoleLogger in text mode or in json mode", () => {
     /**
      * Nest's default logger renders objects with util.inspect, so the marker applies; with
-     * `json: true` it serializes the enumerable keys, which a JSON logger such as pino also does,
-     * so the values are printed. The second half pins the documented limit.
+     * `json: true` it serializes with JSON.stringify, so the root's toJSON applies.
      */
     const config = createValidatedConfig({ schema, source })
     const written: string[] = []
@@ -104,7 +103,7 @@ describe('the validated configuration root when it is printed', () => {
 
       expect(text).toContain('[BymaxConfig: values redacted]')
       expect(text).not.toContain(SECRET)
-      expect(written.join('')).toContain(SECRET)
+      expect(written.join('')).not.toContain(SECRET)
     } finally {
       write.mockRestore()
     }
@@ -130,13 +129,6 @@ describe('the validated configuration root when it is printed', () => {
     expect(Object.prototype.propertyIsEnumerable.call(config, marker)).toBe(false)
     expect(Object.isFrozen(config)).toBe(true)
     expect(() => Object.defineProperty(config, marker, { value: undefined })).toThrow(TypeError)
-  })
-
-  it('does not redact JSON.stringify, which the marker cannot cover', () => {
-    /** Documented limit: serialization walks the enumerable keys, and the marker is not one of them. */
-    const config = createValidatedConfig({ schema, source })
-
-    expect(JSON.stringify(config)).toContain(SECRET)
   })
 
   it('does not redact a namespace that is printed directly', () => {

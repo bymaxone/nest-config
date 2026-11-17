@@ -985,16 +985,18 @@ and a rule that threw. For `BYMAX_CONFIG_UNKNOWN_KEY` the issue's `path` is the 
 
 ## 📋 Log Events
 
-The module writes one log line, through the Nest `Logger` under the context `BymaxConfig`.
-It starts with a stable event code in brackets, followed by `key=value` fields of numbers only; no value
-the source held is ever written.
+The module writes one operational log event: an object message through the Nest `Logger`, under the
+context `BymaxConfig`, of the shape `{ event, message, ...fields }`, where `message` is fixed text and the other fields are numbers only. No
+value the source held is ever written.
 
-| Code                         | Level | When                                                                                          | Fields   |
-| ---------------------------- | ----- | --------------------------------------------------------------------------------------------- | -------- |
-| `[CONFIG_VALIDATION_FAILED]` | error | The provider throws a `BymaxConfigValidationError`, before the `onValidationError` hook runs. | `issues` |
+| Event                      | Level | When                                                                                          | Fields              |
+| -------------------------- | ----- | --------------------------------------------------------------------------------------------- | ------------------- |
+| `CONFIG_VALIDATION_FAILED` | error | The provider throws a `BymaxConfigValidationError`, before the `onValidationError` hook runs. | `message`, `issues` |
 
 `issues` is the number of issues in the aggregated `BymaxConfigValidationError`, whose own message and
-issue list name each variable and constraint.
+issue list name each variable and constraint. A log pipeline matches the `event` field. An object message
+is rendered as a structured entry by `@bymax-one/nest-logger` 1.4.23 or later, and readably by Nest's
+default logger; an older `@bymax-one/nest-logger` prints it as `[object Object]`.
 
 ## 🚫 What This Library Does NOT Do
 

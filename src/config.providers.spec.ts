@@ -292,7 +292,7 @@ describe('the log event written when the validation fails', () => {
     jest.restoreAllMocks()
   })
 
-  it('writes one line with the stable code and the number of issues, before the hook runs', async () => {
+  it('writes one object message with the stable event and the number of issues, before the hook runs', async () => {
     const order: string[] = []
     const error = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {
       order.push('log')
@@ -309,7 +309,11 @@ describe('the log event written when the validation fails', () => {
 
     expect(thrown.issues).toHaveLength(3)
     expect(error).toHaveBeenCalledTimes(1)
-    expect(error).toHaveBeenCalledWith('[CONFIG_VALIDATION_FAILED] issues=3')
+    expect(error).toHaveBeenCalledWith({
+      event: 'CONFIG_VALIDATION_FAILED',
+      message: 'environment validation failed',
+      issues: 3
+    })
     expect(order).toEqual(['log', 'hook'])
   })
 
@@ -319,7 +323,10 @@ describe('the log event written when the validation fails', () => {
 
     await rejection({ schema: multi, source: { SERVER_HOST: sentinel, SERVER_PORT: sentinel } })
 
-    expect(String(error.mock.calls[0]?.[0])).not.toContain(sentinel)
+    const message = error.mock.calls[0]?.[0]
+    expect(typeof message).toBe('object')
+    expect(Object.keys(message as object).sort()).toEqual(['event', 'issues', 'message'])
+    expect(JSON.stringify(message)).not.toContain(sentinel)
   })
 
   it('writes nothing when the source is valid', async () => {

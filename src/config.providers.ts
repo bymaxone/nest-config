@@ -23,7 +23,7 @@ import { BymaxConfigValidationError } from './errors'
 import type { ConfigIssue } from './errors'
 import type { EnvOutput, EnvSchema, EnvShape } from './types'
 
-/** The stable code that opens the log line written when the validation fails. */
+/** The stable event of the object message written when the validation fails. */
 const VALIDATION_FAILED_EVENT = 'CONFIG_VALIDATION_FAILED'
 
 /** The logger the validation failure is written to, under the module's own context. */
@@ -143,8 +143,8 @@ export function createValidatedConfig<TShape extends EnvShape>(
  * validation failure the hook runs and is awaited before the aggregated error is rethrown,
  * aborting module resolution before any consumer provider is instantiated.
  *
- * On a validation failure it writes one log line, the stable code and the number of issues and
- * never a value, before the hook runs.
+ * On a validation failure it writes one object message, the stable event and the number of issues
+ * and never a value, before the hook runs.
  *
  * @param options - The resolved module options (schema, source, hook, strict).
  * @returns The validated, deep-frozen configuration output.
@@ -157,7 +157,11 @@ async function provideValidatedConfig(
     return createValidatedConfig(options)
   } catch (error) {
     if (error instanceof BymaxConfigValidationError) {
-      logger.error(`[${VALIDATION_FAILED_EVENT}] issues=${error.issues.length}`)
+      logger.error({
+        event: VALIDATION_FAILED_EVENT,
+        message: 'environment validation failed',
+        issues: error.issues.length
+      })
       await reportIssues(options.onValidationError, error)
     }
     throw error

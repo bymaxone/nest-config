@@ -17,10 +17,10 @@ as the GitHub Release body, so each released version needs a matching
 
 ### Added
 
-- **A stable log event for the validation failure.** The module writes one line through the Nest
-  `Logger`, context `BymaxConfig`, when the provider throws a `BymaxConfigValidationError`: `[CONFIG_VALIDATION_FAILED]
-issues=<count>`, before the `onValidationError` hook runs. It carries the number of issues and no
-  value. The README has a Log Events table.
+- **A stable log event for the validation failure.** When the provider throws a
+  `BymaxConfigValidationError`, the module writes one object message through the Nest `Logger`, context
+  `BymaxConfig`, before the `onValidationError` hook runs: `{ event: 'CONFIG_VALIDATION_FAILED', message,
+issues }`, the number of issues and no value. The README has a Log Events table.
 
 ### Changed
 
@@ -34,8 +34,10 @@ issues=<count>`, before the `onValidationError` hook runs. It carries the number
     every other value registered it globally, so a value that was not `false` meant global; replace it
     with `true`, or omit the option. Only `true` made `strict` strict, so any other value meant not
     strict; replace it with `false`, or omit the option.
-  - A log pipeline that matches the validation failure can match the code `[CONFIG_VALIDATION_FAILED]`
-    as well as the message text.
+  - A log pipeline that matches the validation failure can match the `event` field,
+    `CONFIG_VALIDATION_FAILED`, as well as the message text. The message is an object: an
+    `@bymax-one/nest-logger` older than 1.4.23 prints it as `[object Object]`, so update it before this
+    release; Nest's default logger prints it readably.
 
 ## [1.2.11] - 2026-11-17
 

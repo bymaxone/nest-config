@@ -53,6 +53,23 @@ function withoutNullish<TValues extends object>(values: TValues): Partial<TValue
 }
 
 /**
+ * Refuse a registration argument that is not an object.
+ *
+ * The message names the method and the type of what was passed, never the value: a primitive handed
+ * over by mistake can be a secret.
+ *
+ * @param options - What the host passed as the whole argument.
+ * @param method - The registration method, for the message.
+ * @throws {TypeError} When `options` is not an object.
+ */
+function assertOptionsObject(options: unknown, method: string): void {
+  if (typeof options === 'object' && options !== null) return
+  throw new TypeError(
+    `BymaxConfigModule.${method}: options must be an object, received ${options === null ? 'null' : typeof options}`
+  )
+}
+
+/**
  * Read the synchronous registration options the module understands, by property access, so options
  * held by an object whose properties are accessors on its prototype (a class instance) are read
  * instead of lost to a copy of its own keys.
@@ -65,12 +82,16 @@ function withoutNullish<TValues extends object>(values: TValues): Partial<TValue
  * @returns A plain object the builder can copy.
  */
 function readRegistration(options: BymaxConfigForRootOptions): BymaxConfigForRootOptions {
-  const { schema, onValidationError, strict, isGlobal } = options
+  assertOptionsObject(options, 'forRoot')
+  const { schema, source, onValidationError, strict, isGlobal } = options
   const registration: BymaxConfigForRootOptions = {
     schema,
     ...withoutNullish({ onValidationError, strict, isGlobal })
   }
-  if ('source' in options) Object.assign(registration, { source: options.source })
+  // The value decides first: options held by a Proxy with only a get trap answer `in` with nothing.
+  // The key is asked about only when its value is undefined, to tell a key set to undefined (refused)
+  // from an absent one (the process environment).
+  if (source !== undefined || 'source' in options) Object.assign(registration, { source })
   return registration
 }
 
@@ -83,6 +104,7 @@ function readRegistration(options: BymaxConfigForRootOptions): BymaxConfigForRoo
 function readAsyncRegistration(
   options: BymaxConfigForRootAsyncOptions
 ): BymaxConfigForRootAsyncOptions {
+  assertOptionsObject(options, 'forRootAsync')
   const {
     useFactory,
     useClass,

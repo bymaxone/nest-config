@@ -25,9 +25,10 @@ export interface BymaxConfigModuleExtras {
    * Register the module globally by mapping to `DynamicModule.global`. The
    * builder applies the `true` default before the transform runs, so this is
    * required at the extras level; consumers see it optional through the
-   * generated `OPTIONS_TYPE` (a `Partial` of the extras). Defaults to true.
+   * generated `OPTIONS_TYPE` (a `Partial` of the extras). Defaults to true,
+   * and so does `undefined` or `null`: only `false` scopes the module.
    */
-  readonly isGlobal: boolean
+  readonly isGlobal: boolean | null | undefined
 }
 
 /**
@@ -46,7 +47,7 @@ export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN, OPTIONS_TYPE, ASYN
     .setClassMethodName('forRoot')
     .setExtras<BymaxConfigModuleExtras>({ isGlobal: true }, (definition, extras) => ({
       ...definition,
-      global: extras.isGlobal
+      global: extras.isGlobal !== false
     }))
     .build()
 

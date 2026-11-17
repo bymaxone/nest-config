@@ -225,3 +225,98 @@ describe('registration options held by an object with accessor properties', () =
     expect(Object.keys(root)).toEqual(['app'])
   })
 })
+
+describe('registration options held by a Proxy that defines only a get trap', () => {
+  /** Options whose keys exist only through the get trap, so `in` finds none of them. */
+  const trapped = (values: Record<string, unknown>): BymaxConfigForRootOptions =>
+    options(new Proxy({}, { get: (_target, key) => values[String(key)] }))
+
+  it('forRoot validates the source the trap returns, not the process environment', async () => {
+    const before = process.env['APP_NAME']
+    process.env['APP_NAME'] = 'from-process-env'
+    try {
+      const root = await boot(
+        BymaxConfigModule.forRoot(trapped({ schema, source: { APP_NAME: 'from-trap' } }))
+      )
+
+      expect(root).toEqual({ app: { name: 'from-trap' } })
+    } finally {
+      if (before === undefined) delete process.env['APP_NAME']
+      else process.env['APP_NAME'] = before
+    }
+  })
+
+  it('forRoot refuses a source the trap returns as null, like a literal key set to null', async () => {
+    await expect(
+      boot(BymaxConfigModule.forRoot(trapped({ schema, source: null })))
+    ).rejects.toThrow('source was provided but is undefined or null')
+  })
+
+  it('forRoot validates the process environment when the trap returns no source', async () => {
+    const before = process.env['APP_NAME']
+    process.env['APP_NAME'] = 'from-process-env'
+    try {
+      const root = await boot(BymaxConfigModule.forRoot(trapped({ schema })))
+
+      expect(root).toEqual({ app: { name: 'from-process-env' } })
+    } finally {
+      if (before === undefined) delete process.env['APP_NAME']
+      else process.env['APP_NAME'] = before
+    }
+  })
+})
+
+describe('a forRoot or forRootAsync argument that is not an object', () => {
+  const SENTINEL = 'SeNtInEl-options-9d41'
+
+  it.each([
+    { label: 'a string', value: SENTINEL, type: 'string' },
+    { label: 'a number', value: 42, type: 'number' },
+    { label: 'a boolean', value: true, type: 'boolean' },
+    { label: 'null', value: null, type: 'null' },
+    { label: 'undefined', value: undefined, type: 'undefined' }
+  ])('forRoot refuses $label with a message that names only its type', ({ value, type }) => {
+    const call = () => BymaxConfigModule.forRoot(value as never)
+
+    expect(call).toThrow(TypeError)
+    expect(call).toThrow(`options must be an object, received ${type}`)
+    expect(call).not.toThrow(new RegExp(SENTINEL))
+  })
+
+  it.each([
+    { label: 'a string', value: SENTINEL, type: 'string' },
+    { label: 'null', value: null, type: 'null' }
+  ])('forRootAsync refuses $label with a message that names only its type', ({ value, type }) => {
+    const call = () => BymaxConfigModule.forRootAsync(value as never)
+
+    expect(call).toThrow(TypeError)
+    expect(call).toThrow(`options must be an object, received ${type}`)
+  })
+})
+
+describe('options returned by a forRootAsync factory', () => {
+  it('treats onValidationError null as absent: the aggregated error carries no swallowed hook error', async () => {
+    const error = await boot(
+      BymaxConfigModule.forRootAsync(
+        asyncOptions({ useFactory: () => ({ schema, source: {}, onValidationError: null }) })
+      )
+    ).catch((thrown: unknown) => thrown)
+
+    expect(error).toBeInstanceOf(BymaxConfigValidationError)
+    expect((error as Error).cause).toBeUndefined()
+  })
+
+  it('still reports a hook that is set, so the cause stays reserved for a hook that throws', async () => {
+    const failing = (): never => {
+      throw new Error('hook failed')
+    }
+    const error = await boot(
+      BymaxConfigModule.forRootAsync(
+        asyncOptions({ useFactory: () => ({ schema, source: {}, onValidationError: failing }) })
+      )
+    ).catch((thrown: unknown) => thrown)
+
+    expect(error).toBeInstanceOf(BymaxConfigValidationError)
+    expect((error as Error).cause).toEqual(new Error('hook failed'))
+  })
+})

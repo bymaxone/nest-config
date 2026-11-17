@@ -71,6 +71,24 @@ function assertOptionsObject(options: unknown, method: string): void {
 }
 
 /**
+ * Refuse an option that is set but is not a boolean.
+ *
+ * `undefined` and `null` mean the default and pass. The message names the method, the option and
+ * the type received, never the value.
+ *
+ * @param value - What the host passed for the option.
+ * @param name - The option name, for the message.
+ * @param method - The registration method, for the message.
+ * @throws {TypeError} When `value` is set and is not a boolean.
+ */
+function assertBoolean(value: unknown, name: string, method: string): void {
+  if (value === undefined || value === null || typeof value === 'boolean') return
+  throw new TypeError(
+    `BymaxConfigModule.${method}: ${name} must be a boolean, received ${typeof value}`
+  )
+}
+
+/**
  * Read the options the module hands to the options token, by property access, so options held by an
  * object whose properties are accessors on its prototype (a class instance) are read instead of
  * lost to a copy of its own keys. Whatever else the object holds stays behind.
@@ -89,6 +107,7 @@ function readModuleOptions(
 ): BymaxConfigModuleOptions {
   assertOptionsObject(options, method)
   const { schema, source, onValidationError, strict } = options
+  assertBoolean(strict, 'strict', method)
   const read: BymaxConfigModuleOptions = {
     schema,
     ...withoutNullish({ onValidationError, strict })
@@ -110,6 +129,7 @@ function readModuleOptions(
 function readRegistration(options: BymaxConfigForRootOptions): BymaxConfigForRootOptions {
   const read = readModuleOptions(options, 'forRoot')
   const { isGlobal } = options
+  assertBoolean(isGlobal, 'isGlobal', 'forRoot')
   return { ...read, ...withoutNullish({ isGlobal }) }
 }
 
@@ -150,6 +170,7 @@ function readAsyncRegistration(
     provideInjectionTokensFrom,
     isGlobal
   } = options
+  assertBoolean(isGlobal, 'isGlobal', 'forRootAsync')
   return withoutNullish({
     useFactory,
     useClass,

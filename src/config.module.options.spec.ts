@@ -437,3 +437,75 @@ describe('the providers of a generated definition that are not the options provi
     expect(Reflect.get(found, 'useFactory')).toBe(useFactory)
   })
 })
+
+describe('a registration option that must be a boolean', () => {
+  const SENTINEL = 'SeNtInEl-boolean-5b2e'
+
+  const values = [
+    { label: 'the number 0', value: 0, type: 'number' },
+    { label: 'the number 1', value: 1, type: 'number' },
+    { label: 'NaN', value: Number.NaN, type: 'number' },
+    { label: 'an empty string', value: '', type: 'string' },
+    { label: 'the string "false"', value: 'false', type: 'string' },
+    { label: 'a secret-shaped string', value: SENTINEL, type: 'string' },
+    { label: 'an object', value: {}, type: 'object' },
+    { label: 'an array', value: [], type: 'object' }
+  ]
+
+  it.each(values)('forRoot refuses isGlobal $label, naming only its type', ({ value, type }) => {
+    const call = () =>
+      BymaxConfigModule.forRoot(options({ schema, source: valid, isGlobal: value }))
+
+    expect(call).toThrow(TypeError)
+    expect(call).toThrow(`BymaxConfigModule.forRoot: isGlobal must be a boolean, received ${type}`)
+    expect(call).not.toThrow(new RegExp(SENTINEL))
+  })
+
+  it.each(values)('forRoot refuses strict $label, naming only its type', ({ value, type }) => {
+    const call = () => BymaxConfigModule.forRoot(options({ schema, source: valid, strict: value }))
+
+    expect(call).toThrow(TypeError)
+    expect(call).toThrow(`BymaxConfigModule.forRoot: strict must be a boolean, received ${type}`)
+    expect(call).not.toThrow(new RegExp(SENTINEL))
+  })
+
+  it.each(values)(
+    'forRootAsync refuses isGlobal $label, naming only its type',
+    ({ value, type }) => {
+      const call = () =>
+        BymaxConfigModule.forRootAsync(
+          asyncOptions({ useFactory: () => ({ schema, source: valid }), isGlobal: value })
+        )
+
+      expect(call).toThrow(
+        `BymaxConfigModule.forRootAsync: isGlobal must be a boolean, received ${type}`
+      )
+    }
+  )
+
+  it.each(values)(
+    'a forRootAsync factory that returns strict $label is refused, naming only its type',
+    async ({ value, type }) => {
+      const provider = Reflect.get(
+        (
+          BymaxConfigModule.forRootAsync(
+            asyncOptions({ useFactory: () => ({ schema, source: valid, strict: value }) })
+          ).providers ?? []
+        ).find((candidate) => Reflect.get(candidate, 'provide') === BYMAX_CONFIG_OPTIONS) as object,
+        'useFactory'
+      ) as () => Promise<unknown>
+
+      await expect(provider()).rejects.toThrow(
+        `BymaxConfigModule.forRootAsync: strict must be a boolean, received ${type}`
+      )
+    }
+  )
+
+  it.each([true, false, null, undefined])('still accepts %s for isGlobal and strict', (value) => {
+    const module = BymaxConfigModule.forRoot(
+      options({ schema, source: valid, isGlobal: value, strict: value })
+    )
+
+    expect(module.global).toBe(value !== false)
+  })
+})

@@ -15,6 +15,30 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Added
+
+- **A stable log event for the validation failure.** When the provider throws a
+  `BymaxConfigValidationError`, the module writes one object message through the Nest `Logger`, context
+  `BymaxConfig`, before the `onValidationError` hook runs: `{ event: 'CONFIG_VALIDATION_FAILED', message,
+issues }`, the number of issues and no value. The README has a Log Events table.
+
+### Changed
+
+- **`isGlobal` and `strict` must be booleans.** Any value other than a boolean, `undefined` or `null`
+  throws a `TypeError` naming the method, the option and the type received, never the value, at
+  registration, or for a `strict` a `forRootAsync` factory returns, when the options provider resolves.
+
+  #### Apply to a derived backend
+  - A host that passed `isGlobal` or `strict` as a number, a string such as `"false"`, or any other
+    non-boolean now fails at registration. Pass the boolean. In 1.2.11 only `false` scoped the module and
+    every other value registered it globally, so a value that was not `false` meant global; replace it
+    with `true`, or omit the option. Only `true` made `strict` strict, so any other value meant not
+    strict; replace it with `false`, or omit the option.
+  - A log pipeline that matches the validation failure can match the `event` field,
+    `CONFIG_VALIDATION_FAILED`, as well as the message text. The message is an object: an
+    `@bymax-one/nest-logger` older than 1.4.23 prints it as `[object Object]`, so update it before this
+    release; Nest's default logger prints it readably.
+
 ## [1.2.11] - 2026-11-17
 
 ### Fixed

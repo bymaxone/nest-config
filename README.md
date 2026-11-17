@@ -293,8 +293,10 @@ class ConfigOptionsFactory {
 BymaxConfigModule.forRootAsync({ useClass: ConfigOptionsFactory })
 ```
 
-`isGlobal` defaults to `true`. Only `false` scopes the module to a submodule, through the standard
-extras: every other value registers it globally, `undefined` and `null` (the default) included.
+`isGlobal` defaults to `true`; `false` scopes the module to a submodule, through the standard extras.
+`isGlobal` and `strict` must be booleans: any other value except `undefined` and `null` (the default)
+throws a `TypeError` that names the method, the option and the type received, never the value, at
+registration, or for a `strict` a `forRootAsync` factory returns, when the options provider resolves.
 
 An optional option key set to `undefined` or `null` means its default. `source` is the exception, as its
 row in the options table says, because a source that failed to load must not become `process.env`.
@@ -980,6 +982,21 @@ These codes are raised at boot, in the aggregated `BymaxConfigValidationError` (
 that stops the process: the library has no HTTP status. `BYMAX_CONFIG_INVALID` also covers a namespace named
 `toJSON`, a top-level key that is not a namespace, an unusable `meta({ env })`, a refused `z.coerce.boolean()`
 and a rule that threw. For `BYMAX_CONFIG_UNKNOWN_KEY` the issue's `path` is the namespace alone.
+
+## 📋 Log Events
+
+The module writes one operational log event: an object message through the Nest `Logger`, under the
+context `BymaxConfig`, of the shape `{ event, message, ...fields }`, where `message` is fixed text and the other fields are numbers only. No
+value the source held is ever written.
+
+| Event                      | Level | When                                                                                          | Fields              |
+| -------------------------- | ----- | --------------------------------------------------------------------------------------------- | ------------------- |
+| `CONFIG_VALIDATION_FAILED` | error | The provider throws a `BymaxConfigValidationError`, before the `onValidationError` hook runs. | `message`, `issues` |
+
+`issues` is the number of issues in the aggregated `BymaxConfigValidationError`, whose own message and
+issue list name each variable and constraint. A log pipeline matches the `event` field. An object message
+is rendered as a structured entry by `@bymax-one/nest-logger` 1.4.23 or later, and readably by Nest's
+default logger; an older `@bymax-one/nest-logger` prints it as `[object Object]`.
 
 ## 🚫 What This Library Does NOT Do
 

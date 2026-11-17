@@ -47,9 +47,13 @@ as the GitHub Release body, so each released version needs a matching
     host adds beyond those no longer reaches it. A provider that read such a key from the token must
     read it from the host's own options.
   - `forRoot` and `forRootAsync` throw a `TypeError` when the argument, or what an asynchronous
-    provider resolves to, is not an object.
-  - `strict`, `onValidationError` and `isGlobal` accept `null` and `undefined` in their types, as the
-    runtime already did. The declarations differ from 1.2.10 only by that widening.
+    provider resolves to, is not an object. A function, or a class with static options, was read through
+    its own properties in 1.2.10 and is refused now.
+  - Only `false` scopes the module. An `isGlobal` of `0`, an empty string or `NaN` scoped it in 1.2.10
+    because they are falsy; each now registers it globally, like `undefined` and `null`. A string such as
+    `"false"` registered it globally in 1.2.10 and still does. Pass the boolean `false` to scope it.
+  - `strict`, `onValidationError` and `isGlobal` accept `null` and `undefined` in their types, and the
+    module reads both as the default. The declarations differ from 1.2.10 only by that widening.
 
 ### Documentation
 

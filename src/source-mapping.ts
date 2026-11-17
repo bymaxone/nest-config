@@ -117,6 +117,25 @@ function deriveVariable(namespace: string, leafKey: string): string {
 }
 
 /**
+ * Find the top-level keys of a schema that are not namespaces.
+ *
+ * A namespace is a Zod object whose `shape` the walk reads. The types allow nothing else at the
+ * top level, so a key found here was written past them, and walking it would fail with a raw
+ * `TypeError` rather than a report naming the key. The variable listed is the one the key itself
+ * derives, the name its value would have been read from had it been a leaf.
+ *
+ * @param schema - A schema produced by `defineEnv`.
+ * @returns One binding per offending key, in declaration order: its key and the derived variable.
+ */
+export function findNonNamespaces<TShape extends EnvShape = EnvShape>(
+  schema: EnvSchema<TShape>
+): readonly SourceBinding[] {
+  return Object.entries(schema.shape as Record<string, { readonly shape?: unknown }>)
+    .filter(([, node]) => typeof node.shape !== 'object' || node.shape === null)
+    .map(([key]) => ({ path: key, variable: toScreamingSnake(key) }))
+}
+
+/**
  * Resolve the source variable name of every leaf in a `defineEnv` schema.
  *
  * Walks the two-level schema (namespaces then leaves) and yields one binding

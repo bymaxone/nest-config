@@ -17,6 +17,7 @@ import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
 import type { ConfigIssue } from './errors'
 import {
   findCoercedBooleanLeaves,
+  findNonNamespaces,
   findUnusableEnvOverrides,
   resolveNamespacePrefixes,
   resolveSourceNames
@@ -401,6 +402,29 @@ export function assertDistinctVariables(bindings: ReadonlyArray<SourceBinding>):
 }
 
 /**
+ * Reject a schema that holds a top-level key which is not a namespace.
+ *
+ * The types allow only `z.object` namespaces at the top level; a flat leaf reaches here only past
+ * them. It is reported by key, with every offending key listed, before anything reads the schema's
+ * shape, so the operator sees a typed report and not a `TypeError` from the walk.
+ *
+ * @param schema - The schema whose top-level keys are checked.
+ * @throws {BymaxConfigValidationError} When any top-level key is not a namespace.
+ */
+export function assertNamespaces<TShape extends EnvShape>(schema: EnvSchema<TShape>): void {
+  const flat = findNonNamespaces(schema)
+  if (flat.length === 0) return
+  throw new BymaxConfigValidationError(
+    flat.map(({ path, variable }) => ({
+      path,
+      variable,
+      code: ConfigErrorCode.INVALID,
+      message: 'is not a namespace; declare it inside a z.object({ ... }) namespace'
+    }))
+  )
+}
+
+/**
  * Describe every leaf whose `meta({ env })` is present but cannot name a variable.
  *
  * The leaf would silently read the variable derived from its path, so it is a mistake in the
@@ -533,6 +557,7 @@ export function validateEnv<TShape extends EnvShape>(
   source: EnvSource,
   options?: EnvValidationOptions
 ): EnvOutput<TShape> {
+  assertNamespaces(schema)
   const bindings = resolveSourceNames(schema)
   assertDistinctVariables(bindings)
   const sourceMap = new Map(Object.entries(source))

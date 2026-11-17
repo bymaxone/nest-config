@@ -80,8 +80,9 @@ minimal.
 
 - ✅ **Zero runtime dependencies** — `zod`, `reflect-metadata` and `@nestjs/*` all arrive as
   peers, so you pin the versions
-- ✅ **Testing entry point** — `./testing` builds the same validated object from an explicit
-  record, so a test never passes because a variable happened to be set on the machine
+- ✅ **Testing entry point** — `./testing` builds the same validated object from a source it
+  synthesizes from the schema and your overrides, so a test never passes because a variable
+  happened to be set on the machine
 - ✅ **One class identity** — the module and its testing entry share a single `./internal`
   bundle, so `ConfigService` is the same injection token from either, in ESM and CommonJS
 - ✅ **Dual-format output** — ESM + CJS with declarations for each format, verified against
@@ -93,11 +94,11 @@ minimal.
 
 ## 📦 Subpath Exports
 
-| Subpath      | Contents                                                                                                                                                                   |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.`          | `BymaxConfigModule`, `ConfigService`, `defineEnv`, `resolveSourceNames`, the DI tokens, `BymaxConfigValidationError`, `ConfigErrorCode` and every option type              |
-| `./testing`  | `configTestingModule`, `createTestConfig` — a validated config for a test without booting the application's own                                                            |
-| `./internal` | The shared runtime both entry points build on. **Not public API**: it is in the `exports` map because it has to resolve at runtime, not because it is meant to be imported |
+| Subpath      | Contents                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.`          | `BymaxConfigModule`, `ConfigService`, `defineEnv`, `resolveSourceNames`, the DI tokens, `BymaxConfigValidationError`, `ConfigErrorCode` and every option type                                                                                                                                                                                                                                                                                   |
+| `./testing`  | `configTestingModule`, `createTestConfig` — a validated config for a test without booting the application's own                                                                                                                                                                                                                                                                                                                                 |
+| `./internal` | The shared runtime both entry points build on. **Not public API**: it is in the `exports` map because it has to resolve at runtime, not because it is meant to be imported, and it carries no compatibility promise: any export can change in any release. Besides the root's exports it holds `createValidatedConfig`, `assertNamespaces`, `assertDistinctVariables` and `unusableOverrideIssues`, the validation steps the entry points share |
 
 `.` and `./testing` are separate bundles, and a module reached from both by a
 relative path would be _copied_ into each — a copied class is a different injection
@@ -247,17 +248,17 @@ once one of that namespace's leaves has failed, so such a rule appears once the 
 
 ### `BymaxConfigModule`
 
-| Method                  | Signature                                                         |
-| ----------------------- | ----------------------------------------------------------------- |
-| `forRoot(options)`      | `(options: BymaxConfigModuleOptions) => DynamicModule`            |
-| `forRootAsync(options)` | `(options: ConfigurableModuleAsyncOptions<...>) => DynamicModule` |
+| Method                  | Signature                                                                                                                                      |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `forRoot(options)`      | `(options: BymaxConfigModuleOptions & { isGlobal?: boolean \| null \| undefined }) => DynamicModule`                                           |
+| `forRootAsync(options)` | `(options: ConfigurableModuleAsyncOptions<BymaxConfigModuleOptions, 'create'> & { isGlobal?: boolean \| null \| undefined }) => DynamicModule` |
 
 `BymaxConfigModuleOptions`:
 
 | Field               | Type                                                        | Required | Notes                                                                                                                                                                                                                                                               |
 | ------------------- | ----------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `schema`            | `EnvSchema`                                                 | yes      | Produced by `defineEnv`.                                                                                                                                                                                                                                            |
-| `source`            | `Record<string, string \| undefined>`                       | no       | Defaults to `process.env` when the key is omitted; a key present with the value `undefined` or `null` throws at boot. Injectable for tests.                                                                                                                         |
+| `schema`            | `EnvSchema`                                                 | yes      | Produced by `defineEnv`. A top-level key that is not a `z.object` namespace, a namespace named `toJSON` and two leaves that read one variable are reported at boot as `BYMAX_CONFIG_INVALID` issues.                                                                |
+| `source`            | `Record<string, string \| undefined>`                       | no       | Defaults to `process.env` when the key is omitted; a key present with the value `undefined` or `null` throws a `TypeError` at boot. Injectable for tests.                                                                                                           |
 | `onValidationError` | `((issues: ReadonlyArray<ConfigIssue>) => unknown) \| null` | no       | Observability hook invoked before the fail-fast throw; a promise it returns is awaited. Cannot suppress the failure. `undefined` or `null` means no hook.                                                                                                           |
 | `strict`            | `boolean \| null`                                           | no       | When true, source variables matching a namespace prefix but no declared leaf raise `BYMAX_CONFIG_UNKNOWN_KEY`. Defaults to `false`, and so does `undefined` or `null`. Read [Strict mode and shared prefixes](#strict-mode-and-shared-prefixes) before enabling it. |
 
@@ -306,6 +307,19 @@ instance, works like a literal. `forRoot` and `forRootAsync` hand the `BYMAX_CON
 The options must be objects: the argument of `forRoot` and `forRootAsync`, and what an asynchronous
 provider resolves to. A primitive, `null`, a function or a class with static options throws a `TypeError`
 that names the method and the type received, never the value.
+
+The `forRootAsync` keys come from Nest's configurable-module builder:
+
+| Key                          | Type                                                           | Default | Notes                                                                                                                        |
+| ---------------------------- | -------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `useFactory`                 | `(...args) => BymaxConfigModuleOptions \| Promise<...>`        | none    | Returns the options. A result that is not an object is refused with the `TypeError` above.                                   |
+| `inject`                     | `FactoryProvider['inject']`                                    | `[]`    | The tokens handed to `useFactory`. One Nest cannot resolve fails the module compile with Nest's unresolved-dependency error. |
+| `imports`                    | `ModuleMetadata['imports']`                                    | none    | The modules whose providers `inject` can reach.                                                                              |
+| `useClass`                   | `Type<{ create(): BymaxConfigModuleOptions \| Promise<...> }>` | none    | A class instantiated as a provider; its `create()` returns the options.                                                      |
+| `useExisting`                | the same                                                       | none    | Reuses a provider that is already registered.                                                                                |
+| `provideInjectionTokensFrom` | `Provider[]`                                                   | none    | The parent module's providers, filtered down to the ones `inject` names, to hand options to nested async modules.            |
+
+Giving none of `useFactory`, `useClass` and `useExisting` is not refused at registration: compiling the module fails with Nest's unresolved-dependency error for the options token.
 
 #### Strict mode and shared prefixes
 
@@ -684,6 +698,12 @@ const config = createTestConfig(envSchema, {
 })
 ```
 
+`createTestConfig<TShape>(schema: EnvSchema<TShape>, overrides?: ConfigOverrides<TShape>): Readonly<EnvOutput<TShape>>`
+and `configTestingModule<TShape>(schema: EnvSchema<TShape>, overrides?: ConfigOverrides<TShape>): DynamicModule`
+both throw a `BymaxConfigValidationError` when an override breaks a constraint or when no placeholder
+satisfies a leaf (that issue names the leaf to override); `configTestingModule` throws at the call, before any
+module is built. `ConfigOverrides<TShape>` is not exported by name.
+
 `configTestingModule` registers the production `BymaxConfigModule` with a
 synthesized source, ready to drop into a Nest `TestingModule` graph:
 
@@ -717,6 +737,8 @@ standard is Jest.
 ## 📖 API Reference
 
 ### `defineEnv(shape)`
+
+`defineEnv<TShape extends EnvShape>(shape: TShape): EnvSchema<TShape>`. It never throws: a top-level key that is not a namespace, which only a bypass of the types can produce, is reported at boot as a `BYMAX_CONFIG_INVALID` issue that names the key.
 
 A thin, typed factory over `z.object(...)` that establishes the two-level
 namespace convention: top-level keys are namespaces, leaves are
@@ -781,15 +803,19 @@ Write `.meta({ open: true })` last: methods that build a new object schema, such
 
 The typed, injectable accessor over the frozen configuration object.
 
-| Method      | Signature                                                     | Notes                                            |
-| ----------- | ------------------------------------------------------------- | ------------------------------------------------ |
-| `get(path)` | `<P extends Path<TConfig>>(path: P) => PathValue<TConfig, P>` | Dot-path access, type inferred from the schema.  |
-| `getAll()`  | `() => Readonly<TConfig>`                                     | The deep-frozen root object.                     |
-| `has(path)` | `(path: Path<TConfig>) => boolean`                            | True when the resolved value is not `undefined`. |
+| Method      | Signature                                                                    | Notes                                                                              |
+| ----------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `get(path)` | `<P extends Path<TConfig>>(path: P) => PathValue<TConfig, P>`                | Dot-path access, type inferred from the schema.                                    |
+| `getAll()`  | `() => Readonly<TConfig>`                                                    | The deep-frozen root object.                                                       |
+| `has(path)` | `(path: Path<TConfig>) => boolean`                                           | True when the resolved value is not `undefined`.                                   |
+| `toJSON()`  | `() => { readonly service: string; readonly namespaces: readonly string[] }` | The declared namespace names, never a value: `JSON.stringify(service)` stays safe. |
 
 Because validation completed at bootstrap, `get` never throws for a declared
 path: every leaf either passed validation, received its default, or the
-process did not start.
+process did not start. An optional leaf without a default can still be `undefined` when its type allows it.
+
+The module constructs the service from the frozen root: `new ConfigService(config)` takes a
+`Readonly<TConfig>` and is meant for a test of your own code that needs the accessor without the module.
 
 The class is named `ConfigService`, as the one in `@nestjs/config` is; a backend that imports both
 aliases one of them: `import { ConfigService as BymaxConfigService } from '@bymax-one/nest-config'`.
@@ -860,7 +886,7 @@ report alone.
 `BYMAX_CONFIG` is a `Symbol` token for the raw frozen config, exported by the module for advanced
 factory-style wiring that does not go through `ConfigService`. `BYMAX_CONFIG_OPTIONS` is the token of
 the module's own options: it is provided inside the module only, so a provider in another module
-cannot inject it, and the options it holds include the raw `source` record. Do not build on it.
+cannot inject it, and the options it holds include the raw `source` record. Do not build on it. Injecting `BYMAX_CONFIG` in a module that does not import the config module (and does not get it as a global) fails when the application is compiled, with Nest's unresolved-dependency error.
 
 ```typescript
 import { Inject, Injectable } from '@nestjs/common'
@@ -880,7 +906,10 @@ two-level schema shape produced by `defineEnv`; `Path<T>` and `PathValue<T, P>`
 are the template-literal utilities behind `ConfigService.get`'s compile-time
 dot-path inference, limited to the two-level namespace convention. All of them
 are exported for advanced generic code (custom decorators, typed wrappers)
-that needs to reference the schema shape directly.
+that needs to reference the schema shape directly. `EnvSchema<TShape = EnvShape>` defaults its parameter to the generic shape.
+`ConfigIssueCode` is the union of the three issue codes (`BYMAX_CONFIG_MISSING`, `BYMAX_CONFIG_INVALID`,
+`BYMAX_CONFIG_UNKNOWN_KEY`) and `ConfigValidationCode` is the single code of the thrown error,
+`BYMAX_CONFIG_VALIDATION`.
 
 ### `resolveSourceNames(schema)`
 
@@ -946,6 +975,11 @@ it('documents every variable the schema reads in .env.example', () => {
 | `BYMAX_CONFIG_MISSING`     | Required variable absent from the source (issue code).    |
 | `BYMAX_CONFIG_INVALID`     | Failed its constraint, or shares a variable (issue code). |
 | `BYMAX_CONFIG_UNKNOWN_KEY` | Strict mode: source variable matches no declared leaf.    |
+
+These codes are raised at boot, in the aggregated `BymaxConfigValidationError` (code `BYMAX_CONFIG_VALIDATION`)
+that stops the process: the library has no HTTP status. `BYMAX_CONFIG_INVALID` also covers a namespace named
+`toJSON`, a top-level key that is not a namespace, an unusable `meta({ env })`, a refused `z.coerce.boolean()`
+and a rule that threw. For `BYMAX_CONFIG_UNKNOWN_KEY` the issue's `path` is the namespace alone.
 
 ## 🚫 What This Library Does NOT Do
 

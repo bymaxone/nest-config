@@ -123,8 +123,8 @@ function deriveVariable(namespace: string, leafKey: string): string {
  * The types allow only `z.object` namespaces at the top level; a flat leaf reaches here only past
  * them, and walking its missing `shape` would fail with a raw `TypeError`. Every offending key is
  * reported, in declaration order, with the variable the key itself derives, so the operator sees a
- * typed report that names it. Every walk of the schema starts here, so no caller reaches the shape
- * of a key that has none.
+ * typed report that names it. A function that reads the shape of every namespace before it calls
+ * `resolveSourceNames` calls this first.
  *
  * @param schema - A schema produced by `defineEnv`.
  * @throws {BymaxConfigValidationError} When any top-level key is not a namespace.

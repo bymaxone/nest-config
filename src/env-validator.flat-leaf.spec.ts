@@ -16,6 +16,7 @@ import { validateEnv } from './env-validator'
 import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
 import { resolveSourceNames } from './source-mapping'
 import { prepareTestConfig } from './testing/create-test-config'
+import { synthesizePlaceholderSource } from './testing/placeholder-synthesizer'
 
 /** A schema with flat leaves in the namespace position, built the way a types bypass would. */
 const flat = (shape: Record<string, z.ZodType>): Parameters<typeof validateEnv>[0] =>
@@ -100,5 +101,13 @@ describe('resolveSourceNames on a top-level key that is not a namespace', () => 
     expect(resolveSourceNames(defineEnv({ db: z.object({ url: z.string() }) }))).toEqual([
       { path: 'db.url', variable: 'DB_URL' }
     ])
+  })
+})
+
+describe('synthesizePlaceholderSource on a top-level key that is not a namespace', () => {
+  it('refuses with the typed error before it walks the missing shape', () => {
+    const error = captureThrown(() => synthesizePlaceholderSource(flat({ mode: z.string() })))
+
+    expect(error.issues.map((issue) => issue.path)).toEqual(['mode'])
   })
 })

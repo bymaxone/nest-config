@@ -461,7 +461,7 @@ rather than as an empty object. Reading on purpose is unaffected: `get`, `has` a
 `getAll` escape hatch return the real values. `getAll()` returns the root itself, so
 `JSON.stringify(configService.getAll())` serializes to the namespace names too; a host that needs the
 values to serialize reads a namespace of the root (`configService.getAll().auth`), a leaf
-(`get('auth.secret')`), or spreads the namespaces it needs (`JSON.stringify({ auth: config.auth })`).
+(`get('auth.secret')`), or picks the namespaces it needs (`JSON.stringify({ auth: config.auth })`).
 
 The raw root, whether injected through `BYMAX_CONFIG` or returned by `getAll`, prints
 `[BymaxConfig: values redacted]` under `util.inspect`. Measured: `console.log(config)`,
@@ -480,8 +480,10 @@ It stops there:
 - A copy of the root made by spread, `Object.assign` or `structuredClone` (`{ ...config }`) drops the
   non-enumerable `toJSON` and `util.inspect` marker, so printing or serializing the copy shows the
   values again.
-- `console.dir`, `util.inspect` with `customInspect: false` and `v8.serialize` read the values,
-  because none of them calls the marker or `toJSON`.
+- `console.dir`, `console.table`, the failure messages of `node:assert`, `util.inspect` with
+  `customInspect: false` and `v8.serialize` read the values, because none of them calls the marker or
+  `toJSON`. `Object.entries(root)` and `Object.values(root)` hand out the namespaces themselves, so
+  serializing their result shows the values too.
 
 Never log the root or a namespace; log leaf names, and use your logger's key-based redaction for
 anything that can reach it. A namespace cannot be named `toJSON`: the boot refuses it with a
@@ -490,7 +492,8 @@ anything that can reach it. A namespace cannot be named `toJSON`: the boot refus
 The redaction is visible on the root: `toJSON` is an own, non-enumerable property, so it appears in
 `Object.getOwnPropertyNames(root)` and `Reflect.ownKeys(root)` (`Object.keys` still lists the
 namespaces only) and `'toJSON' in root` is `true`. In strict mode code, deleting, assigning or
-redefining it throws a `TypeError`, because the root is frozen. `util.format('%j', root)` prints the
+redefining it throws a `TypeError`, because the root is frozen; in sloppy mode `Object.defineProperty`
+still throws, while deleting and assigning silently change nothing. `util.format('%j', root)` prints the
 names.
 
 ### Failing fast is the security property

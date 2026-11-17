@@ -30,3 +30,7 @@ src/check-spec-headers.spec.ts
 # the template; the repository's prettier config would reformat them.
 scripts/check-double-assertions.mjs
 src/check-double-assertions.spec.ts
+
+# The link check of the published-surface gate is the family template's file, kept byte-identical
+# to the template; the repository's prettier config would reformat it.
+scripts/published-surface-links.mjs

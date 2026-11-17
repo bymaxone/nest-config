@@ -37,6 +37,73 @@ function appendTo<TItem>(list: readonly TItem[] | undefined, ...items: TItem[]):
 }
 
 /**
+ * Drop the entries whose value is undefined or null.
+ *
+ * An own option key set to undefined or null means "use the default", so the key must be absent
+ * for the builder's default to apply.
+ *
+ * @typeParam TValues - The shape of the values.
+ * @param values - Options read from the host's object.
+ * @returns The same entries without the undefined and null ones.
+ */
+function withoutNullish<TValues extends object>(values: TValues): Partial<TValues> {
+  return Object.fromEntries(
+    Object.entries(values).filter(([, value]) => value !== undefined && value !== null)
+  ) as Partial<TValues>
+}
+
+/**
+ * Read the synchronous registration options the module understands, by property access, so options
+ * held by an object whose properties are accessors on its prototype (a class instance) are read
+ * instead of lost to a copy of its own keys.
+ *
+ * `source` is the one option whose undefined or null is not a default: a `source` key that is
+ * present is passed on as it is, so the provider refuses it instead of falling back to the process
+ * environment, which would validate the wrong environment after a failed load.
+ *
+ * @param options - The options a host passed to `forRoot`.
+ * @returns A plain object the builder can copy.
+ */
+function readRegistration(options: BymaxConfigForRootOptions): BymaxConfigForRootOptions {
+  const { schema, onValidationError, strict, isGlobal } = options
+  const registration: BymaxConfigForRootOptions = {
+    schema,
+    ...withoutNullish({ onValidationError, strict, isGlobal })
+  }
+  if ('source' in options) Object.assign(registration, { source: options.source })
+  return registration
+}
+
+/**
+ * Read the asynchronous registration options the module understands, by property access.
+ *
+ * @param options - The options a host passed to `forRootAsync`.
+ * @returns A plain object the builder can copy.
+ */
+function readAsyncRegistration(
+  options: BymaxConfigForRootAsyncOptions
+): BymaxConfigForRootAsyncOptions {
+  const {
+    useFactory,
+    useClass,
+    useExisting,
+    inject,
+    imports,
+    provideInjectionTokensFrom,
+    isGlobal
+  } = options
+  return withoutNullish({
+    useFactory,
+    useClass,
+    useExisting,
+    inject,
+    imports,
+    provideInjectionTokensFrom,
+    isGlobal
+  })
+}
+
+/**
  * NestJS dynamic module exposing typed, validated environment configuration.
  *
  * Import it once (typically in `AppModule`) with `forRoot` for a static schema
@@ -59,7 +126,7 @@ export class BymaxConfigModule extends ConfigurableModuleClass {
    * @returns The dynamic module augmented with the frozen config provider.
    */
   public static override forRoot(options: BymaxConfigForRootOptions): DynamicModule {
-    return BymaxConfigModule.withConfigProvider(super.forRoot(options))
+    return BymaxConfigModule.withConfigProvider(super.forRoot(readRegistration(options)))
   }
 
   /**
@@ -69,7 +136,7 @@ export class BymaxConfigModule extends ConfigurableModuleClass {
    * @returns The dynamic module augmented with the frozen config provider.
    */
   public static override forRootAsync(options: BymaxConfigForRootAsyncOptions): DynamicModule {
-    return BymaxConfigModule.withConfigProvider(super.forRootAsync(options))
+    return BymaxConfigModule.withConfigProvider(super.forRootAsync(readAsyncRegistration(options)))
   }
 
   /**

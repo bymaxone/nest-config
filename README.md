@@ -293,7 +293,10 @@ BymaxConfigModule.forRootAsync({ useClass: ConfigOptionsFactory })
 ```
 
 `isGlobal` defaults to `true` and can be set to `false` through the standard
-extras when an application intentionally scopes configuration to a submodule.
+extras when an application intentionally scopes configuration to a submodule. An optional option key set to
+`undefined` or `null` means its default; `source` is the exception, as its row in the options table says, because a source that failed to load must not become
+`process.env`. The options are read by property access, so an object whose options are accessors, such
+as a class instance, works like a literal.
 
 #### Strict mode and shared prefixes
 

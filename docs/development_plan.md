@@ -87,6 +87,8 @@ These rules apply to every phase. Phase sections only add rules specific to them
    `eslint-disable`) anywhere.
 2. **Clean Code sizing.** Functions at most 50 lines; files at most 800 lines with a
    typical target of 200 to 400. Split by responsibility when a limit approaches.
+   CI enforces both, and a spec's purpose and layer header, for what a change introduces;
+   what the repository already holds sits on baselines that can only shrink.
 3. **Explicit dependency injection.** Every constructor parameter and every factory
    `inject` entry uses `@Inject(token)`; tokens are `Symbol`s. The published bundle is
    built without `emitDecoratorMetadata`, so implicit class-type DI is never relied on.

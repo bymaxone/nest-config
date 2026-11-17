@@ -592,3 +592,23 @@ files left out.
 | CompileError (type-invalid) | 288           |
 
 Score = `504 / 504`.
+
+## Re-run — 2026-11-17 (1.2.11)
+
+The release gate for `v1.2.11`. Command: **`pnpm mutation:full`**, run cold on a hosted runner by the
+`Mutation (full)` workflow dispatched on `main` at `6020c4b`. Run
+[44181206230](https://github.com/bymaxone/nest-config/actions/runs/44181206230); the job concluded
+`success`, and the inventory check passed: all 482 unit tests ran in the mutation run, with 11 exempt spec
+files left out.
+
+| Metric                      | Value         |
+| --------------------------- | ------------- |
+| **Mutation score**          | **100.00 %**  |
+| Killed                      | 539           |
+| Surviving mutants           | 0             |
+| Timeout                     | 2             |
+| Ignored                     | 57            |
+| Break threshold             | 100 % -> PASS |
+| CompileError (type-invalid) | 302           |
+
+Score = `541 / 541`.

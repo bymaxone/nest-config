@@ -33,7 +33,8 @@ as the GitHub Release body, so each released version needs a matching
   attached to the validation error as its `cause`. `undefined` and `null` now mean no hook, as
   `strict` and `isGlobal` already did.
 - **A registration argument that is not an object is refused by type.** `forRoot` and `forRootAsync`
-  throw a `TypeError` naming the method and the type received, never the value.
+  throw a `TypeError` naming the method and the type received, never the value, and so does a
+  `forRootAsync` factory, class or existing provider that resolves to something that is not an object.
 
   #### Apply to a derived backend
   - A host that passes `isGlobal: undefined` or `isGlobal: null`, for example
@@ -41,10 +42,12 @@ as the GitHub Release body, so each released version needs a matching
     scope the module to a submodule.
   - A `source` key that is present with `undefined` or `null` is still refused with a `TypeError`: a
     source that failed to load must not become `process.env`. Omit the key to validate `process.env`.
-  - With `forRoot`, the `BYMAX_CONFIG_OPTIONS` token now carries only the options the module reads (`schema`,
-    `source`, `onValidationError`, `strict`); a key a host adds beyond those no longer reaches it. A
-    provider that read such a key from the token must read it from the host's own options.
-  - `forRoot` and `forRootAsync` throw a `TypeError` when the argument is not an object.
+  - The `BYMAX_CONFIG_OPTIONS` token now carries only the options the module reads (`schema`,
+    `source`, `onValidationError`, `strict`), also for what an asynchronous factory returns; a key a
+    host adds beyond those no longer reaches it. A provider that read such a key from the token must
+    read it from the host's own options.
+  - `forRoot` and `forRootAsync` throw a `TypeError` when the argument, or what an asynchronous
+    provider resolves to, is not an object.
   - `strict`, `onValidationError` and `isGlobal` accept `null` and `undefined` in their types, as the
     runtime already did. The declarations differ from 1.2.10 only by that widening.
 

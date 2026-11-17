@@ -18,7 +18,7 @@ import type {
   BymaxConfigForRootAsyncOptions,
   BymaxConfigForRootOptions
 } from './config.module-definition'
-import { BYMAX_CONFIG } from './config.tokens'
+import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { defineEnv } from './define-env'
 import { BymaxConfigValidationError } from './errors'
 
@@ -318,5 +318,88 @@ describe('options returned by a forRootAsync factory', () => {
 
     expect(error).toBeInstanceOf(BymaxConfigValidationError)
     expect((error as Error).cause).toEqual(new Error('hook failed'))
+  })
+})
+
+describe('the options a forRootAsync factory, class or existing provider returns', () => {
+  class OptionsFactory {
+    public constructor(private readonly returned: object) {}
+    public create(): object {
+      return this.returned
+    }
+  }
+
+  /** The value the options token resolves to, whichever form produced the options provider. */
+  async function tokenValue(
+    registration: BymaxConfigForRootAsyncOptions,
+    ...args: unknown[]
+  ): Promise<Record<string, unknown>> {
+    const provider = Reflect.get(
+      (BymaxConfigModule.forRootAsync(registration).providers ?? []).find(
+        (candidate) => Reflect.get(candidate, 'provide') === BYMAX_CONFIG_OPTIONS
+      ) as object,
+      'useFactory'
+    ) as (...factoryArgs: unknown[]) => Promise<Record<string, unknown>>
+    return provider(...args)
+  }
+
+  const returned = { schema, source: valid, strict: true, isGlobal: false, futureKey: 1 }
+
+  it.each([
+    {
+      form: 'useFactory',
+      registration: asyncOptions({ useFactory: () => returned }),
+      args: [] as unknown[]
+    },
+    {
+      form: 'useClass',
+      registration: asyncOptions({ useClass: OptionsFactory }),
+      args: [new OptionsFactory(returned)]
+    },
+    {
+      form: 'useExisting',
+      registration: asyncOptions({ useExisting: OptionsFactory }),
+      args: [new OptionsFactory(returned)]
+    }
+  ])(
+    '$form carries only the options the module reads to the options token',
+    async ({ registration, args }) => {
+      const value = await tokenValue(registration, ...args)
+
+      expect(Object.keys(value).sort()).toEqual(['schema', 'source', 'strict'])
+    }
+  )
+
+  it('drops an onValidationError that is null from what the token carries', async () => {
+    const value = await tokenValue(
+      asyncOptions({ useFactory: () => ({ schema, source: valid, onValidationError: null }) })
+    )
+
+    expect(Object.keys(value)).not.toContain('onValidationError')
+  })
+
+  it('reads a returned object held by a Proxy with only a get trap, source included', async () => {
+    const value = await tokenValue(
+      asyncOptions({
+        useFactory: () =>
+          new Proxy(
+            {},
+            { get: (_target, key) => ({ schema, source: valid })[String(key) as 'schema'] }
+          )
+      })
+    )
+
+    expect(value['source']).toBe(valid)
+  })
+
+  it('refuses a factory that returns something that is not an object, naming only its type', async () => {
+    const sentinel = 'SeNtInEl-factory-3c7a'
+
+    await expect(tokenValue(asyncOptions({ useFactory: () => sentinel }))).rejects.toThrow(
+      'options must be an object, received string'
+    )
+    await expect(tokenValue(asyncOptions({ useFactory: () => sentinel }))).rejects.not.toThrow(
+      new RegExp(sentinel)
+    )
   })
 })

@@ -110,7 +110,10 @@ describe('every asynchronous registration option survives the read', () => {
     [
       'useFactory',
       { useFactory },
-      (module) => optionsProvider(module)['useFactory'] === useFactory
+      // The module wraps the factory so what it returns is read like the options of forRoot, so the
+      // key is observed by the provider still having a factory; a reader that dropped the key would
+      // leave the builder with none and make forRootAsync throw.
+      (module) => typeof optionsProvider(module)['useFactory'] === 'function'
     ],
     [
       'useClass',

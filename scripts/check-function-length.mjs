@@ -10,9 +10,11 @@
  * The unit is a function-like node (a declaration, a method, a constructor, an accessor, a function
  * or an arrow expression) measured from its first line to its last, signature and braces included.
  * That is how the review reports it, so the gate and the reviewer never argue about the measure. A
- * test body is the callback of `it` or `test`, `.each` forms included. The callback of `describe`,
- * `context`, `suite` and the setup and teardown hooks is a container, not a unit: a spec file's
- * `describe` holds all its tests and would otherwise fail every spec.
+ * test body is the callback of `it` or `test`, `.each` forms included. A setup or teardown hook
+ * (`beforeEach`, `afterEach`, `beforeAll`, `afterAll`) is a function like any other and is measured
+ * like a test body, with the same limit and the same baseline. The callback of `describe`, `context`
+ * and `suite` is a container, not a unit: a spec file's `describe` holds all its tests and would
+ * otherwise fail every spec.
  *
  * A function nested in another is measured on its own and inside the span of the one that
  * contains it. Growing it therefore moves two baseline entries, and the failure says so, so the
@@ -57,18 +59,11 @@ const GENERATED = /\/generated\//
 /** Tracked files with these extensions are parsed. */
 const SOURCE_EXTENSION = /\.(?:ts|tsx)$/
 
-/** Callbacks that group tests or run around them: containers, never units. */
-const CONTAINERS = new Set([
-  'describe',
-  'xdescribe',
-  'fdescribe',
-  'context',
-  'suite',
-  'beforeAll',
-  'beforeEach',
-  'afterAll',
-  'afterEach'
-])
+/** Callbacks that group tests: containers, never units. */
+const CONTAINERS = new Set(['describe', 'xdescribe', 'fdescribe', 'context', 'suite'])
+
+/** Setup and teardown callbacks: units, measured like a test body. */
+const HOOKS = new Set(['beforeAll', 'beforeEach', 'afterAll', 'afterEach'])
 
 /** Callbacks that are a test body. */
 const TESTS = new Set(['it', 'xit', 'fit', 'test', 'xtest'])
@@ -131,11 +126,13 @@ function classNameOf(member) {
 
 /**
  * What a function-like node is called in a key, and whether it is a measured unit.
- * A container callback is named so that tests under it get distinct keys, but is not measured.
+ * A container callback is named so that tests under it get distinct keys, but is not measured; a hook has no
+ * title and is measured.
  */
 function describeNode(node) {
   const call = ts.isCallExpression(node.parent) ? node.parent : null
   const root = call === null ? null : calleeRoot(call)
+  if (call !== null && root !== null && HOOKS.has(root)) return { segment: ['hook', root], measured: true }
   if (call !== null && root !== null && (CONTAINERS.has(root) || TESTS.has(root))) {
     const title = titleOf(call)
     const kind = CONTAINERS.has(root) ? 'container' : 'test'
@@ -205,10 +202,11 @@ function measure(path, text) {
   })
   const offenders = []
   for (const [index, entry] of found.entries()) {
-    if (keys[index] === null) continue
+    const key = keys.at(index)
+    if (key === null) continue
     const owners = []
-    for (let up = entry.container; up !== -1; up = found[up].container) owners.push(keys[up])
-    offenders.push({ key: keys[index], lines: entry.lines, owners })
+    for (let up = entry.container; up !== -1; up = found.at(up).container) owners.push(keys.at(up))
+    offenders.push({ key, lines: entry.lines, owners })
   }
   return { offenders, longest: found }
 }

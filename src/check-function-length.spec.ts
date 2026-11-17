@@ -599,6 +599,11 @@ describe('check-function-length', () => {
       expect(run(root, '--base', 'HEAD').status).toBe(0)
       expect(run(root, '--base', 'no-such-ref').status).not.toBe(0)
 
+      writeFileSync(join(root, 'src', 'a.ts'), declaration('big', 55))
+      writeBaseline(root, { [fnKey('big')]: 55 })
+
+      expect(run(root, '--base', 'HEAD').status).toBe(0)
+
       const bare = mkdtempSync(join(tmpdir(), 'function-length-spec-'))
       roots.push(bare)
       spawnSync('git', ['init', '-q'], { cwd: bare })

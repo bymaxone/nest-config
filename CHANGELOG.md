@@ -15,6 +15,27 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.10] - 2026-11-17
+
+### Fixed
+
+- **The configuration root no longer serializes its values.** The validated root printed every value
+  when serialized as JSON, because only `util.inspect` was redacted. The root now carries a
+  non-enumerable `toJSON` that returns `{ service: 'BymaxConfig', namespaces }`, the declared
+  namespace names and no value.
+
+  #### Apply to a derived backend
+  - A call that serializes the root to read its values, such as `JSON.stringify(config)` to snapshot or
+    diff the configuration, now gets the namespace names. Read through `ConfigService` (`get`, `getAll`) or
+    a namespace instead.
+  - A namespace named `toJSON` is refused at boot with a `BYMAX_CONFIG_INVALID` issue, because that name is the
+    root's serializer. Rename the namespace.
+  - It stops at the root. A namespace serialized directly (`JSON.stringify(config.auth)`) and a copy of
+    the root made by spread or `Object.assign` show their values again, and `pino`'s `logger.info(config)`
+    (the root as the merge object, not under a key) prints every value, because `pino` spreads the
+    enumerable keys of the object it is handed. Log `{ config }` under a key, or better
+    `{ namespaces: Object.keys(config) }`.
+
 ## [1.2.9] - 2026-11-17
 
 ### Fixed
@@ -735,4 +756,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.7]: https://github.com/bymaxone/nest-config/compare/v1.2.6...v1.2.7
 [1.2.8]: https://github.com/bymaxone/nest-config/compare/v1.2.7...v1.2.8
 [1.2.9]: https://github.com/bymaxone/nest-config/compare/v1.2.8...v1.2.9
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.9...HEAD
+[1.2.10]: https://github.com/bymaxone/nest-config/compare/v1.2.9...v1.2.10
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.10...HEAD

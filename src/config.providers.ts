@@ -96,6 +96,22 @@ async function reportIssues(
 }
 
 /**
+ * Refuse an option that is set but is not a boolean.
+ *
+ * `undefined` and `null` mean the default and pass. The message names where the option was read, the
+ * option and the type received, never the value.
+ *
+ * @param value - What the host passed for the option.
+ * @param name - The option name, for the message.
+ * @param where - The entry point that read it, for the message.
+ * @throws {TypeError} When `value` is set and is not a boolean.
+ */
+export function assertBoolean(value: unknown, name: string, where: string): void {
+  if (value === undefined || value === null || typeof value === 'boolean') return
+  throw new TypeError(`${where}: ${name} must be a boolean, received ${typeof value}`)
+}
+
+/**
  * Validate the source against the schema, freeze the result, or throw.
  *
  * Resolves the source to the supplied record or `process.env`, runs exactly one
@@ -109,7 +125,8 @@ async function reportIssues(
  * @throws {BymaxConfigValidationError} When the source fails the schema, or when freezing the
  * validated result throws.
  * @throws {TypeError} When `source` is present with the value `undefined` or `null`, which would
- * otherwise validate `process.env` in place of the source that failed to load.
+ * otherwise validate `process.env` in place of the source that failed to load, or when `strict` is set
+ * and is not a boolean.
  * @example
  * ```typescript
  * const config = createValidatedConfig({ schema: envSchema });
@@ -121,6 +138,7 @@ export function createValidatedConfig<TShape extends EnvShape>(
     readonly schema: EnvSchema<TShape>
   }
 ): Readonly<EnvOutput<TShape>> {
+  assertBoolean(options.strict, 'strict', 'createValidatedConfig')
   if ('source' in options && (options.source === undefined || options.source === null)) {
     throw new TypeError(
       'BymaxConfigModule: source was provided but is undefined or null; omit the key to ' +

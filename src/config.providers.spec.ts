@@ -129,6 +129,36 @@ describe('createValidatedConfig', () => {
   })
 })
 
+describe('createValidatedConfig and a strict that is not a boolean', () => {
+  const SENTINEL = 'SeNtInEl-strict-4e7c'
+  const lax = { SERVER_PORT: '3000', SERVER_PORTT: 'typo' }
+
+  it.each([
+    { label: 'the number 1', value: 1, type: 'number' },
+    { label: 'NaN', value: Number.NaN, type: 'number' },
+    { label: 'an empty string', value: '', type: 'string' },
+    { label: 'the string "true"', value: 'true', type: 'string' },
+    { label: 'a secret-shaped string', value: SENTINEL, type: 'string' },
+    { label: 'an object', value: {}, type: 'object' }
+  ])(
+    'refuses strict $label instead of reading it as lax, naming only its type',
+    ({ value, type }) => {
+      const call = () => createValidatedConfig({ schema, source: lax, strict: value as never })
+
+      expect(call).toThrow(TypeError)
+      expect(call).toThrow(`createValidatedConfig: strict must be a boolean, received ${type}`)
+      expect(call).not.toThrow(new RegExp(SENTINEL))
+    }
+  )
+
+  it.each([true, false, null, undefined])('still accepts %s for strict', (value) => {
+    const run = () => createValidatedConfig({ schema, source: lax, strict: value })
+
+    if (value === true) expect(run).toThrow(BymaxConfigValidationError)
+    else expect(run()).toBeDefined()
+  })
+})
+
 /** The factory the module registers for BYMAX_CONFIG, typed for a direct call. */
 const provide = bymaxConfigProvider.useFactory as (
   options: BymaxConfigModuleOptions

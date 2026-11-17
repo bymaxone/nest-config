@@ -25,16 +25,20 @@ as the GitHub Release body, so each released version needs a matching
   namespace names and no value.
 
   #### Apply to a derived backend
-  - A call that serializes the root to read its values, such as `JSON.stringify(config)` to snapshot or
-    diff the configuration, now gets the namespace names. Read through `ConfigService` (`get`, `getAll`) or
-    a namespace instead.
+  - A call that serializes the root to read its values, such as `JSON.stringify(config)` or
+    `JSON.stringify(configService.getAll())` to snapshot or diff the configuration, now gets the
+    namespace names: `getAll()` returns the root. Read the values through a namespace of the root
+    (`getAll().auth`) or a leaf (`get('auth.secret')`), or spread the namespaces you need.
   - A namespace named `toJSON` is refused at boot with a `BYMAX_CONFIG_INVALID` issue, because that name is the
     root's serializer. Rename the namespace.
   - It stops at the root. A namespace serialized directly (`JSON.stringify(config.auth)`) and a copy of
-    the root made by spread or `Object.assign` show their values again, and `pino`'s `logger.info(config)`
-    (the root as the merge object, not under a key) prints every value, because `pino` spreads the
-    enumerable keys of the object it is handed. Log `{ config }` under a key, or better
+    the root made by spread, `Object.assign` or `structuredClone` show their values again, and `pino`'s
+    `logger.info(config)` (the root as the merge object, not under a key) prints every value, because
+    `pino` spreads the enumerable keys of the object it is handed. Log `{ config }` under a key, or better
     `{ namespaces: Object.keys(config) }`.
+  - `toJSON` is an own, non-enumerable property of the root: it appears in `Object.getOwnPropertyNames`
+    and `Reflect.ownKeys`, and `'toJSON' in root` is `true`. In strict mode code, deleting, assigning or
+    redefining it throws a `TypeError`. `util.format('%j', root)` prints the names.
 
 ## [1.2.9] - 2026-11-17
 

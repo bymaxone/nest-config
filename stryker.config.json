@@ -22,7 +22,8 @@
     "!src/**/*.test.ts",
     "!src/**/__tests__/**",
     "!src/**/index.ts",
-    "!src/**/*.d.ts"
+    "!src/**/*.d.ts",
+    "!src/**/*.data.ts"
   ],
   "thresholds": {
     "high": 100,

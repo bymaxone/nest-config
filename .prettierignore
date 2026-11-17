@@ -38,3 +38,7 @@ scripts/published-surface-links.mjs
 # The mutation-scope spec is the family template's file, kept byte-identical to the template; the
 # library's own facts live in src/stryker-scope.data.ts, which is formatted normally.
 src/stryker-scope.spec.ts
+
+# The commit-message plugin that refuses an AI-tool attribution is the family template's file, kept
+# byte-identical to the template.
+scripts/commitlint-no-ai-attribution.cjs

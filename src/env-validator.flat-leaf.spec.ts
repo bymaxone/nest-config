@@ -111,3 +111,21 @@ describe('synthesizePlaceholderSource on a top-level key that is not a namespace
     expect(error.issues.map((issue) => issue.path)).toEqual(['mode'])
   })
 })
+
+describe('a namespace named toJSON', () => {
+  it('is refused with a typed issue, because the root serializes through that name', () => {
+    const error = captureThrown(() =>
+      resolveSourceNames(defineEnv({ toJSON: z.object({ a: z.string() }) }))
+    )
+
+    expect(error.issues).toEqual([
+      {
+        path: 'toJSON',
+        variable: 'TO_JSON',
+        code: ConfigErrorCode.INVALID,
+        message:
+          'is reserved: the configuration root serializes through this name; rename the namespace'
+      }
+    ])
+  })
+})

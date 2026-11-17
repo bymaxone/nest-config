@@ -118,7 +118,7 @@ function deriveVariable(namespace: string, leafKey: string): string {
 }
 
 /**
- * Reject a schema that holds a top-level key which is not a namespace.
+ * Reject a schema that holds a top-level key which is not a namespace, or is named `toJSON`.
  *
  * The types allow only `z.object` namespaces at the top level; a flat leaf reaches here only past
  * them, and walking its missing `shape` would fail with a raw `TypeError`. Every offending key is
@@ -127,23 +127,25 @@ function deriveVariable(namespace: string, leafKey: string): string {
  * `resolveSourceNames` calls this first.
  *
  * @param schema - A schema produced by `defineEnv`.
- * @throws {BymaxConfigValidationError} When any top-level key is not a namespace.
+ * @throws {BymaxConfigValidationError} When any top-level key is not a namespace or is named `toJSON`.
  */
 export function assertNamespaces<TShape extends EnvShape = EnvShape>(
   schema: EnvSchema<TShape>
 ): void {
-  const flat = Object.entries(schema.shape as Record<string, { readonly shape?: unknown }>)
-    .filter(([, node]) => typeof node.shape !== 'object')
-    .map(([key]) => key)
-  if (flat.length === 0) return
-  throw new BymaxConfigValidationError(
-    flat.map((key) => ({
-      path: key,
-      variable: toScreamingSnake(key),
-      code: ConfigErrorCode.INVALID,
-      message: 'is not a namespace; declare it inside a z.object({ ... }) namespace'
-    }))
-  )
+  const issues = Object.entries(
+    schema.shape as Record<string, { readonly shape?: unknown }>
+  ).flatMap(([key, node]) => {
+    const message =
+      typeof node.shape !== 'object'
+        ? 'is not a namespace; declare it inside a z.object({ ... }) namespace'
+        : key === 'toJSON'
+          ? 'is reserved: the configuration root serializes through this name; rename the namespace'
+          : undefined
+    return message === undefined
+      ? []
+      : [{ path: key, variable: toScreamingSnake(key), code: ConfigErrorCode.INVALID, message }]
+  })
+  if (issues.length > 0) throw new BymaxConfigValidationError(issues)
 }
 
 /**

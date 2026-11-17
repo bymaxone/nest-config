@@ -228,7 +228,7 @@ describe('BymaxConfigValidationError serialization', () => {
         message: 'too short (expected: string, minimum 32 characters)',
         value: 'SUPER_SECRET_VALUE_123'
       }
-    ] as unknown as ConfigIssue[]
+    ]
 
     const error = new BymaxConfigValidationError(tainted)
 

@@ -27,8 +27,8 @@ as the GitHub Release body, so each released version needs a matching
   #### Apply to a derived backend
   - A call that serializes the root to read its values, such as `JSON.stringify(config)` or
     `JSON.stringify(configService.getAll())` to snapshot or diff the configuration, now gets the
-    namespace names: `getAll()` returns the root. Read the values through `get('auth')` or a namespace,
-    or spread the namespaces you need.
+    namespace names: `getAll()` returns the root. Read the values through a namespace of the root
+    (`getAll().auth`) or a leaf (`get('auth.secret')`), or spread the namespaces you need.
   - A namespace named `toJSON` is refused at boot with a `BYMAX_CONFIG_INVALID` issue, because that name is the
     root's serializer. Rename the namespace.
   - It stops at the root. A namespace serialized directly (`JSON.stringify(config.auth)`) and a copy of

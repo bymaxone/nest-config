@@ -460,8 +460,8 @@ a throw. `toJSON` returns the declared namespace names, so the omission reads as
 rather than as an empty object. Reading on purpose is unaffected: `get`, `has` and the
 `getAll` escape hatch return the real values. `getAll()` returns the root itself, so
 `JSON.stringify(configService.getAll())` serializes to the namespace names too; a host that needs the
-values to serialize reads `get('auth')` or spreads the namespaces it needs
-(`JSON.stringify({ auth: config.auth })`).
+values to serialize reads a namespace of the root (`configService.getAll().auth`), a leaf
+(`get('auth.secret')`), or spreads the namespaces it needs (`JSON.stringify({ auth: config.auth })`).
 
 The raw root, whether injected through `BYMAX_CONFIG` or returned by `getAll`, prints
 `[BymaxConfig: values redacted]` under `util.inspect`. Measured: `console.log(config)`,

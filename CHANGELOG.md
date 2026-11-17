@@ -21,10 +21,10 @@ as the GitHub Release body, so each released version needs a matching
 
 - **`resolveSourceNames` refuses a top-level key that is not a namespace.** 1.2.8 made `validateEnv` and
   `createTestConfig` report such a key, such as `defineEnv({ mode: z.string() })`, as one
-  `BymaxConfigValidationError`, but the exported `resolveSourceNames`, and the testing helper that builds
-  a placeholder source, still failed with a raw `TypeError: Cannot convert undefined or null to object`
-  from the schema walk. Both now throw the same typed error, with the same issues, before they read the
-  shape of a key that has none. The key is still named in the `BYMAX_CONFIG_INVALID` issue.
+  `BymaxConfigValidationError`, but the exported `resolveSourceNames` still failed with a raw
+  `TypeError: Cannot convert undefined or null to object` from the schema walk. It now throws the same
+  typed error, with the same issues, before it reads the shape of a key that has none. The key is still
+  named in the `BYMAX_CONFIG_INVALID` issue.
 
   #### Apply to a derived backend
 

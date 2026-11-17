@@ -15,6 +15,18 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Fixed
+
+- **`createValidatedConfig` refuses a `strict` that is not a boolean.** The `./internal` function the
+  module's provider calls read any value other than `true` as lax, so a non-boolean `strict` there turned
+  strict mode off silently, where the module's `forRoot` and `forRootAsync` already refuse it in 1.2.12. It
+  now throws the same type-only `TypeError`: `createValidatedConfig: strict must be a boolean, received
+<type>`. `undefined` and `null` still mean the default.
+
+  #### Apply to a derived backend
+  - A host that calls `createValidatedConfig` from `./internal` with a `strict` that is a number, a string
+    or any other non-boolean now gets the `TypeError`. Pass the boolean.
+
 ## [1.2.12] - 2026-11-17
 
 ### Added
@@ -28,12 +40,13 @@ as the GitHub Release body, so each released version needs a matching
 
 - **`isGlobal` and `strict` must be booleans.** Any value other than a boolean, `undefined` or `null`
   throws a `TypeError` naming the method, the option and the type received, never the value, at
-  registration, or for a `strict` a `forRootAsync` factory returns, when the options provider resolves.
+  registration, or for a `strict` a `forRootAsync` factory, class or existing provider returns, when the
+  options provider resolves.
 
   #### Apply to a derived backend
   - A host that passed `isGlobal` or `strict` as a number, a string such as `"false"`, or any other
-    non-boolean now fails: at registration, or, for a `strict` that a `forRootAsync` factory returns,
-    when the options provider resolves. Pass the boolean. In 1.2.11 only `false` scoped the module and
+    non-boolean now fails: at registration, or, for a `strict` that a `forRootAsync` factory, class or
+    existing provider returns, when the options provider resolves. Pass the boolean. In 1.2.11 only `false` scoped the module and
     every other value registered it globally, so a value that was not `false` meant global; replace it
     with `true`, or omit the option. Only `true` made `strict` strict, so any other value meant not
     strict; replace it with `false`, or omit the option.

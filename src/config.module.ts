@@ -108,9 +108,9 @@ function readModuleOptions(
  * @returns A plain object the builder can copy.
  */
 function readRegistration(options: BymaxConfigForRootOptions): BymaxConfigForRootOptions {
-  assertOptionsObject(options, 'forRoot')
+  const read = readModuleOptions(options, 'forRoot')
   const { isGlobal } = options
-  return { ...readModuleOptions(options, 'forRoot'), ...withoutNullish({ isGlobal }) }
+  return { ...read, ...withoutNullish({ isGlobal }) }
 }
 
 /**

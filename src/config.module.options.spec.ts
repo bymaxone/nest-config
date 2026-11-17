@@ -279,7 +279,7 @@ describe('a forRoot or forRootAsync argument that is not an object', () => {
     const call = () => BymaxConfigModule.forRoot(value as never)
 
     expect(call).toThrow(TypeError)
-    expect(call).toThrow(`options must be an object, received ${type}`)
+    expect(call).toThrow(`BymaxConfigModule.forRoot: options must be an object, received ${type}`)
     expect(call).not.toThrow(new RegExp(SENTINEL))
   })
 
@@ -290,7 +290,9 @@ describe('a forRoot or forRootAsync argument that is not an object', () => {
     const call = () => BymaxConfigModule.forRootAsync(value as never)
 
     expect(call).toThrow(TypeError)
-    expect(call).toThrow(`options must be an object, received ${type}`)
+    expect(call).toThrow(
+      `BymaxConfigModule.forRootAsync: options must be an object, received ${type}`
+    )
   })
 })
 
@@ -396,10 +398,42 @@ describe('the options a forRootAsync factory, class or existing provider returns
     const sentinel = 'SeNtInEl-factory-3c7a'
 
     await expect(tokenValue(asyncOptions({ useFactory: () => sentinel }))).rejects.toThrow(
-      'options must be an object, received string'
+      'BymaxConfigModule.forRootAsync: options must be an object, received string'
     )
     await expect(tokenValue(asyncOptions({ useFactory: () => sentinel }))).rejects.not.toThrow(
       new RegExp(sentinel)
     )
+  })
+})
+
+describe('the providers of a generated definition that are not the options provider', () => {
+  class Dependency {}
+
+  it('forRoot keeps the options as a value, with no factory added', () => {
+    const module = BymaxConfigModule.forRoot(options({ schema, source: valid }))
+    const provider = (module.providers ?? []).find(
+      (candidate) => Reflect.get(candidate, 'provide') === BYMAX_CONFIG_OPTIONS
+    ) as object
+
+    expect(Reflect.has(provider, 'useValue')).toBe(true)
+    expect(Reflect.has(provider, 'useFactory')).toBe(false)
+  })
+
+  it('forRootAsync leaves a provider handed through provideInjectionTokensFrom untouched', () => {
+    const useFactory = (): number => 1
+    const handed = { provide: Dependency, useFactory, inject: [] }
+
+    const module = BymaxConfigModule.forRootAsync(
+      asyncOptions({
+        useFactory: () => ({ schema, source: valid }),
+        inject: [Dependency],
+        provideInjectionTokensFrom: [handed]
+      })
+    )
+    const found = (module.providers ?? []).find(
+      (candidate) => Reflect.get(candidate, 'provide') === Dependency
+    ) as object
+
+    expect(Reflect.get(found, 'useFactory')).toBe(useFactory)
   })
 })

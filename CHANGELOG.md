@@ -15,6 +15,31 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.11] - 2026-11-17
+
+### Fixed
+
+- **`isGlobal: undefined` or `null` registers a global module.** An own `isGlobal` key holding
+  `undefined` or `null` overrode the builder's default, so `forRoot` and `forRootAsync` registered a
+  module that was not global and `ConfigService` was not injectable outside the importing module.
+  An `isGlobal` set to `undefined` or `null` now means the default.
+- **Options held by an object with accessors are read.** The module copied the own keys of the options
+  object, so options held by an object whose properties are accessors on its prototype (a class
+  instance) were lost: a `get schema()` failed at boot with a raw `TypeError`, and a `get isGlobal()`
+  was ignored. The known options are now read by property access.
+
+  #### Apply to a derived backend
+  - A host that passes `isGlobal: undefined` or `isGlobal: null`, for example
+    `isGlobal: flag ? false : undefined`, now gets a global module, as the default says. Pass `false` to
+    scope the module to a submodule.
+  - A `source` key that is present with `undefined` or `null` is still refused with a `TypeError`: a
+    source that failed to load must not become `process.env`. Omit the key to validate `process.env`.
+
+### Documentation
+
+- The README section on the root's serialization names more readers that show the values and
+  states the sloppy-mode behaviour of the root's own `toJSON`.
+
 ## [1.2.10] - 2026-11-17
 
 ### Fixed
@@ -761,4 +786,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.8]: https://github.com/bymaxone/nest-config/compare/v1.2.7...v1.2.8
 [1.2.9]: https://github.com/bymaxone/nest-config/compare/v1.2.8...v1.2.9
 [1.2.10]: https://github.com/bymaxone/nest-config/compare/v1.2.9...v1.2.10
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.10...HEAD
+[1.2.11]: https://github.com/bymaxone/nest-config/compare/v1.2.10...v1.2.11
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.11...HEAD

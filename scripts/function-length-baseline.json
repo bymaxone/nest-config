@@ -1,0 +1,5 @@
+{
+  "functions": {
+    "[\"src/source-mapping.spec.ts\",[\"container\",\"describe\",\"resolveSourceNames contract stability\"],[\"test\",\"it\",\"pins the full leaf-to-variable table for a representative schema\"]]": 58
+  }
+}

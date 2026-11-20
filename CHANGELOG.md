@@ -15,6 +15,8 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.15] - 2026-11-20
+
 ### Documentation
 
 - The README now says what a host logger's rejected promise does: Nest drops the returned promise, so the
@@ -891,4 +893,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.12]: https://github.com/bymaxone/nest-config/compare/v1.2.11...v1.2.12
 [1.2.13]: https://github.com/bymaxone/nest-config/compare/v1.2.12...v1.2.13
 [1.2.14]: https://github.com/bymaxone/nest-config/compare/v1.2.13...v1.2.14
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.14...HEAD
+[1.2.15]: https://github.com/bymaxone/nest-config/compare/v1.2.14...v1.2.15
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.15...HEAD

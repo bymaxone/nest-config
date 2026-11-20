@@ -11,7 +11,7 @@
  * real environment values are never mutated.
  */
 
-import { Logger } from '@nestjs/common'
+import { ConsoleLogger, Logger } from '@nestjs/common'
 import { z } from 'zod'
 
 import type { BymaxConfigModuleOptions } from './config.options'
@@ -150,6 +150,21 @@ describe('createValidatedConfig and a strict that is not a boolean', () => {
       expect(call).not.toThrow(new RegExp(SENTINEL))
     }
   )
+
+  it('reads strict once, so an accessor that changes its answer cannot pass the check and then run lax', () => {
+    let reads = 0
+    const options = {
+      schema,
+      source: lax,
+      get strict() {
+        reads += 1
+        return reads === 1
+      }
+    }
+
+    expect(() => createValidatedConfig(options)).toThrow(BymaxConfigValidationError)
+    expect(reads).toBe(1)
+  })
 
   it.each([true, false, null, undefined])('still accepts %s for strict', (value) => {
     const run = () => createValidatedConfig({ schema, source: lax, strict: value })
@@ -345,6 +360,34 @@ describe('the log event written when the validation fails', () => {
       issues: 3
     })
     expect(order).toEqual(['log', 'hook'])
+  })
+
+  it('still rejects with the validation error and runs the hook when a host-installed logger throws', async () => {
+    /**
+     * The override is installed the way a host installs one, through the Nest `Logger`, so the call
+     * travels the production forwarding path rather than a replaced method.
+     */
+    Logger.overrideLogger({
+      log: () => undefined,
+      warn: () => undefined,
+      error: () => {
+        throw new Error('log sink down')
+      }
+    })
+    const hook = jest.fn()
+
+    try {
+      const thrown = await rejection({
+        schema: multi,
+        source: { SERVER_HOST: 'short' },
+        onValidationError: hook
+      })
+
+      expect(thrown.issues).toHaveLength(3)
+      expect(hook).toHaveBeenCalledTimes(1)
+    } finally {
+      Logger.overrideLogger(new ConsoleLogger())
+    }
   })
 
   it('carries no value the source held', async () => {

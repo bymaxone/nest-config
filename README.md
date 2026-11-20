@@ -296,7 +296,8 @@ BymaxConfigModule.forRootAsync({ useClass: ConfigOptionsFactory })
 `isGlobal` defaults to `true`; `false` scopes the module to a submodule, through the standard extras.
 `isGlobal` and `strict` must be booleans: any other value except `undefined` and `null` (the default)
 throws a `TypeError` that names the method, the option and the type received, never the value, at
-registration, or for a `strict` a `forRootAsync` factory returns, when the options provider resolves.
+registration, or for a `strict` that `forRootAsync` resolves through a factory, a class or an existing
+provider, when the options provider resolves.
 
 An optional option key set to `undefined` or `null` means its default. `source` is the exception, as its
 row in the options table says, because a source that failed to load must not become `process.env`.
@@ -997,6 +998,11 @@ value the source held is ever written.
 issue list name each variable and constraint. A log pipeline matches the `event` field. An object message
 is rendered as a structured entry by `@bymax-one/nest-logger` 1.4.23 or later, and readably by Nest's
 default logger; an older `@bymax-one/nest-logger` prints it as `[object Object]`.
+
+A logger that throws cannot change the outcome: the event is written on a best-effort basis, the
+`BymaxConfigValidationError` is still the failure the host sees, and the `onValidationError` hook still
+runs. The Nest `Logger` drops what a host-installed logger returns, so a logger whose `error` returns a
+rejected promise is outside what the module can observe; handle the rejection inside that logger.
 
 ## 🚫 What This Library Does NOT Do
 

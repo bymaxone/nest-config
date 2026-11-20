@@ -19,8 +19,7 @@ as the GitHub Release body, so each released version needs a matching
 
 - **`createValidatedConfig` reads `strict` once.** It read the option twice, once to refuse a non-boolean
   and once to decide strictness, so an accessor that answered differently the second time passed the
-  check and then ran lax. One read now serves both. Its JSDoc `@throws` text says so; the declarations
-  differ only in that comment.
+  check and then ran lax. One read now serves both.
 - **A failing host logger cannot change the validation failure.** The `CONFIG_VALIDATION_FAILED` event is
   written through the Nest `Logger`, which a host can replace. A logger that threw replaced the
   `BymaxConfigValidationError` with its own error and skipped the `onValidationError` hook, and one that

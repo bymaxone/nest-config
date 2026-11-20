@@ -11,7 +11,7 @@
 import { z } from 'zod'
 
 import { BymaxConfigModule } from './config.module'
-import { createValidatedConfig } from './config.providers'
+import { bymaxConfigProvider, createValidatedConfig } from './config.providers'
 import { defineEnv } from './define-env'
 import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
 
@@ -218,5 +218,77 @@ describe('createValidatedConfig reads the source once', () => {
 
     expect(root.app?.name).toBe('read-1')
     expect(reads).toBe(1)
+  })
+})
+
+describe('a refused host read when the validation hook fails too', () => {
+  /** Runs the provider factory the module registers, and returns what it rejected with. */
+  async function provide(options: Record<string, unknown>): Promise<unknown> {
+    const factory = bymaxConfigProvider.useFactory as (options: unknown) => Promise<unknown>
+    return factory(options).then(
+      () => {
+        throw new Error('the provider was expected to reject')
+      },
+      (error: unknown) => error
+    )
+  }
+
+  it.each([
+    [
+      'throws',
+      () => {
+        throw new Error('hook failed')
+      }
+    ],
+    ['rejects', () => Promise.reject(new Error('hook failed'))]
+  ])(
+    'keeps the refusal and the host error as its cause when the hook %s',
+    async (_name, onValidationError) => {
+      /** The refusal already carries the host error; the hook's failure must not replace the refusal. */
+      const hook = jest.fn(onValidationError)
+      const error = await provide({
+        schema,
+        get source(): never {
+          throw hostError
+        },
+        onValidationError: hook
+      })
+
+      expectRefusal(error, 'reading the options')
+      expect(hook).toHaveBeenCalledTimes(1)
+    }
+  )
+
+  it('still records the hook error as the cause of a plain validation failure', async () => {
+    const hookError = new Error('hook failed')
+    const error = await provide({
+      schema,
+      source: {},
+      onValidationError: () => {
+        throw hookError
+      }
+    })
+
+    expect(error).toBeInstanceOf(BymaxConfigValidationError)
+    expect((error as Error).cause).toBe(hookError)
+  })
+
+  it('keeps a cause that is undefined, when the host threw undefined, and still runs the hook', async () => {
+    /** The cause property exists with the value undefined, so it cannot be defined a second time. */
+    const hook = jest.fn(() => {
+      throw new Error('hook failed')
+    })
+    const error = await provide({
+      schema,
+      get source(): never {
+        throw undefined
+      },
+      onValidationError: hook
+    })
+
+    expect(error).toBeInstanceOf(BymaxConfigValidationError)
+    expect('cause' in (error as Error)).toBe(true)
+    expect((error as Error).cause).toBeUndefined()
+    expect(hook).toHaveBeenCalledTimes(1)
   })
 })

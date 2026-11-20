@@ -86,7 +86,8 @@ async function reportIssues(
   try {
     await hook(error.issues)
   } catch (hookError) {
-    withCause(error, hookError)
+    // A refused host read already carries what the host threw as its cause, even `undefined`, and keeps it.
+    if (!('cause' in error)) withCause(error, hookError)
   }
 }
 

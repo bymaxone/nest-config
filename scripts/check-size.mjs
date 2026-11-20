@@ -28,19 +28,20 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // when the artifact shrinks.
 //
 // Calibration history (newest first):
-//   - The internal subpath measures 5.78 KiB brotli (5917 bytes): the same engine with the guard that
-//     refuses a host accessor or Proxy that throws while an option or the source is read, the single
-//     read of `source`, and the escaping and bounding of the text of every issue by Unicode category.
-//     The budget is that measurement plus about 22 bytes, 5.8 KiB. Before them it measured 5.38 KiB
-//     (5510 bytes): the validation engine with its
+//   - The internal subpath measures 5.79 KiB brotli (5926 bytes): the validation engine with the guard
+//     that refuses a host accessor or Proxy that throws while an option or the source is read, the
+//     single read of `source`, and the escaping and bounding of the text of every issue by Unicode
+//     category. The budget is that measurement plus about 13 bytes, 5.8 KiB, so the next growth of
+//     the subpath is looked at, not absorbed.
+//   - The internal subpath measures 5.38 KiB brotli (5510 bytes): the validation engine with its
 //     value-free reporting of a throwing rule, its refusal of `z.coerce.boolean()` and of a
 //     top-level key that is not a namespace, its capped report column, the redacted print and
 //     JSON serialization of the configuration root, and the module's by-property-access read of
 //     its registration options, including the refusal of an argument that is not an object and the
 //     same read of what an asynchronous factory returns, the refusal of an option that must be a
-//     boolean, the log event of the validation failure and the same refusal in `createValidatedConfig` and its single read of `strict`, and the absorbing
-//     log call. The
-//     budget is that measurement plus a few dozen bytes, 5.41 KiB, so the next growth of the subpath is looked at, not absorbed.
+//     boolean, the log event of the validation failure and the same refusal in `createValidatedConfig`
+//     and its single read of `strict`, and the absorbing log call. The budget is that measurement
+//     plus a few dozen bytes, 5.41 KiB, so the next growth of the subpath is looked at, not absorbed.
 //   - The internal subpath carries nearly all of the code, so it has its own budget. Measured
 //     after the build strips the comments: 4.13 KiB brotli (4226 bytes). The budget is that
 //     measurement plus about 11 %, 4.6 KiB.

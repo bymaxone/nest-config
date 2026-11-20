@@ -28,8 +28,11 @@ as the GitHub Release body, so each released version needs a matching
 - **The text of an issue is bounded and escaped.** The variable, the path and the message of every
   issue, including a `custom` message and the names in an unknown-key or an override report, write a
   control character, a line or paragraph separator and any other invisible format character (a
-  zero-width or directional mark, the soft hyphen, the byte order mark) as a `\uXXXX` escape (`\u{XXXXX}` past U+FFFF), and end with `…` once the output reaches 200 characters, an escape counting as its full length. A long or crafted name could flood a
+  zero-width or directional mark, the soft hyphen, the byte order mark) as a `\uXXXX` escape (`\u{XXXXX}` past U+FFFF), and end with `…` once the output would pass 200 characters, an escape counting as its full length. A long or crafted name could flood a
   log line or rewrite it on a terminal.
+- **A refused host read keeps its cause when the validation hook fails too.** The hook's own error is
+  attached as the `cause` of a validation failure only when the failure has none, so a hook that throws
+  or rejects can no longer replace the refusal with a `TypeError`.
 
 ### Tests
 

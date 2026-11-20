@@ -860,7 +860,8 @@ The hook may be asynchronous: a promise it returns is awaited before the boot fa
 report on its way to a log sink is not cut off by the process exiting. There is no timeout, so
 a hook that never settles holds the boot. If the hook throws or rejects, the boot still fails
 with the original validation error, unchanged in class, `code`, `issues` and `message`, and the
-hook's error is attached to it as `error.cause` (non-enumerable).
+hook's error is attached to it as `error.cause` (non-enumerable), unless the failure already carries a
+`cause`, as a refused host read does with the error the host threw; that one stays.
 
 If you also log the thrown error from a bootstrap `catch`, the logging call decides what
 survives. `code` and `issues` are the **only two own enumerable properties** of

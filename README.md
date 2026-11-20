@@ -1001,8 +1001,9 @@ default logger; an older `@bymax-one/nest-logger` prints it as `[object Object]`
 
 A logger that throws cannot change the outcome: the event is written on a best-effort basis, the
 `BymaxConfigValidationError` is still the failure the host sees, and the `onValidationError` hook still
-runs. The Nest `Logger` drops what a host-installed logger returns, so a logger whose `error` returns a
-rejected promise is outside what the module can observe; handle the rejection inside that logger.
+runs. Nest drops the promise a host-installed logger returns, so a logger whose `error` returns a rejected
+promise leaves an unhandled rejection that ends the process unless your application handles
+`unhandledRejection`; handle the rejection inside that logger.
 
 ## 🚫 What This Library Does NOT Do
 

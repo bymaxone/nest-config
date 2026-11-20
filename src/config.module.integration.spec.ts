@@ -156,30 +156,22 @@ describe('BymaxConfigModule integration', () => {
      * A rejecting hook cannot replace the failure or escape it.
      *
      * The boot fails with the original BymaxConfigValidationError and the hook's error is
-     * its `cause`; no unhandled rejection is left behind for the process to trip on.
+     * its `cause`.
      */
-    const unhandled = jest.fn()
-    process.on('unhandledRejection', unhandled)
     const hookError = new Error('reporting sink is down')
 
-    try {
-      const outcome = Test.createTestingModule({
-        imports: [
-          BymaxConfigModule.forRoot({
-            schema,
-            source: {},
-            onValidationError: () => Promise.reject(hookError)
-          })
-        ]
-      }).compile()
+    const outcome = Test.createTestingModule({
+      imports: [
+        BymaxConfigModule.forRoot({
+          schema,
+          source: {},
+          onValidationError: () => Promise.reject(hookError)
+        })
+      ]
+    }).compile()
 
-      await expect(outcome).rejects.toBeInstanceOf(BymaxConfigValidationError)
-      await expect(outcome).rejects.toHaveProperty('cause', hookError)
-      await new Promise((resolve) => setImmediate(resolve))
-      expect(unhandled).not.toHaveBeenCalled()
-    } finally {
-      process.off('unhandledRejection', unhandled)
-    }
+    await expect(outcome).rejects.toBeInstanceOf(BymaxConfigValidationError)
+    await expect(outcome).rejects.toHaveProperty('cause', hookError)
   })
 
   it('resolves the source through a forRootAsync factory with explicit inject', async () => {

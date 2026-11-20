@@ -301,4 +301,76 @@ describe('createTestConfig with a variable name that the report escapes or cuts'
     expect(messages['database.first']).not.toContain('no placeholder satisfies')
     expect(messages['database.second']).toContain('no placeholder satisfies')
   })
+
+  it('tells two leaves apart whose variable names share the first 200 characters', () => {
+    /** Both names are cut to the same text; the paths differ, so the override of one leaves the other guided. */
+    const shared = 'V'.repeat(210)
+    const named = defineEnv({
+      database: z.object({
+        first: z.coerce
+          .number()
+          .int()
+          .meta({ env: `${shared}A` }),
+        second: z.coerce
+          .number()
+          .int()
+          .min(10)
+          .max(5)
+          .meta({ env: `${shared}B` })
+      })
+    })
+
+    const thrown = outcome(() =>
+      createTestConfig(named, { database: { first: 'not-a-number' } } as never)
+    )
+
+    const messages = Object.fromEntries(
+      (thrown as BymaxConfigValidationError).issues.map((issue) => [issue.path, issue.message])
+    )
+    expect(messages['database.first']).not.toContain('no placeholder satisfies')
+    expect(messages['database.second']).toContain('no placeholder satisfies')
+  })
+
+  it('still guides a leaf whose namespace name is cut before the dot of its path', () => {
+    /** The path of the issue reads as a namespace alone once cut, yet the leaf is declared and guided. */
+    const named = defineEnv({
+      ['N'.repeat(205)]: z.object({ port: z.coerce.number().int().min(10).max(5) })
+    })
+
+    const thrown = outcome(() => createTestConfig(named))
+
+    expect((thrown as BymaxConfigValidationError).issues[0]?.message).toContain(
+      'no placeholder satisfies'
+    )
+  })
+
+  it('keeps the description of an issue that two leaves report alike when either was overridden', () => {
+    /** Cut paths and cut variables read the same, so nothing separates the leaves: no guidance is claimed. */
+    const namespace = 'N'.repeat(205)
+    const variable = 'V'.repeat(205)
+    const named = defineEnv({
+      [`${namespace}a`]: z.object({
+        port: z.coerce
+          .number()
+          .int()
+          .meta({ env: `${variable}a` })
+      }),
+      [`${namespace}b`]: z.object({
+        port: z.coerce
+          .number()
+          .int()
+          .min(10)
+          .max(5)
+          .meta({ env: `${variable}b` })
+      })
+    })
+
+    const thrown = outcome(() =>
+      createTestConfig(named, { [`${namespace}a`]: { port: 'not-a-number' } } as never)
+    )
+
+    for (const issue of (thrown as BymaxConfigValidationError).issues) {
+      expect(issue.message).not.toContain('no placeholder satisfies')
+    }
+  })
 })

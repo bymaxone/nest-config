@@ -66,17 +66,28 @@ function unplacedIssue(path: string, code: ConfigIssue['code'], message: string)
 }
 
 /**
- * A variable name as a validation error carries it: escaped and bounded, which is the form the
- * issues to compare with come in. The error builds that form, so no second copy of the rule is kept.
+ * The leaf an issue reports, as the pair of path and variable the issue carries.
  *
- * @param variable - A source variable name, as the schema declares it.
- * @returns The same name, as the error's issues report it.
+ * @param issue - An issue of a validation error.
+ * @returns A key that tells two leaves apart even when their variable names alone read alike.
  */
-function asReported(variable: string): string {
+function identityOf(issue: ConfigIssue): string {
+  return JSON.stringify([issue.path, issue.variable])
+}
+
+/**
+ * The identity a leaf's issues will carry. The error escapes and bounds the path and the variable, so
+ * the error builds that form and no second copy of the rule is kept.
+ *
+ * @param path - The leaf's `namespace.leaf` path.
+ * @param variable - The source variable the leaf reads, as the schema declares it.
+ * @returns The key {@link identityOf} gives an issue of this leaf.
+ */
+function reportedIdentity(path: string, variable: string): string {
   const [issue] = new BymaxConfigValidationError([
-    { path: '', variable, code: ConfigErrorCode.INVALID, message: '' }
+    { path, variable, code: ConfigErrorCode.INVALID, message: path }
   ]).issues
-  return (issue as ConfigIssue).variable
+  return identityOf(issue as ConfigIssue)
 }
 
 /**
@@ -167,7 +178,7 @@ function applyOverrides<TShape extends EnvShape>(
     const value = flat.get(binding.path)
     if (value === undefined) continue
     entries.set(binding.variable, String(value))
-    overridden.add(asReported(binding.variable))
+    overridden.add(reportedIdentity(binding.path, binding.variable))
   }
   // Null-prototype record so a meta({ env }) override named `__proto__` stays a
   // plain data key (consistent with the synthesizer) and cannot mutate a prototype.
@@ -187,7 +198,7 @@ function applyOverrides<TShape extends EnvShape>(
  * leaf to point at, and the rule may as well have failed on a value the caller supplied.
  *
  * @param error - The validation error of the synthesized source.
- * @param overridden - The variables the caller supplied a value for.
+ * @param overridden - The identities of the leaves the caller supplied a value for.
  * @returns A validation error whose unsatisfied-leaf issues carry the guidance.
  */
 function explainUnsatisfiedLeaves(
@@ -196,7 +207,7 @@ function explainUnsatisfiedLeaves(
 ): BymaxConfigValidationError {
   return new BymaxConfigValidationError(
     error.issues.map((issue) =>
-      !issue.path.includes('.') || overridden.has(issue.variable)
+      !issue.path.includes('.') || overridden.has(identityOf(issue))
         ? issue
         : {
             ...issue,

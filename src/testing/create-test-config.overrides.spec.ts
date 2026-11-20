@@ -281,4 +281,24 @@ describe('createTestConfig with a variable name that the report escapes or cuts'
       'no placeholder satisfies'
     )
   })
+
+  it('tells two leaves apart whose variable names read alike once one is escaped', () => {
+    /** One name holds a directional mark and the other the text of its escape; only the first is overridden. */
+    const named = defineEnv({
+      database: z.object({
+        first: z.coerce.number().int().meta({ env: '\u202e' }),
+        second: z.coerce.number().int().min(10).max(5).meta({ env: '\\u202e' })
+      })
+    })
+
+    const thrown = outcome(() =>
+      createTestConfig(named, { database: { first: 'not-a-number' } } as never)
+    )
+
+    const messages = Object.fromEntries(
+      (thrown as BymaxConfigValidationError).issues.map((issue) => [issue.path, issue.message])
+    )
+    expect(messages['database.first']).not.toContain('no placeholder satisfies')
+    expect(messages['database.second']).toContain('no placeholder satisfies')
+  })
 })

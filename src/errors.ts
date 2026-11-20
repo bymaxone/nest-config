@@ -49,7 +49,7 @@ const UNSAFE_CHARACTER = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u
 
 /**
  * Make text taken from the host safe to print: each character that changes how a line reads is
- * written as a `\uXXXX` escape, and the text is cut at {@link MAX_FIELD_LENGTH} characters of output
+ * written as a `\uXXXX` escape (`\u{XXXXX}` past U+FFFF), and the text is cut at {@link MAX_FIELD_LENGTH} characters of output
  * with an ellipsis, so an issue field cannot flood or rewrite a log line. A whole escape is never cut.
  *
  * @param text - A variable name, path or message that can come from the host.
@@ -58,8 +58,12 @@ const UNSAFE_CHARACTER = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u
 function printable(text: string): string {
   let out = ''
   for (const character of text) {
+    const hex = (character.codePointAt(0) as number).toString(16)
+    // A code point past U+FFFF is braced, so its escape cannot be read as a shorter one plus a digit.
     const piece = UNSAFE_CHARACTER.test(character)
-      ? `\\u${(character.codePointAt(0) as number).toString(16).padStart(4, '0')}`
+      ? hex.length > 4
+        ? `\\u{${hex}}`
+        : `\\u${hex.padStart(4, '0')}`
       : character
     if (out.length + piece.length > MAX_FIELD_LENGTH) return `${out}…`
     out += piece

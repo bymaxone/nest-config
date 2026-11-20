@@ -75,6 +75,20 @@ const LEFT_ALONE: ReadonlyArray<readonly [string, string]> = [
   ['an emoji', '😀']
 ]
 
+const ASTRAL: ReadonlyArray<readonly [string, number]> = [
+  ['U+E0001 language tag', 0xe0001],
+  ['U+E0041 tag letter A', 0xe0041],
+  ['U+E007F cancel tag', 0xe007f],
+  ['U+1D173 musical symbol begin beam', 0x1d173],
+  ['U+13430 Egyptian hieroglyph format', 0x13430]
+]
+
+const ASTRAL_LEFT_ALONE: ReadonlyArray<readonly [string, number]> = [
+  ['U+E0000 unassigned', 0xe0000],
+  ['U+E0080 unassigned', 0xe0080],
+  ['U+1F600 emoji', 0x1f600]
+]
+
 describe('the text of an issue', () => {
   it.each(ESCAPED)(
     'writes %s as an escape in the variable, the path and the message',
@@ -132,5 +146,28 @@ describe('the text of an issue', () => {
   it('writes the code point in lower case, four digits wide', () => {
     expect(messageOf('\u200b')).toBe('\\u200b')
     expect(messageOf('\u0001')).toBe('\\u0001')
+  })
+
+  it.each(ASTRAL)(
+    'writes %s braced, so it is not read as a shorter escape and a digit',
+    (_n, cp) => {
+      const hex = cp.toString(16)
+
+      expect(messageOf(`a${String.fromCodePoint(cp)}1`)).toBe(`a${'\\u'}{${hex}}1`)
+    }
+  )
+
+  it.each(ASTRAL_LEFT_ALONE)('leaves %s as written', (_n, cp) => {
+    const character = String.fromCodePoint(cp)
+
+    expect(messageOf(`a${character}b`)).toBe(`a${character}b`)
+  })
+
+  it('counts a braced escape by its written length at the bound', () => {
+    /** A braced escape of nine characters fits after 191 and is cut after 192. */
+    const tag = String.fromCodePoint(0xe0041)
+
+    expect(messageOf(`${'a'.repeat(191)}${tag}`)).toBe(`${'a'.repeat(191)}\\u{e0041}`)
+    expect(messageOf(`${'a'.repeat(192)}${tag}`)).toBe(`${'a'.repeat(192)}…`)
   })
 })

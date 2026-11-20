@@ -28,7 +28,7 @@ as the GitHub Release body, so each released version needs a matching
 - **The text of an issue is bounded and escaped.** The variable, the path and the message of every
   issue, including a `custom` message and the names in an unknown-key or an override report, write a
   control character, a line or paragraph separator and any other invisible format character (a
-  zero-width or directional mark, the soft hyphen, the byte order mark) as a `\uXXXX` escape, and end with `…` after 200 characters. A long or crafted name could flood a
+  zero-width or directional mark, the soft hyphen, the byte order mark) as a `\uXXXX` escape (`\u{XXXXX}` past U+FFFF), and end with `…` after 200 characters. A long or crafted name could flood a
   log line or rewrite it on a terminal.
 
 ### Tests

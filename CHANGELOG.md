@@ -15,6 +15,19 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Documentation
+
+- The README now says what a host logger's rejected promise does: Nest drops the returned promise, so the
+  rejection is unhandled and ends the process unless the application handles `unhandledRejection`. It
+  previously said only that the rejection is outside what the module can observe. An end-to-end spec
+  measures it in a child process through Nest's `Logger` against the built package.
+
+### Tests
+
+- The two specs that asserted a `jest` listener on `unhandledRejection` was never called no longer do:
+  the test environment never delivers that event to a listener, so the assertion could not fail. They
+  keep their assertions on the thrown error and its `cause`.
+
 ## [1.2.14] - 2026-11-20
 
 ### Fixed

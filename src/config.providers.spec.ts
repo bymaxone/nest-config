@@ -244,41 +244,32 @@ describe('the BYMAX_CONFIG provider factory and the validation hook', () => {
 
   it('keeps the validation error and records a rejecting hook as its cause', async () => {
     /**
-     * A hook that rejects leaves no unhandled rejection behind. The boot fails with the
-     * original validation error, unchanged in class, code, issues and message, and the
-     * hook's error is attached as its `cause`, a non-enumerable property so that `code`
-     * and `issues` stay the only own enumerable ones.
+     * A hook that rejects does not replace the failure. The boot fails with the original
+     * validation error, unchanged in class, code, issues and message, and the hook's error
+     * is attached as its `cause`, a non-enumerable property so that `code` and `issues`
+     * stay the only own enumerable ones.
      */
-    const unhandled = jest.fn()
-    process.on('unhandledRejection', unhandled)
     const hookError = new Error('hook exploded')
     const control = await rejection({ schema, source: {} })
 
-    try {
-      const error = await rejection({
-        schema,
-        source: {},
-        onValidationError: async () => {
-          throw hookError
-        }
-      })
-      await new Promise((resolve) => setImmediate(resolve))
-
-      expect(error.cause).toBe(hookError)
-      expect(Object.getOwnPropertyDescriptor(error, 'cause')).toEqual({
-        value: hookError,
-        writable: false,
-        enumerable: false,
-        configurable: false
-      })
-      expect(error.message).toBe(control.message)
-      expect(error.issues).toEqual(control.issues)
-      expect(error.code).toBe(ConfigErrorCode.VALIDATION)
-      expect(Object.keys(error).sort()).toEqual(['code', 'issues'])
-      expect(unhandled).not.toHaveBeenCalled()
-    } finally {
-      process.off('unhandledRejection', unhandled)
-    }
+    const error = await rejection({
+      schema,
+      source: {},
+      onValidationError: async () => {
+        throw hookError
+      }
+    })
+    expect(error.cause).toBe(hookError)
+    expect(Object.getOwnPropertyDescriptor(error, 'cause')).toEqual({
+      value: hookError,
+      writable: false,
+      enumerable: false,
+      configurable: false
+    })
+    expect(error.message).toBe(control.message)
+    expect(error.issues).toEqual(control.issues)
+    expect(error.code).toBe(ConfigErrorCode.VALIDATION)
+    expect(Object.keys(error).sort()).toEqual(['code', 'issues'])
   })
 
   it('records a synchronously throwing hook as the cause as well', async () => {

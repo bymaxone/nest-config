@@ -999,9 +999,10 @@ issue list name each variable and constraint. A log pipeline matches the `event`
 is rendered as a structured entry by `@bymax-one/nest-logger` 1.4.23 or later, and readably by Nest's
 default logger; an older `@bymax-one/nest-logger` prints it as `[object Object]`.
 
-A logger that throws, or that returns a rejected promise, cannot change the outcome: the event is written
-on a best-effort basis, the `BymaxConfigValidationError` is still the failure the host sees, and the
-`onValidationError` hook still runs.
+A logger that throws cannot change the outcome: the event is written on a best-effort basis, the
+`BymaxConfigValidationError` is still the failure the host sees, and the `onValidationError` hook still
+runs. The Nest `Logger` drops what a host-installed logger returns, so a logger whose `error` returns a
+rejected promise is outside what the module can observe; handle the rejection inside that logger.
 
 ## 🚫 What This Library Does NOT Do
 

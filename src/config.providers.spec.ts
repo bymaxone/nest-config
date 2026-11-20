@@ -11,7 +11,7 @@
  * real environment values are never mutated.
  */
 
-import { Logger } from '@nestjs/common'
+import { ConsoleLogger, Logger } from '@nestjs/common'
 import { z } from 'zod'
 
 import type { BymaxConfigModuleOptions } from './config.options'
@@ -362,57 +362,32 @@ describe('the log event written when the validation fails', () => {
     expect(order).toEqual(['log', 'hook'])
   })
 
-  describe('a host logger that misbehaves', () => {
-    const failing = { schema: multi, source: { SERVER_HOST: 'short' } }
+  it('still rejects with the validation error and runs the hook when a host-installed logger throws', async () => {
+    /**
+     * The override is installed the way a host installs one, through the Nest `Logger`, so the call
+     * travels the production forwarding path rather than a replaced method.
+     */
+    Logger.overrideLogger({
+      log: () => undefined,
+      warn: () => undefined,
+      error: () => {
+        throw new Error('log sink down')
+      }
+    })
+    const hook = jest.fn()
 
-    /** Counts the rejections no handler claimed while `run` and the turns after it execute. */
-    async function unhandledDuring(run: () => Promise<void>): Promise<unknown[]> {
-      const seen: unknown[] = []
-      const listener = (reason: unknown): void => {
-        seen.push(reason)
-      }
-      process.on('unhandledRejection', listener)
-      try {
-        await run()
-        await new Promise((resolve) => setImmediate(resolve))
-      } finally {
-        process.off('unhandledRejection', listener)
-      }
-      return seen
+    try {
+      const thrown = await rejection({
+        schema: multi,
+        source: { SERVER_HOST: 'short' },
+        onValidationError: hook
+      })
+
+      expect(thrown.issues).toHaveLength(3)
+      expect(hook).toHaveBeenCalledTimes(1)
+    } finally {
+      Logger.overrideLogger(new ConsoleLogger())
     }
-
-    it.each([
-      {
-        label: 'throws',
-        behave: () => {
-          throw new Error('log sink down')
-        }
-      },
-      { label: 'returns a rejected promise', behave: () => Promise.reject(new Error('sink')) },
-      {
-        label: 'returns a thenable whose then throws',
-        behave: () => ({
-          then: () => {
-            throw new Error('then failed')
-          }
-        })
-      }
-    ])(
-      'still rejects with the validation error and runs the hook when the logger $label',
-      async ({ behave }) => {
-        jest.spyOn(Logger.prototype, 'error').mockImplementation(behave as never)
-        const hook = jest.fn()
-        let thrown: unknown
-
-        const unhandled = await unhandledDuring(async () => {
-          thrown = await rejection({ ...failing, onValidationError: hook })
-        })
-
-        expect(thrown).toBeInstanceOf(BymaxConfigValidationError)
-        expect(hook).toHaveBeenCalledTimes(1)
-        expect(unhandled).toEqual([])
-      }
-    )
   })
 
   it('carries no value the source held', async () => {

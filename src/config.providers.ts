@@ -177,19 +177,17 @@ async function provideValidatedConfig(
     return createValidatedConfig(options)
   } catch (error) {
     if (error instanceof BymaxConfigValidationError) {
-      // A logger installed through the Nest `Logger` override can throw, or return a rejected promise or a
-      // thenable that throws, though its type says `void`; the executor turns a throw into a rejection and
-      // resolving adopts the rest, so one handler absorbs all three and the validation error stays the
-      // failure the host sees, with the hook still to run.
-      void new Promise((resolve) =>
-        resolve(
-          logger.error({
-            event: VALIDATION_FAILED_EVENT,
-            message: 'environment validation failed',
-            issues: error.issues.length
-          })
-        )
-      ).catch(() => undefined)
+      // The Nest `Logger` forwards to a host-installed logger and drops what it returns, so only a
+      // synchronous throw can reach this point; it must not replace the validation error or skip the hook.
+      try {
+        logger.error({
+          event: VALIDATION_FAILED_EVENT,
+          message: 'environment validation failed',
+          issues: error.issues.length
+        })
+      } catch {
+        // A faulty logger must never replace the failure it reports.
+      }
       await reportIssues(options.onValidationError, error)
     }
     throw error

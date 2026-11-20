@@ -20,16 +20,16 @@ as the GitHub Release body, so each released version needs a matching
 - **`createValidatedConfig` reads `strict` once.** It read the option twice, once to refuse a non-boolean
   and once to decide strictness, so an accessor that answered differently the second time passed the
   check and then ran lax. One read now serves both.
-- **A failing host logger cannot change the validation failure.** The `CONFIG_VALIDATION_FAILED` event is
-  written through the Nest `Logger`, which a host can replace. A logger that threw replaced the
-  `BymaxConfigValidationError` with its own error and skipped the `onValidationError` hook, and one that
-  returned a rejected promise raised an unhandled rejection. The write is now best effort: the
-  validation error is still thrown and the hook still runs.
+- **A throwing host logger cannot change the validation failure.** The `CONFIG_VALIDATION_FAILED` event
+  is written through the Nest `Logger`, which a host can replace. A logger whose `error` threw replaced
+  the `BymaxConfigValidationError` with its own error and skipped the `onValidationError` hook. The write
+  is now best effort: the validation error is still thrown and the hook still runs. A rejected promise
+  from a host logger is not covered: the Nest `Logger` drops the value its `error` returns.
 
 ### Documentation
 
 - The README states that the `strict` refusal also applies to a `strict` returned by a `forRootAsync`
-  class or existing provider, not only a factory, and that a failing logger does not change the outcome.
+  class or existing provider, not only a factory, and that a throwing logger does not change the outcome.
 
 ## [1.2.13] - 2026-11-20
 

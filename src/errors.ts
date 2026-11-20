@@ -94,8 +94,8 @@ export type ConfigIssueCode =
  * into the report; keeping an authored message value-free is the author's call.
  *
  * Every text field is escaped and bounded when the error is built: a character that
- * changes how a line reads is written as a `\uXXXX` escape (`\u{XXXXX}` past U+FFFF), and a field over 200
- * characters ends with an ellipsis.
+ * changes how a line reads is written as a `\uXXXX` escape (`\u{XXXXX}` past U+FFFF), and a field too long
+ * to print ends with an ellipsis.
  */
 export interface ConfigIssue {
   /** Nested config path, e.g. `database.url`; the namespace alone (e.g. `database`) for an unknown-key issue. */

@@ -66,6 +66,20 @@ function unplacedIssue(path: string, code: ConfigIssue['code'], message: string)
 }
 
 /**
+ * A variable name as a validation error carries it: escaped and bounded, which is the form the
+ * issues to compare with come in. The error builds that form, so no second copy of the rule is kept.
+ *
+ * @param variable - A source variable name, as the schema declares it.
+ * @returns The same name, as the error's issues report it.
+ */
+function asReported(variable: string): string {
+  const [issue] = new BymaxConfigValidationError([
+    { path: '', variable, code: ConfigErrorCode.INVALID, message: '' }
+  ]).issues
+  return (issue as ConfigIssue).variable
+}
+
+/**
  * Flatten nested partial overrides into a `namespace.leaf` to value map.
  *
  * Iterating entries (rather than indexing by a dynamic key) keeps the lookup a
@@ -153,7 +167,7 @@ function applyOverrides<TShape extends EnvShape>(
     const value = flat.get(binding.path)
     if (value === undefined) continue
     entries.set(binding.variable, String(value))
-    overridden.add(binding.variable)
+    overridden.add(asReported(binding.variable))
   }
   // Null-prototype record so a meta({ env }) override named `__proto__` stays a
   // plain data key (consistent with the synthesizer) and cannot mutate a prototype.

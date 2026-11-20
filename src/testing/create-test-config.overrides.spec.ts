@@ -244,3 +244,41 @@ describe('createTestConfig with overrides that are not a plain object', () => {
     )
   })
 })
+
+describe('createTestConfig with a variable name that the report escapes or cuts', () => {
+  it.each([
+    ['longer than 200 characters', 'V'.repeat(205)],
+    ['holding a directional mark', 'DB_' + '\u202e' + '_PORT']
+  ])('keeps an override for a variable name %s out of the placeholder guidance', (_name, env) => {
+    /** The override was supplied, so its invalid value is reported as it is, not as a missing override. */
+    const named = defineEnv({ database: z.object({ port: z.coerce.number().int().meta({ env }) }) })
+
+    const thrown = outcome(() =>
+      createTestConfig(named, { database: { port: 'not-a-number' } } as never)
+    )
+
+    expect(thrown).toBeInstanceOf(BymaxConfigValidationError)
+    const [issue] = (thrown as BymaxConfigValidationError).issues
+    expect(issue?.path).toBe('database.port')
+    expect(issue?.message).not.toContain('no placeholder satisfies')
+  })
+
+  it('still guides a leaf whose own placeholder cannot satisfy it', () => {
+    const named = defineEnv({
+      database: z.object({
+        port: z.coerce
+          .number()
+          .int()
+          .min(10)
+          .max(5)
+          .meta({ env: 'V'.repeat(205) })
+      })
+    })
+
+    const thrown = outcome(() => createTestConfig(named))
+
+    expect((thrown as BymaxConfigValidationError).issues[0]?.message).toContain(
+      'no placeholder satisfies'
+    )
+  })
+})

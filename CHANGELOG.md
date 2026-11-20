@@ -34,6 +34,10 @@ as the GitHub Release body, so each released version needs a matching
   attached as the `cause` of a validation failure only when the failure has none, so a hook that throws
   or rejects can no longer replace the refusal with a `TypeError`.
 
+- **The test helpers still tell a supplied override from a missing one when a variable name is long or
+  escaped.** `createTestConfig` and `configTestingModule` compare the variables the caller overrode with
+  the variables of the issues, and the issues carry the escaped, bounded form.
+
 ### Tests
 
 - Test titles now state what their assertions check, and the rows that asserted no log line

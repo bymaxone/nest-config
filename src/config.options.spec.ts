@@ -25,7 +25,7 @@ const schema = defineEnv({
 })
 
 describe('BymaxConfigModuleOptions', () => {
-  it('requires the schema and keeps source, hook, and strict optional', () => {
+  it('accepts a schema alone as the minimal options object', () => {
     /**
      * Minimal options shape.
      *

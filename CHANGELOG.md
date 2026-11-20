@@ -15,6 +15,27 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Fixed
+
+- **A host accessor or Proxy that throws no longer surfaces its own error.** The options of `forRoot`
+  and `forRootAsync` (including `isGlobal`, the `forRootAsync` keys and what a factory resolves), and
+  the `source` of `createValidatedConfig`, are read under one guard. A throw is refused with a
+  `BymaxConfigValidationError` of one issue that names the step and the class of what was thrown, and
+  the original is its non-enumerable `cause`. It used to reach the caller raw, with no library code.
+- **`createValidatedConfig` reads `source` once.** It read the option up to three times, so an accessor
+  that answered differently the second time validated `process.env` in place of the source it had
+  handed over.
+- **The text of an issue is bounded and escaped.** The variable, the path and the message of every
+  issue, including a `custom` message and the names in an unknown-key or an override report, write a
+  control character, a line or paragraph separator and any other invisible format character (a
+  zero-width or directional mark, the soft hyphen, the byte order mark) as a `\uXXXX` escape, and end with `…` after 200 characters. A long or crafted name could flood a
+  log line or rewrite it on a terminal.
+
+### Tests
+
+- Nine test titles now state what their assertions check, and the two rows that asserted no log line
+  carried a value now also assert that a line was written.
+
 ## [1.2.15] - 2026-11-20
 
 ### Documentation

@@ -35,6 +35,38 @@ export const ConfigErrorCode = Object.freeze({
   UNKNOWN_KEY: 'BYMAX_CONFIG_UNKNOWN_KEY'
 } as const)
 
+/** The longest text an issue carries in a field; the rest is cut and marked with an ellipsis. */
+const MAX_FIELD_LENGTH = 200
+
+/**
+ * Characters that change how text reads on a terminal or in a log line without being visible, by
+ * Unicode category: the controls (`Cc`: C0, DEL, C1, so ESC, CR, LF and NEL), the format characters
+ * (`Cf`: the soft hyphen, the Arabic letter mark, the zero-width and directional marks, the
+ * bidirectional embeddings and isolates, the invisible operators, the byte order mark), and the line
+ * and paragraph separators (`Zl`, `Zp`).
+ */
+const UNSAFE_CHARACTER = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u
+
+/**
+ * Make text taken from the host safe to print: each character that changes how a line reads is
+ * written as a `\uXXXX` escape, and the text is cut at {@link MAX_FIELD_LENGTH} characters of output
+ * with an ellipsis, so an issue field cannot flood or rewrite a log line. A whole escape is never cut.
+ *
+ * @param text - A variable name, path or message that can come from the host.
+ * @returns The text, escaped and bounded.
+ */
+function printable(text: string): string {
+  let out = ''
+  for (const character of text) {
+    const piece = UNSAFE_CHARACTER.test(character)
+      ? `\\u${(character.codePointAt(0) as number).toString(16).padStart(4, '0')}`
+      : character
+    if (out.length + piece.length > MAX_FIELD_LENGTH) return `${out}…`
+    out += piece
+  }
+  return out
+}
+
 /** The stable top-level code carried by {@link BymaxConfigValidationError}. */
 export type ConfigValidationCode = typeof ConfigErrorCode.VALIDATION
 
@@ -56,6 +88,10 @@ export type ConfigIssueCode =
  * is the only statement of a rule that has no structural constraint to describe.
  * A message that interpolates the received value therefore carries that value
  * into the report; keeping an authored message value-free is the author's call.
+ *
+ * Every text field is escaped and bounded when the error is built: a character that
+ * changes how a line reads is written as a `\uXXXX` escape, and a field over 200
+ * characters ends with an ellipsis.
  */
 export interface ConfigIssue {
   /** Nested config path, e.g. `database.url`; the namespace alone (e.g. `database`) for an unknown-key issue. */
@@ -112,10 +148,10 @@ export class BymaxConfigValidationError extends Error {
     // through JSON serialization of the error.
     const normalized = issues.map((issue) =>
       Object.freeze({
-        path: issue.path,
-        variable: issue.variable,
+        path: printable(issue.path),
+        variable: printable(issue.variable),
         code: issue.code,
-        message: issue.message
+        message: printable(issue.message)
       })
     )
     super(formatIssueReport(normalized))

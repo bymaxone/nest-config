@@ -320,6 +320,7 @@ describe('a thrown rule in a Nest boot', () => {
       NestFactory.createApplicationContext(AppModule, { logger, abortOnError: false })
     ).rejects.toBeInstanceOf(BymaxConfigValidationError)
 
+    expect(lines.length).toBeGreaterThan(0)
     expect(lines.join('\n')).not.toContain(SECRET)
   })
 })

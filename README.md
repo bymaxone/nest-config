@@ -560,6 +560,11 @@ place a conditional or cross-field rule can state itself. That also means the me
 yours to keep value-free: if it interpolates the received value, that value reaches the
 report.
 
+Its wording is yours, its form is not: in every field of an issue (the variable, the path and the
+message) a control character, a line or paragraph separator, and any other invisible format
+character (a zero-width or directional mark, the soft hyphen, the byte order mark) are written as a `\uXXXX` escape, and a field longer than 200 characters is
+cut and ends with `…`, so a message or a variable name cannot rewrite or flood a log line.
+
 ---
 
 ## 🛡️ Security Table

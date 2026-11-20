@@ -96,7 +96,7 @@ describe('BymaxConfigModule registration', () => {
      */
     const dynamic = BymaxConfigModule.forRootAsync({
       useFactory: () => ({ schema }),
-      inject: []
+      inject: ['DEPENDENCY']
     })
 
     const optionsProvider = findProvider(dynamic.providers, BYMAX_CONFIG_OPTIONS)
@@ -104,5 +104,6 @@ describe('BymaxConfigModule registration', () => {
     expect(dynamic.global).toBe(true)
     expect(optionsProvider).toBeDefined()
     expect(typeof optionsProvider?.['useFactory']).toBe('function')
+    expect(optionsProvider?.['inject']).toEqual(['DEPENDENCY'])
   })
 })

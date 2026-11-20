@@ -126,7 +126,8 @@ export function assertBoolean(value: unknown, name: string, where: string): void
  * validated result throws.
  * @throws {TypeError} When `source` is present with the value `undefined` or `null`, which would
  * otherwise validate `process.env` in place of the source that failed to load, or when `strict` is set
- * and is not a boolean.
+ * and is not a boolean. `strict` is read once, so an accessor cannot pass this check and then answer
+ * differently to the validation.
  * @example
  * ```typescript
  * const config = createValidatedConfig({ schema: envSchema });
@@ -138,7 +139,8 @@ export function createValidatedConfig<TShape extends EnvShape>(
     readonly schema: EnvSchema<TShape>
   }
 ): Readonly<EnvOutput<TShape>> {
-  assertBoolean(options.strict, 'strict', 'createValidatedConfig')
+  const { strict } = options
+  assertBoolean(strict, 'strict', 'createValidatedConfig')
   if ('source' in options && (options.source === undefined || options.source === null)) {
     throw new TypeError(
       'BymaxConfigModule: source was provided but is undefined or null; omit the key to ' +
@@ -146,7 +148,7 @@ export function createValidatedConfig<TShape extends EnvShape>(
     )
   }
   const source = options.source ?? process.env
-  const validated = validateEnv(options.schema, source, { strict: options.strict === true })
+  const validated = validateEnv(options.schema, source, { strict: strict === true })
   try {
     return deepFreeze(redactRoot(validated))
   } catch (thrown) {
@@ -175,11 +177,19 @@ async function provideValidatedConfig(
     return createValidatedConfig(options)
   } catch (error) {
     if (error instanceof BymaxConfigValidationError) {
-      logger.error({
-        event: VALIDATION_FAILED_EVENT,
-        message: 'environment validation failed',
-        issues: error.issues.length
-      })
+      // A logger installed through the Nest `Logger` override can throw, or return a rejected promise or a
+      // thenable that throws, though its type says `void`; the executor turns a throw into a rejection and
+      // resolving adopts the rest, so one handler absorbs all three and the validation error stays the
+      // failure the host sees, with the hook still to run.
+      void new Promise((resolve) =>
+        resolve(
+          logger.error({
+            event: VALIDATION_FAILED_EVENT,
+            message: 'environment validation failed',
+            issues: error.issues.length
+          })
+        )
+      ).catch(() => undefined)
       await reportIssues(options.onValidationError, error)
     }
     throw error

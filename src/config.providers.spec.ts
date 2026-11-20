@@ -151,6 +151,21 @@ describe('createValidatedConfig and a strict that is not a boolean', () => {
     }
   )
 
+  it('reads strict once, so an accessor that changes its answer cannot pass the check and then run lax', () => {
+    let reads = 0
+    const options = {
+      schema,
+      source: lax,
+      get strict() {
+        reads += 1
+        return reads === 1
+      }
+    }
+
+    expect(() => createValidatedConfig(options)).toThrow(BymaxConfigValidationError)
+    expect(reads).toBe(1)
+  })
+
   it.each([true, false, null, undefined])('still accepts %s for strict', (value) => {
     const run = () => createValidatedConfig({ schema, source: lax, strict: value })
 
@@ -345,6 +360,59 @@ describe('the log event written when the validation fails', () => {
       issues: 3
     })
     expect(order).toEqual(['log', 'hook'])
+  })
+
+  describe('a host logger that misbehaves', () => {
+    const failing = { schema: multi, source: { SERVER_HOST: 'short' } }
+
+    /** Counts the rejections no handler claimed while `run` and the turns after it execute. */
+    async function unhandledDuring(run: () => Promise<void>): Promise<unknown[]> {
+      const seen: unknown[] = []
+      const listener = (reason: unknown): void => {
+        seen.push(reason)
+      }
+      process.on('unhandledRejection', listener)
+      try {
+        await run()
+        await new Promise((resolve) => setImmediate(resolve))
+      } finally {
+        process.off('unhandledRejection', listener)
+      }
+      return seen
+    }
+
+    it.each([
+      {
+        label: 'throws',
+        behave: () => {
+          throw new Error('log sink down')
+        }
+      },
+      { label: 'returns a rejected promise', behave: () => Promise.reject(new Error('sink')) },
+      {
+        label: 'returns a thenable whose then throws',
+        behave: () => ({
+          then: () => {
+            throw new Error('then failed')
+          }
+        })
+      }
+    ])(
+      'still rejects with the validation error and runs the hook when the logger $label',
+      async ({ behave }) => {
+        jest.spyOn(Logger.prototype, 'error').mockImplementation(behave as never)
+        const hook = jest.fn()
+        let thrown: unknown
+
+        const unhandled = await unhandledDuring(async () => {
+          thrown = await rejection({ ...failing, onValidationError: hook })
+        })
+
+        expect(thrown).toBeInstanceOf(BymaxConfigValidationError)
+        expect(hook).toHaveBeenCalledTimes(1)
+        expect(unhandled).toEqual([])
+      }
+    )
   })
 
   it('carries no value the source held', async () => {

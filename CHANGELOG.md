@@ -15,6 +15,8 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.14] - 2026-11-20
+
 ### Fixed
 
 - **`createValidatedConfig` reads `strict` once.** It read the option twice, once to refuse a non-boolean
@@ -875,4 +877,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.11]: https://github.com/bymaxone/nest-config/compare/v1.2.10...v1.2.11
 [1.2.12]: https://github.com/bymaxone/nest-config/compare/v1.2.11...v1.2.12
 [1.2.13]: https://github.com/bymaxone/nest-config/compare/v1.2.12...v1.2.13
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.13...HEAD
+[1.2.14]: https://github.com/bymaxone/nest-config/compare/v1.2.13...v1.2.14
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.14...HEAD

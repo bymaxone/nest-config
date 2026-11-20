@@ -35,8 +35,9 @@ as the GitHub Release body, so each released version needs a matching
   or rejects can no longer replace the refusal with a `TypeError`.
 
 - **The test helpers still tell a supplied override from a missing one when a variable name is long or
-  escaped.** `createTestConfig` and `configTestingModule` compare the variables the caller overrode with
-  the variables of the issues, and the issues carry the escaped, bounded form.
+  escaped.** `createTestConfig` and `configTestingModule` match the leaves the caller overrode with the
+  leaves of the issues by path and variable together, in the escaped, bounded form the issues carry, so
+  names that read alike once escaped no longer stand for one leaf.
 
 ### Tests
 

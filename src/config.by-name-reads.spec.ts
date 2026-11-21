@@ -261,4 +261,39 @@ describe('a validated configuration, whose root carries its own serializer', () 
     ])
     expect(Object.getOwnPropertyNames(leafy.app)).toEqual(['name'])
   })
+
+  it('does not skip an enumerable toJSON override: it is a namespace that is not an object', () => {
+    const error = thrownBy(() => createTestConfig(schema, { toJSON: () => 1 } as never))
+
+    expect((error as BymaxConfigValidationError).issues.map((issue) => issue.path)).toEqual([
+      'toJSON'
+    ])
+  })
+
+  it('reads a hidden function that is not the serializer as a namespace and a leaf of the service', () => {
+    const root = hidden({ app: { name: 'n' } }, 'extra', () => 1)
+    const leafy = { app: hidden({}, 'run', () => 2) }
+
+    expect(new ConfigService(root as never).toJSON().namespaces).toEqual(['app', 'extra'])
+    expect(new ConfigService(leafy as never).has('app.run' as never)).toBe(true)
+  })
+
+  it('keeps a hidden toJSON that is not the root serializer: at a leaf, or not a function', () => {
+    const atLeaf = thrownBy(() =>
+      createTestConfig(schema, { app: hidden({}, 'toJSON', () => 1) } as never)
+    )
+    const notFunction = thrownBy(() =>
+      createTestConfig(schema, hidden({ app: {} }, 'toJSON', 5) as never)
+    )
+
+    expect((atLeaf as BymaxConfigValidationError).issues.map((issue) => issue.path)).toEqual([
+      'app.toJSON'
+    ])
+    expect((notFunction as BymaxConfigValidationError).issues.map((issue) => issue.path)).toEqual([
+      'toJSON'
+    ])
+    expect(
+      new ConfigService(hidden({ app: {} }, 'toJSON', 5) as never).toJSON().namespaces
+    ).toEqual(['app', 'toJSON'])
+  })
 })

@@ -135,7 +135,7 @@ function assertHook(hook: unknown, where: string): void {
 /**
  * Read the options the module hands to the options token, by property access, so options held by an
  * object whose properties are accessors on its prototype (a class instance) are read instead of
- * lost to a copy of its own keys. Whatever else the object holds stays behind.
+ * lost to a copy of its own keys. Whatever else a class instance holds stays behind.
  *
  * `source` is the one option whose undefined or null is not a default: a `source` key that is
  * present is passed on as it is, so the provider refuses it instead of falling back to the process

@@ -305,7 +305,7 @@ row in the options table says, because a source that failed to load must not bec
 The options are read by property access, so an object whose options are accessors, such as a class
 instance, works like a literal. `forRoot` and `forRootAsync` hand the `BYMAX_CONFIG_OPTIONS` token only
 `schema`, `source`, `onValidationError` and `strict`, whichever of `forRoot`, `useFactory`, `useClass` or
-`useExisting` produced them. A plain object that lists any other key is refused with a
+`useExisting` produced them. A plain object that lists a key its entry point does not read is refused with a
 `BymaxConfigValidationError` that names the key (code `BYMAX_CONFIG_UNKNOWN_KEY`), so a misspelled `strict`
 cannot leave validation laxer without a word; an instance of a class is not key-checked, because its own
 keys are its fields, but its `schema`, `source`, `onValidationError` and `strict` are still read by name,

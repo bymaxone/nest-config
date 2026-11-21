@@ -22,8 +22,9 @@ as the GitHub Release body, so each released version needs a matching
 - **The README names the `variable` field of an issue**, where the hook is described. A check that
   each member of a published contract is named by an inline-code span that is or begins with it
   found `variable` named only inside longer spans.
-- **The README says that a misspelled own field of a class-instance options object is not reported.**
-  A plain object's unknown key is refused; an instance is not key-checked.
+- **The README says that only a plain object is key-checked.** An options object that is not plain, an
+  instance of a class or an object built on another with `Object.create(base)`, boots with a misspelled
+  key silently ignored.
 
 No runtime or declaration change: there is nothing to apply to a derived backend.
 

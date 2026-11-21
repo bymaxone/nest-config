@@ -13,6 +13,7 @@ import { z } from 'zod'
 import { createValidatedConfig } from './config.providers'
 import { defineEnv } from './define-env'
 import { BymaxConfigValidationError } from './errors'
+import { createTestConfig } from './testing/create-test-config'
 
 const MEMBERS = ['constructor', 'toString', 'valueOf', 'hasOwnProperty']
 
@@ -101,6 +102,37 @@ describe('a leaf or namespace named __proto__', () => {
     expect(error.issues.map((issue) => issue.path)).toEqual([path])
     expect(error.issues[0]?.message).toContain('__proto__')
   })
+})
+
+describe('createTestConfig on a schema that names a namespace or leaf __proto__', () => {
+  it.each([
+    [
+      'a leaf',
+      () =>
+        defineEnv({
+          app: z.object(Object.fromEntries([['__proto__', z.string().optional()]]))
+        } as never),
+      { app: {} },
+      'app.__proto__'
+    ],
+    [
+      'a namespace',
+      () =>
+        defineEnv(
+          Object.fromEntries([['__proto__', z.object({ a: z.string().default('k') })]]) as never
+        ),
+      {},
+      '__proto__.a'
+    ]
+  ])(
+    'reports only the refusal of %s, not the members its prototype answers',
+    (_name, make, overrides, path) => {
+      const error = thrownBy(() => createTestConfig(make(), overrides as never))
+
+      expect(error.issues.map((issue) => issue.path)).toEqual([path])
+      expect(error.issues[0]?.message).toContain('cannot be named __proto__')
+    }
+  )
 })
 
 describe('a source variable named like a member of Object.prototype', () => {

@@ -15,6 +15,8 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.19] - 2026-11-21
+
 ### Fixed
 
 - **A value of a declared source variable that is not text is validated, whichever way the source holds
@@ -34,6 +36,17 @@ as the GitHub Release body, so each released version needs a matching
 - Since 1.2.18, `ConfigService` accepts a `null` or `undefined` namespace, listing it with no leaves where
   it was refused with a library error, and refuses a string as the configuration root, which it accepted
   and listed by index.
+
+#### Apply to a derived backend
+
+- A source that held a declared variable as a non-enumerable or inherited property, or behind a `Proxy`,
+  with a value that is not text used to get the default. The value is validated now, so a number, a
+  boolean, `null` or an array that does not satisfy the schema is refused at boot. Pass text, or leave
+  the variable out to take the default.
+- An overrides object of `createTestConfig` or `configTestingModule` held by a `Proxy` that lists no key,
+  or built on a bare prototype, used to have its values dropped or the object refused. Its values are
+  applied now, so a test that relied on the placeholder where it passed such an object passes its own
+  value instead.
 
 ### Documentation
 
@@ -1047,4 +1060,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.16]: https://github.com/bymaxone/nest-config/compare/v1.2.15...v1.2.16
 [1.2.17]: https://github.com/bymaxone/nest-config/compare/v1.2.16...v1.2.17
 [1.2.18]: https://github.com/bymaxone/nest-config/compare/v1.2.17...v1.2.18
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.18...HEAD
+[1.2.19]: https://github.com/bymaxone/nest-config/compare/v1.2.18...v1.2.19
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.19...HEAD

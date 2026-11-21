@@ -32,8 +32,7 @@ as the GitHub Release body, so each released version needs a matching
 
 ### Documentation
 
-- **The README and the constructor documentation state the refusals** of `new BymaxConfigValidationError(issues)`:
-  the `TypeError`, the `RangeError` and the 10 000 cap.
+- **The README and the constructor documentation state the refusals** of `new BymaxConfigValidationError(issues)`.
 
 **Apply to a derived backend:** nothing to change unless it builds a `BymaxConfigValidationError` itself
 from a value that is not an array of issues whose fields are strings; that now throws.

@@ -15,6 +15,36 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Fixed
+
+- **A host accessor or Proxy that throws no longer surfaces its own error.** The options of `forRoot`
+  and `forRootAsync` (including `isGlobal`, the `forRootAsync` keys and what a factory resolves), and
+  the `source` of `createValidatedConfig`, are read under one guard. A throw is refused with a
+  `BymaxConfigValidationError` of one issue that names the step and the class of what was thrown, and
+  the original is its non-enumerable `cause`. It used to reach the caller raw, with no library code.
+- **`createValidatedConfig` reads `source` once.** It read the option more than once, so an accessor
+  that answered differently the second time validated `process.env` in place of the source it had
+  handed over.
+- **The text of an issue is bounded and escaped.** The variable, the path and the message of every
+  issue, including a `custom` message and the names in an unknown-key or an override report, write a
+  control character, a line or paragraph separator and any other invisible format character (a
+  zero-width or directional mark, the soft hyphen, the byte order mark) as a `\uXXXX` escape (`\u{XXXXX}` past U+FFFF), and end with `…` once the output would pass 200 characters, an escape counting as its full length. A long or crafted name could flood a
+  log line or rewrite it on a terminal.
+- **A refused host read keeps its cause when the validation hook fails too.** The hook's own error is
+  attached as the `cause` of a validation failure only when the failure has none, so a hook that throws
+  or rejects can no longer replace the refusal with a `TypeError`.
+
+- **The test helpers still tell a supplied override from a missing one when a name is long or escaped.**
+  `createTestConfig` and `configTestingModule` attribute an issue to a leaf by the path it carries, and
+  only when exactly one node of the schema, leaf or namespace, reports that path once escaped and
+  bounded. Where two read alike the issue keeps its own description, so the guidance can be missing but
+  never points at the wrong leaf.
+
+### Tests
+
+- Test titles now state what their assertions check, and the rows that asserted no log line
+  carried a value now also assert that a line was written.
+
 ## [1.2.15] - 2026-11-20
 
 ### Documentation

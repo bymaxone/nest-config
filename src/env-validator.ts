@@ -505,6 +505,45 @@ export function toWithheldIssue(subject: string, thrown: unknown): ConfigIssue {
 }
 
 /**
+ * Run a read of a value the host supplied, and refuse with a library error when the host's code throws.
+ *
+ * A host value can be an accessor or a Proxy, and what it throws is the host's own error. It would
+ * leave the library raw: with whatever it quotes, with no library code and without the hook running.
+ * It is refused as one issue that names the step and the class of what was thrown, and the original
+ * is kept as the non-enumerable `cause`.
+ *
+ * @param subject - What was being read, as the start of the message: `reading the options`, say.
+ * @param read - The step, which reads the host's value exactly once.
+ * @returns What the step returned.
+ * @throws {BymaxConfigValidationError} When the step threw.
+ */
+export function guarded<T>(subject: string, read: () => T): T {
+  try {
+    return read()
+  } catch (thrown) {
+    throw withCause(new BymaxConfigValidationError([toWithheldIssue(subject, thrown)]), thrown)
+  }
+}
+
+/**
+ * Attach what a host's code threw to a library error as its non-enumerable `cause`, so `code` and
+ * `issues` stay its only own enumerable properties.
+ *
+ * @param error - The library error to annotate.
+ * @param cause - What the host's code threw or rejected with.
+ * @returns The same error.
+ */
+export function withCause<T extends Error>(error: T, cause: unknown): T {
+  Object.defineProperty(error, 'cause', {
+    value: cause,
+    enumerable: false,
+    writable: false,
+    configurable: false
+  })
+  return error
+}
+
+/**
  * Validate a flat source against a schema in a single pass.
  *
  * Maps the source onto the nested schema, runs exactly one `safeParse`, and
@@ -535,7 +574,7 @@ export function validateEnv<TShape extends EnvShape>(
 ): EnvOutput<TShape> {
   const bindings = resolveSourceNames(schema)
   assertDistinctVariables(bindings)
-  const sourceMap = new Map(Object.entries(source))
+  const sourceMap = new Map(guarded('reading the source', () => Object.entries(source)))
   const namespaces = Object.keys(schema.shape)
   const candidate = buildCandidate(namespaces, collectPresentLeaves(bindings, sourceMap))
   const prefixes = resolveNamespacePrefixes(schema)

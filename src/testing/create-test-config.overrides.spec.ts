@@ -10,6 +10,7 @@
 import { z } from 'zod'
 
 import { BymaxConfigValidationError, ConfigErrorCode } from '../errors'
+import type { ConfigIssue } from '../errors'
 import { defineEnv } from '../define-env'
 import { configTestingModule } from './config-testing.module'
 import { createTestConfig } from './create-test-config'
@@ -242,5 +243,208 @@ describe('createTestConfig with overrides that are not a plain object', () => {
     expect(outcome(() => configTestingModule(schema, 'ab' as never))).toBeInstanceOf(
       BymaxConfigValidationError
     )
+  })
+})
+
+/** A schema with one unsatisfiable leaf, whose placeholder cannot satisfy it, under the given names. */
+function unsatisfiable(leaf: string, env?: string) {
+  const port = z.coerce.number().int().min(10).max(5)
+  return z.object({ [leaf]: env === undefined ? port : port.meta({ env }) })
+}
+
+/** The issues the call reports. */
+function issuesOf(run: () => unknown): ReadonlyArray<ConfigIssue> {
+  const thrown = outcome(run)
+  expect(thrown).toBeInstanceOf(BymaxConfigValidationError)
+  return (thrown as BymaxConfigValidationError).issues
+}
+
+/** The messages of the issues the call reports, by the path each carries; paths must be distinct. */
+function messagesOf(run: () => unknown): Record<string, string> {
+  return Object.fromEntries(issuesOf(run).map((issue) => [issue.path, issue.message]))
+}
+
+const GUIDED = 'no placeholder satisfies'
+
+describe('createTestConfig attributes an issue to a leaf only when one node reports its path', () => {
+  it('guides a leaf nothing else reports alike', () => {
+    const named = defineEnv({ database: unsatisfiable('port') })
+
+    expect(messagesOf(() => createTestConfig(named))['database.port']).toContain(GUIDED)
+  })
+
+  it('keeps the description of a rule on a namespace', () => {
+    /** A namespace rule has no leaf to point at, whatever the caller overrode. */
+    const named = defineEnv({
+      database: z
+        .object({ port: z.coerce.number().int() })
+        .superRefine((_value, ctx) => ctx.addIssue({ code: 'custom', message: 'namespace rule' }))
+    })
+
+    const messages = messagesOf(() => createTestConfig(named))
+
+    expect(messages['database']).toBe('namespace rule')
+  })
+
+  it('keeps the description of a leaf the caller overrode', () => {
+    const named = defineEnv({ database: z.object({ port: z.coerce.number().int() }) })
+
+    const messages = messagesOf(() =>
+      createTestConfig(named, { database: { port: 'not-a-number' } } as never)
+    )
+
+    expect(messages['database.port']).not.toContain(GUIDED)
+  })
+
+  it.each([
+    ['longer than 200 characters', 'V'.repeat(205)],
+    ['holding a directional mark', 'DB_' + '\u202e' + '_PORT']
+  ])('keeps an override for a variable name %s out of the guidance', (_name, env) => {
+    const named = defineEnv({
+      database: z.object({ port: z.coerce.number().int().meta({ env }) })
+    })
+
+    const messages = messagesOf(() =>
+      createTestConfig(named, { database: { port: 'not-a-number' } } as never)
+    )
+
+    expect(messages['database.port']).not.toContain(GUIDED)
+  })
+
+  it('tells two leaves apart whose variable names read alike once one is escaped', () => {
+    /** One name holds a directional mark and the other the text of its escape; only the first is overridden. */
+    const named = defineEnv({
+      database: z.object({
+        first: z.coerce.number().int().meta({ env: '\u202e' }),
+        second: z.coerce.number().int().min(10).max(5).meta({ env: '\\u202e' })
+      })
+    })
+
+    const messages = messagesOf(() =>
+      createTestConfig(named, { database: { first: 'not-a-number' } } as never)
+    )
+
+    expect(messages['database.first']).not.toContain(GUIDED)
+    expect(messages['database.second']).toContain(GUIDED)
+  })
+
+  it('tells two leaves apart whose variable names share the first 200 characters', () => {
+    const shared = 'V'.repeat(210)
+    const named = defineEnv({
+      database: z.object({
+        first: z.coerce
+          .number()
+          .int()
+          .meta({ env: `${shared}A` }),
+        second: z.coerce
+          .number()
+          .int()
+          .min(10)
+          .max(5)
+          .meta({ env: `${shared}B` })
+      })
+    })
+
+    const messages = messagesOf(() =>
+      createTestConfig(named, { database: { first: 'not-a-number' } } as never)
+    )
+
+    expect(messages['database.first']).not.toContain(GUIDED)
+    expect(messages['database.second']).toContain(GUIDED)
+  })
+
+  it.each([
+    ['the default variable', undefined],
+    ['a variable made of the cut namespace and a wildcard', 'N'.repeat(205) + '_*']
+  ])(
+    'words no issue as leaf guidance when a cut namespace and its leaf report one path: %s',
+    (_n, env) => {
+      /** Cut at the bound, the namespace and its leaf report one path: neither is guided. */
+      const namespace = 'N'.repeat(205)
+      const named = defineEnv({
+        [namespace]: unsatisfiable('port', env).superRefine((_value, ctx) =>
+          ctx.addIssue({ code: 'custom', message: 'namespace rule' })
+        )
+      })
+
+      const messages = issuesOf(() => createTestConfig(named)).map((issue) => issue.message)
+
+      expect(messages).toContain('namespace rule')
+      for (const message of messages) expect(message).not.toContain(GUIDED)
+    }
+  )
+
+  it('words no issue as leaf guidance when the cut namespace name holds a dot', () => {
+    const namespace = 'N'.repeat(190) + '.' + 'N'.repeat(20)
+    const named = defineEnv({
+      [namespace]: unsatisfiable('port', namespace.toUpperCase() + '_*').superRefine(
+        (_value, ctx) => ctx.addIssue({ code: 'custom', message: 'namespace rule' })
+      )
+    })
+
+    const messages = issuesOf(() => createTestConfig(named)).map((issue) => issue.message)
+
+    expect(messages.length).toBeGreaterThan(0)
+    for (const message of messages) expect(message).not.toContain(GUIDED)
+  })
+
+  it.each([
+    ['neither', {}],
+    ['the first', { first: 'not-a-number' }]
+  ])(
+    'keeps the description of two leaves that report one path when %s was overridden',
+    (_n, database) => {
+      /** Two leaf names share their first 200 characters: their issues read alike, so neither is attributed. */
+      const leaf = 'L'.repeat(205)
+      const named = defineEnv({
+        database: z.object({
+          [`${leaf}a`]: z.coerce.number().int().min(10).max(5),
+          [`${leaf}b`]: z.coerce.number().int().min(10).max(5)
+        })
+      })
+      const overrides = Object.fromEntries(
+        Object.entries(database).map(([key, value]) => [key === 'first' ? `${leaf}a` : key, value])
+      )
+
+      const messages = issuesOf(() =>
+        createTestConfig(named, { database: overrides } as never)
+      ).map((issue) => issue.message)
+
+      expect(messages).toHaveLength(2)
+      for (const message of messages) expect(message).not.toContain(GUIDED)
+    }
+  )
+
+  it('guides a leaf whose path is exactly 200 characters, unchanged', () => {
+    const leaf = 'x'.repeat(200 - 'database.'.length)
+    const named = defineEnv({ database: unsatisfiable(leaf) })
+
+    const messages = messagesOf(() => createTestConfig(named))
+
+    expect(Object.keys(messages)).toEqual([`database.${leaf}`])
+    expect(messages[`database.${leaf}`]).toContain(GUIDED)
+  })
+
+  it('guides a leaf whose path is 201 characters, as cut, when nothing else reports that path', () => {
+    const leaf = 'x'.repeat(201 - 'database.'.length)
+    const named = defineEnv({ database: unsatisfiable(leaf) })
+
+    const messages = messagesOf(() => createTestConfig(named))
+
+    expect(Object.keys(messages)).toEqual([`database.${'x'.repeat(191)}…`])
+    expect(Object.values(messages)[0]).toContain(GUIDED)
+  })
+
+  it('guides a leaf whose name holds an escaped character, and keeps it out when overridden', () => {
+    const leaf = 'bad' + '\u001b' + 'name'
+    const named = defineEnv({ database: unsatisfiable(leaf) })
+    const escaped = `database.bad\\u001bname`
+
+    expect(messagesOf(() => createTestConfig(named))[escaped]).toContain(GUIDED)
+    expect(
+      messagesOf(() => createTestConfig(named, { database: { [leaf]: 'not-a-number' } } as never))[
+        escaped
+      ]
+    ).not.toContain(GUIDED)
   })
 })

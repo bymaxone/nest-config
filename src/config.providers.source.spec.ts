@@ -70,7 +70,7 @@ describe('a source key that is present with the value undefined', () => {
     expect(createValidatedConfig({ schema }).server.port).toBe(3000)
   })
 
-  it('fails the module at boot, before any consumer provider is built', async () => {
+  it('fails the module at boot through forRoot', async () => {
     /** The same refusal reaches a host through forRoot, not only the helper. */
     process.env = { SERVER_PORT: '3000' } as NodeJS.ProcessEnv
 

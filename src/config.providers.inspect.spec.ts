@@ -50,7 +50,7 @@ describe('the validated configuration root when it is printed', () => {
     /** No inspect option reaches past the custom function. */
     const config = createValidatedConfig({ schema, source })
 
-    expect(inspect(config, options)).not.toContain(SECRET)
+    expect(inspect(config, options)).toBe('[BymaxConfig: values redacted]')
   })
 
   it('prints the marker inside a larger object or array', () => {
@@ -58,10 +58,12 @@ describe('the validated configuration root when it is printed', () => {
     const config = createValidatedConfig({ schema, source })
 
     expect(inspect({ context: config })).toBe('{ context: [BymaxConfig: values redacted] }')
-    expect(inspect([config, { nested: { config } }], { depth: null })).not.toContain(SECRET)
+    expect(inspect([config, { nested: { config } }], { depth: null })).toBe(
+      '[\n  [BymaxConfig: values redacted],\n  { nested: { config: [BymaxConfig: values redacted] } }\n]'
+    )
   })
 
-  it('shows no value through console.log, util.format or a template string', () => {
+  it('shows no value through console.log, util.format or a template string, which prints no content at all', () => {
     /** The three ways a value reaches a log line: a real Console, format(), and interpolation. */
     const config = createValidatedConfig({ schema, source })
     const lines: string[] = []
@@ -76,11 +78,11 @@ describe('the validated configuration root when it is printed', () => {
     new Console(sink).log('loaded', { config })
 
     expect(lines.join('')).toContain('[BymaxConfig: values redacted]')
-    expect([
-      lines.join(''),
-      format('%o %O %s %j', config, config, config, config.server)
-    ]).not.toEqual(expect.arrayContaining([expect.stringContaining(SECRET)]))
-    expect(`${String(config)}`).not.toContain(SECRET)
+    expect([lines.join(''), format('%o %O %s %j', config, config, config, config)]).not.toEqual(
+      expect.arrayContaining([expect.stringContaining(SECRET)])
+    )
+    expect(format('%j', config)).toBe('{"service":"BymaxConfig","namespaces":["auth","server"]}')
+    expect(`${config}`).toBe('[object Object]')
   })
 
   it("shows no value through Nest's ConsoleLogger in text mode or in json mode", () => {

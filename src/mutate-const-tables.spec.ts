@@ -252,9 +252,9 @@ describe('mutate-const-tables', () => {
     expect(seen(root)).toContain('export const T = { b: 2 } as const\n')
   })
 
-  // Only a plain decimal integer is bumped: adding one to a float, a hex, an exponent or a value
+  // A plain decimal integer is bumped elsewhere in this suite; adding one to a float, a hex, an exponent or a value
   // past 2^53 would change nothing, or something other than adding one. Those are only removed.
-  it('should bump a plain integer and only remove other forms of number', () => {
+  it('should only remove a float, a hex, an exponent and a value past 2^53, one mutant each', () => {
     const source = 'export const T = { f: 1.5, h: 0x10, e: 1e3, big: 9007199254740992 } as const\n'
     const root = repo({ 'src/table.ts': source }, [])
 

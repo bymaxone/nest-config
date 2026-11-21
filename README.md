@@ -560,6 +560,11 @@ place a conditional or cross-field rule can state itself. That also means the me
 yours to keep value-free: if it interpolates the received value, that value reaches the
 report.
 
+Its wording is yours, its form is not: in every field of an issue (the variable, the path and the
+message) a control character, a line or paragraph separator, and any other invisible format
+character (a zero-width or directional mark, the soft hyphen, the byte order mark) are written as a `\uXXXX` escape (`\u{XXXXX}` past U+FFFF), and a field whose output would pass 200 characters, an escape counting as its full length, is
+cut and ends with `…`, so a message or a variable name cannot rewrite or flood a log line.
+
 ---
 
 ## 🛡️ Security Table
@@ -855,7 +860,8 @@ The hook may be asynchronous: a promise it returns is awaited before the boot fa
 report on its way to a log sink is not cut off by the process exiting. There is no timeout, so
 a hook that never settles holds the boot. If the hook throws or rejects, the boot still fails
 with the original validation error, unchanged in class, `code`, `issues` and `message`, and the
-hook's error is attached to it as `error.cause` (non-enumerable).
+hook's error is attached to it as `error.cause` (non-enumerable), unless the failure already carries a
+`cause`, as a refused host read does with the error the host threw; that one stays.
 
 If you also log the thrown error from a bootstrap `catch`, the logging call decides what
 survives. `code` and `issues` are the **only two own enumerable properties** of

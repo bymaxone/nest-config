@@ -151,7 +151,7 @@ describe('BymaxConfigModule integration', () => {
     expect(consumersBuilt).toBe(0)
   })
 
-  it('rejects compile with the validation error when the hook rejects, with no stray rejection', async () => {
+  it('rejects compile with the validation error when the hook rejects, keeping the hook error as its cause', async () => {
     /**
      * A rejecting hook cannot replace the failure or escape it.
      *
@@ -256,6 +256,6 @@ describe('BymaxConfigModule integration', () => {
           FeatureModule
         ]
       }).compile()
-    ).rejects.toThrow()
+    ).rejects.toThrow(/BYMAX_CONFIG/)
   })
 })

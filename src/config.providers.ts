@@ -18,7 +18,7 @@ import type { FactoryProvider } from '@nestjs/common'
 import type { BymaxConfigModuleOptions } from './config.options'
 import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { deepFreeze } from './deep-freeze'
-import { toWithheldIssue, validateEnv } from './env-validator'
+import { guarded, toWithheldIssue, validateEnv, withCause } from './env-validator'
 import { BymaxConfigValidationError } from './errors'
 import type { ConfigIssue } from './errors'
 import type { EnvOutput, EnvSchema, EnvShape } from './types'
@@ -86,12 +86,8 @@ async function reportIssues(
   try {
     await hook(error.issues)
   } catch (hookError) {
-    Object.defineProperty(error, 'cause', {
-      value: hookError,
-      enumerable: false,
-      writable: false,
-      configurable: false
-    })
+    // A refused host read already carries what the host threw as its cause, even `undefined`, and keeps it.
+    if (!('cause' in error)) withCause(error, hookError)
   }
 }
 
@@ -139,16 +135,25 @@ export function createValidatedConfig<TShape extends EnvShape>(
     readonly schema: EnvSchema<TShape>
   }
 ): Readonly<EnvOutput<TShape>> {
-  const { strict } = options
-  assertBoolean(strict, 'strict', 'createValidatedConfig')
-  if ('source' in options && (options.source === undefined || options.source === null)) {
+  const read = guarded('reading the options', () => {
+    const { schema, source, strict } = options
+    return {
+      schema,
+      source,
+      strict,
+      refused: (source === undefined || source === null) && 'source' in options
+    }
+  })
+  assertBoolean(read.strict, 'strict', 'createValidatedConfig')
+  if (read.refused) {
     throw new TypeError(
       'BymaxConfigModule: source was provided but is undefined or null; omit the key to ' +
         'validate process.env, or pass the source that failed to load'
     )
   }
-  const source = options.source ?? process.env
-  const validated = validateEnv(options.schema, source, { strict: strict === true })
+  const validated = validateEnv(read.schema, read.source ?? process.env, {
+    strict: read.strict === true
+  })
   try {
     return deepFreeze(redactRoot(validated))
   } catch (thrown) {

@@ -20,6 +20,7 @@ import type { BymaxConfigModuleOptions } from './config.options'
 import { assertBoolean, bymaxConfigProvider } from './config.providers'
 import { ConfigService } from './config.service'
 import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
+import { guarded } from './env-validator'
 
 /**
  * Append items to a possibly-absent module-definition list.
@@ -88,16 +89,27 @@ function readModuleOptions(
   method: string
 ): BymaxConfigModuleOptions {
   assertOptionsObject(options, method)
-  const { schema, source, onValidationError, strict } = options
+  const { schema, source, onValidationError, strict, keyed } = guarded(
+    `reading the options of ${method}`,
+    () => {
+      const held = {
+        schema: options.schema,
+        source: options.source,
+        onValidationError: options.onValidationError,
+        strict: options.strict
+      }
+      // The value decides first: options held by a Proxy with only a get trap answer `in` with nothing.
+      // The key is asked about only when its value is undefined, to tell a key set to undefined (refused)
+      // from an absent one (the process environment).
+      return { ...held, keyed: held.source !== undefined || 'source' in options }
+    }
+  )
   assertBoolean(strict, 'strict', `BymaxConfigModule.${method}`)
   const read: BymaxConfigModuleOptions = {
     schema,
     ...withoutNullish({ onValidationError, strict })
   }
-  // The value decides first: options held by a Proxy with only a get trap answer `in` with nothing.
-  // The key is asked about only when its value is undefined, to tell a key set to undefined (refused)
-  // from an absent one (the process environment).
-  if (source !== undefined || 'source' in options) Object.assign(read, { source })
+  if (keyed) Object.assign(read, { source })
   return read
 }
 
@@ -110,7 +122,7 @@ function readModuleOptions(
  */
 function readRegistration(options: BymaxConfigForRootOptions): BymaxConfigForRootOptions {
   const read = readModuleOptions(options, 'forRoot')
-  const { isGlobal } = options
+  const isGlobal = guarded('reading isGlobal', () => options.isGlobal)
   assertBoolean(isGlobal, 'isGlobal', 'BymaxConfigModule.forRoot')
   return { ...read, ...withoutNullish({ isGlobal }) }
 }
@@ -151,7 +163,15 @@ function readAsyncRegistration(
     imports,
     provideInjectionTokensFrom,
     isGlobal
-  } = options
+  } = guarded('reading the options of forRootAsync', () => ({
+    useFactory: options.useFactory,
+    useClass: options.useClass,
+    useExisting: options.useExisting,
+    inject: options.inject,
+    imports: options.imports,
+    provideInjectionTokensFrom: options.provideInjectionTokensFrom,
+    isGlobal: options.isGlobal
+  }))
   assertBoolean(isGlobal, 'isGlobal', 'BymaxConfigModule.forRootAsync')
   return withoutNullish({
     useFactory,

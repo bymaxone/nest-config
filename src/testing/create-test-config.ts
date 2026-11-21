@@ -66,6 +66,20 @@ function unplacedIssue(path: string, code: ConfigIssue['code'], message: string)
 }
 
 /**
+ * A path as a validation error reports it. The error escapes and bounds the paths of its issues, so
+ * the error builds that form and no second copy of the rule is kept.
+ *
+ * @param path - A namespace, or the `namespace.leaf` path of a leaf, as the schema declares it.
+ * @returns The same path, as the error's issues carry it.
+ */
+function reportedPath(path: string): string {
+  const [issue] = new BymaxConfigValidationError([
+    { path, variable: path, code: ConfigErrorCode.INVALID, message: path }
+  ]).issues
+  return (issue as ConfigIssue).path
+}
+
+/**
  * Flatten nested partial overrides into a `namespace.leaf` to value map.
  *
  * Iterating entries (rather than indexing by a dynamic key) keeps the lookup a
@@ -140,7 +154,7 @@ function applyOverrides<TShape extends EnvShape>(
   schema: EnvSchema<TShape>,
   base: Record<string, string>,
   overrides: ConfigOverrides<TShape> | undefined,
-  overridden: Set<string>
+  nodes: Map<string, boolean | null>
 ): Record<string, string> {
   const bindings = resolveSourceNames(schema)
   const { flat, unplaced } = flattenOverrides(
@@ -149,11 +163,18 @@ function applyOverrides<TShape extends EnvShape>(
   )
   if (unplaced.length > 0) throw new BymaxConfigValidationError(unplaced)
   const entries = new Map(Object.entries(base))
+  // A node of the schema by the path its issues carry: false for a leaf the caller left alone, true for
+  // one it overrode, null for a namespace or for any path that two nodes report alike.
+  const note = (path: string, overridden: boolean | null): void => {
+    const key = reportedPath(path)
+    nodes.set(key, nodes.has(key) ? null : overridden)
+  }
+  for (const namespace of Object.keys(schema.shape)) note(namespace, null)
   for (const binding of bindings) {
     const value = flat.get(binding.path)
+    note(binding.path, value !== undefined)
     if (value === undefined) continue
     entries.set(binding.variable, String(value))
-    overridden.add(binding.variable)
   }
   // Null-prototype record so a meta({ env }) override named `__proto__` stays a
   // plain data key (consistent with the synthesizer) and cannot mutate a prototype.
@@ -169,20 +190,26 @@ function applyOverrides<TShape extends EnvShape>(
  * them is not the caller's mistake: no sample fits what the schema asks, as with a regex
  * or a `refine` rule. The message says that and names the leaf to override; an issue on
  * a leaf the caller did override keeps its own description. So does an issue that names no
- * leaf (a rule on a namespace or on the whole schema, whose path has no `.`): there is no
- * leaf to point at, and the rule may as well have failed on a value the caller supplied.
+ * leaf (a rule on a namespace or on the whole schema): there is no leaf to point at, and the rule may
+ * as well have failed on a value the caller supplied.
+ *
+ * An issue is matched to its leaf by the path it carries, and only when exactly one node of the schema
+ * reports that path. A name cut at the bound, or escaped, can make a leaf, another leaf and a
+ * namespace read alike; such an issue keeps its own description, so the helper can be vague but never
+ * point at the wrong leaf.
  *
  * @param error - The validation error of the synthesized source.
- * @param overridden - The variables the caller supplied a value for.
+ * @param nodes - The nodes of the schema by the path their issues carry: false for a leaf the caller
+ * left alone, true for one it overrode, null for a namespace or a path two nodes share.
  * @returns A validation error whose unsatisfied-leaf issues carry the guidance.
  */
 function explainUnsatisfiedLeaves(
   error: BymaxConfigValidationError,
-  overridden: ReadonlySet<string>
+  nodes: ReadonlyMap<string, boolean | null>
 ): BymaxConfigValidationError {
   return new BymaxConfigValidationError(
     error.issues.map((issue) =>
-      !issue.path.includes('.') || overridden.has(issue.variable)
+      nodes.get(issue.path) !== false
         ? issue
         : {
             ...issue,
@@ -214,13 +241,13 @@ export function prepareTestConfig<TShape extends EnvShape>(
   assertDistinctVariables(bindings)
   const unusable = unusableOverrideIssues(schema, bindings)
   if (unusable.length > 0) throw new BymaxConfigValidationError(unusable)
-  const overridden = new Set<string>()
-  const source = applyOverrides(schema, synthesizePlaceholderSource(schema), overrides, overridden)
+  const nodes = new Map<string, boolean | null>()
+  const source = applyOverrides(schema, synthesizePlaceholderSource(schema), overrides, nodes)
   try {
     return { source, config: createValidatedConfig({ schema, source }) }
   } catch (error) {
     throw error instanceof BymaxConfigValidationError
-      ? explainUnsatisfiedLeaves(error, overridden)
+      ? explainUnsatisfiedLeaves(error, nodes)
       : error
   }
 }

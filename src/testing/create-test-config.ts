@@ -40,11 +40,13 @@ export type ConfigOverrides<TShape extends EnvShape> = {
 }
 
 /**
- * Whether a value is a plain object: one whose prototype is `Object.prototype` or none.
+ * Whether a value is a plain object: one whose prototype is `Object.prototype`, a bare object with no
+ * prototype of its own, or none.
  *
  * Arrays, `Map`, `Date` and class instances are objects too, but their own entries are not
  * leaves: a `Map` or a `Date` has none, an array's are its indices, and an instance's are fields
- * that were never written as overrides.
+ * that were never written as overrides. A bare ancestor holds data and no behaviour, so an object built
+ * on one is plain.
  *
  * @param value - The value to test.
  * @returns True when the value is a plain object.
@@ -52,28 +54,41 @@ export type ConfigOverrides<TShape extends EnvShape> = {
 function isPlainObject(value: unknown): value is Readonly<Record<string, unknown>> {
   if (typeof value !== 'object' || value === null) return false
   const prototype = Object.getPrototypeOf(value) as object | null
-  // The prototype of a plain object is null, or an Object.prototype, whichever realm made it.
-  return (
-    prototype === null ||
-    (Object.getPrototypeOf(prototype) === null && Object.hasOwn(prototype, 'isPrototypeOf'))
-  )
+  // The prototype of a plain object is null, a bare object, or an Object.prototype, whichever realm
+  // made it: the last owns `isPrototypeOf` and has no prototype either.
+  return prototype === null || Object.getPrototypeOf(prototype) === null
 }
 
 /**
- * The own property names of an overrides object, enumerable or not. At the root, the non-enumerable
- * `toJSON` function is left out: it is the serializer a validated configuration carries, not a
- * namespace, and a configuration is a valid overrides object. Nothing else is left out.
+ * The entries of an overrides object, each property read once and by name. The names are the own ones,
+ * enumerable or not, and then those the schema declares that the object does not list, so an override
+ * held by a get-only Proxy or by a bare ancestor is found; a declared name that answers `undefined` is
+ * not supplied. At the root, the non-enumerable `toJSON` function is left out: it is the serializer a
+ * validated configuration carries, not a namespace, and a configuration is a valid overrides object.
+ * Nothing else is left out.
  *
  * @param value - An overrides object, or one of its namespaces.
  * @param root - Whether `value` is the overrides object itself.
- * @returns The names to read.
+ * @param declared - The names the schema declares at this level.
+ * @returns Each name and the value read under it.
  */
-function ownNames(value: object, root: boolean): string[] {
-  return Object.getOwnPropertyNames(value).filter((name) => {
+function entriesOf(
+  value: object,
+  root: boolean,
+  declared: readonly string[]
+): ReadonlyArray<readonly [string, unknown]> {
+  const listed = Object.getOwnPropertyNames(value).filter((name) => {
     if (!root || name !== 'toJSON') return true
     const descriptor = Object.getOwnPropertyDescriptor(value, name)
     return descriptor?.enumerable !== false || typeof descriptor.value !== 'function'
   })
+  const unlisted = declared.filter((name) => !listed.includes(name))
+  return [
+    ...listed.map((name): readonly [string, unknown] => [name, Reflect.get(value, name)]),
+    ...unlisted
+      .map((name): readonly [string, unknown] => [name, Reflect.get(value, name)])
+      .filter(([, held]) => held !== undefined)
+  ]
 }
 
 /**
@@ -113,13 +128,13 @@ function reportedPath(path: string): string {
  * `undefined` or `null`, is an empty map.
  *
  * @param overrides - The selective nested partial overrides, as the caller passed them.
- * @param declared - The paths of the schema's leaves.
+ * @param declared - The schema's namespaces, each with its leaves.
  * @returns The placed overrides as a map of `namespace.leaf` paths to their values, and the
  * issues for those that could not be placed.
  */
 function flattenOverrides(
   overrides: unknown,
-  declared: ReadonlySet<string>
+  declared: ReadonlyMap<string, readonly string[]>
 ): { readonly flat: ReadonlyMap<string, unknown>; readonly unplaced: readonly ConfigIssue[] } {
   const flat = new Map<string, unknown>()
   const unplaced: ConfigIssue[] = []
@@ -130,8 +145,7 @@ function flattenOverrides(
     )
     return { flat, unplaced }
   }
-  for (const namespace of ownNames(overrides, true)) {
-    const leaves: unknown = Reflect.get(overrides, namespace)
+  for (const [namespace, leaves] of entriesOf(overrides, true, [...declared.keys()])) {
     if (!isPlainObject(leaves)) {
       unplaced.push(
         unplacedIssue(
@@ -142,10 +156,10 @@ function flattenOverrides(
       )
       continue
     }
-    for (const leaf of ownNames(leaves, false)) {
-      const value: unknown = Reflect.get(leaves, leaf)
+    const known = declared.get(namespace) ?? []
+    for (const [leaf, value] of entriesOf(leaves, false, known)) {
       const path = `${namespace}.${leaf}`
-      if (declared.has(path)) {
+      if (known.includes(leaf)) {
         flat.set(path, value)
       } else {
         unplaced.push(
@@ -184,7 +198,12 @@ function applyOverrides<TShape extends EnvShape>(
   const bindings = resolveSourceNames(schema)
   const { flat, unplaced } = flattenOverrides(
     overrides,
-    new Set(bindings.map((binding) => binding.path))
+    new Map(
+      Object.entries(schema.shape).map(([namespace, shape]): [string, string[]] => [
+        namespace,
+        Object.keys(shape.shape)
+      ])
+    )
   )
   if (unplaced.length > 0) throw libraryError(unplaced)
   const entries = new Map(Object.entries(base))

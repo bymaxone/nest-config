@@ -15,6 +15,31 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Fixed
+
+- **A value of a declared source variable that is not text is validated, whichever way the source holds
+  it.** A number, a boolean, `null` or an array held as a non-enumerable property, an inherited property
+  or behind a `Proxy` that lists nothing was replaced by the default; it is validated now, as when the
+  property is enumerable. The README says that source values are strings.
+- **The overrides of `createTestConfig` and `configTestingModule` are found by the names the schema
+  declares.** An overrides object, or a namespace of one, held by a `Proxy` that lists no key, or built on
+  a bare prototype, had every value dropped; they are applied now. An object whose prototype is a bare
+  object with no prototype of its own is a plain object, where it was refused. A key the schema does not
+  declare is reported only when the object lists it.
+- **`ConfigService` lists leaves only from a namespace that is a plain object.** A function, a string or
+  an array held as a namespace exposed `name`, `length` or indices as leaves.
+
+### Changed
+
+- Since 1.2.18, `ConfigService` accepts a `null` or `undefined` namespace, listing it with no leaves where
+  it was refused with a library error, and refuses a string as the configuration root, which it accepted
+  and listed by index.
+
+### Documentation
+
+- The README and the `ConfigService` documentation say that `BYMAX_CONFIG` must be a plain object with
+  own fields: a `Proxy` that lists nothing is read as an empty configuration.
+
 ## [1.2.18] - 2026-11-21
 
 ### Fixed

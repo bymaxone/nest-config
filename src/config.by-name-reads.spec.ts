@@ -215,14 +215,10 @@ describe('the shape of the values the service and the overrides accept', () => {
     expect(() => new ConfigService({ app: 'abc' } as never)).not.toThrow()
   })
 
-  it('refuses an object whose prototype is another object with no prototype', () => {
-    const odd = Object.create(Object.create(null)) as object
+  it('accepts an object whose prototype is a bare object with no prototype of its own', () => {
+    const bare = Object.create(Object.assign(Object.create(null) as object, { app: { name: 'b' } }))
 
-    const error = thrownBy(() => createTestConfig(schema, odd as never))
-
-    expect((error as BymaxConfigValidationError).issues[0]?.message).toBe(
-      'the overrides must be an object'
-    )
+    expect(createTestConfig(schema, bare as never).app?.name).toBe('b')
   })
 })
 

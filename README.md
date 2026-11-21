@@ -337,11 +337,22 @@ keeps passing the guards if your code catches it and throws it again later. It c
 library wrote, so replaying it discloses nothing.
 
 The values the library finds are the ones it reads by name. A declared variable of the `source` is read
-by name, so one held as a non-enumerable or inherited property is found instead of replaced by its
-default; the other keys of the `source` are the ones it lists, which is what strict mode reports. The
-overrides of the test helpers and the configuration given to `ConfigService` are read by their own
-property names, enumerable or not, and a symbol key is ignored. An overrides object made in another
-realm (a `node:vm` context, say) is a plain object like any other.
+by name, so one held as a non-enumerable or inherited property, or answered only by the `get` trap of a
+`Proxy`, is found instead of replaced by its default. Source values are strings (`process.env` holds
+nothing else), and a value that is not one is validated like any other: it is refused if it does not
+satisfy the schema, never replaced by the default. The other keys of the `source` are the ones it lists,
+which is what strict mode reports.
+
+The overrides of the test helpers are read by their own property names, enumerable or not, and then by
+the names the schema declares, so an overrides object held by a `Proxy` that lists nothing, or built on
+a bare prototype, still supplies its values; a symbol key is ignored. A key the schema does not declare
+is reported only when the object lists it. An overrides object made in another realm (a `node:vm`
+context, say) is a plain object like any other.
+
+`ConfigService` reads the configuration it is given by its own property names, once, when it is built:
+`BYMAX_CONFIG` must be a plain object with own fields, as the module provides. A `Proxy` that lists
+nothing is read as an empty configuration, and a namespace that is not a plain object (a function, a
+string, an array) holds no leaves.
 
 The options must be objects: the argument of `forRoot` and `forRootAsync`, and what an asynchronous
 provider resolves to. A primitive, `null`, a function or a class with static options throws a `TypeError`

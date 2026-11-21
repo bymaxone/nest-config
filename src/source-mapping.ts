@@ -102,7 +102,7 @@ function readEnvOverride(leaf: OverrideNode): string | undefined {
  * @param namespace - The namespace schema whose metadata may carry the flag.
  * @returns True when the namespace waives strict unknown-key detection.
  */
-function readOpenFlag(namespace: EnvNamespace): boolean {
+function readOpenFlag(namespace: NamespaceView): boolean {
   return namespace.meta()?.open === true
 }
 
@@ -117,6 +117,41 @@ function deriveVariable(namespace: string, leafKey: string): string {
   return `${toScreamingSnake(namespace)}_${toScreamingSnake(leafKey)}`
 }
 
+/** A namespace as the resolvers read it: its shape, read once, and its metadata. */
+export interface NamespaceView {
+  readonly shape: EnvNamespace['shape']
+  meta(): Readonly<Record<string, unknown>> | undefined
+}
+
+/** A schema as the resolvers read it: each shape read once, so every resolver sees the same one. */
+export interface SchemaView {
+  readonly shape: Readonly<Record<string, NamespaceView>>
+}
+
+/**
+ * Read the shape of a schema and of each of its namespaces once.
+ *
+ * The resolvers walk the shape several times, and a getter on a schema that is not Zod's own could
+ * answer differently on each walk, so the bindings, the prefixes and the refusals would describe
+ * different schemas. They are given this copy instead. The leaves and the namespace metadata are
+ * read through the schema's own nodes.
+ *
+ * @param schema - A schema produced by `defineEnv`.
+ * @returns A view of the schema whose shapes are plain data.
+ */
+export function snapshotSchema<TShape extends EnvShape = EnvShape>(
+  schema: EnvSchema<TShape>
+): SchemaView {
+  return {
+    shape: Object.fromEntries(
+      Object.entries(schema.shape).map(([key, namespace]) => [
+        key,
+        { shape: namespace.shape, meta: () => namespace.meta() }
+      ])
+    )
+  }
+}
+
 /**
  * Reject a schema that holds a top-level key which is not a namespace, or is named `toJSON`.
  *
@@ -129,9 +164,7 @@ function deriveVariable(namespace: string, leafKey: string): string {
  * @param schema - A schema produced by `defineEnv`.
  * @throws {BymaxConfigValidationError} When any top-level key is not a namespace or is named `toJSON`.
  */
-export function assertNamespaces<TShape extends EnvShape = EnvShape>(
-  schema: EnvSchema<TShape>
-): void {
+export function assertNamespaces(schema: SchemaView): void {
   const issues = Object.entries(
     schema.shape as Record<string, { readonly shape?: unknown }>
   ).flatMap(([key, node]) => {
@@ -178,6 +211,17 @@ export function assertNamespaces<TShape extends EnvShape = EnvShape>(
 export function resolveSourceNames<TShape extends EnvShape = EnvShape>(
   schema: EnvSchema<TShape>
 ): readonly SourceBinding[] {
+  return bindingsOf(snapshotSchema(schema))
+}
+
+/**
+ * Resolve the bindings of a schema read once: the walk `resolveSourceNames` makes.
+ *
+ * @param schema - The view of a schema, from {@link snapshotSchema}.
+ * @returns The ordered list of leaf-to-variable bindings.
+ * @throws {BymaxConfigValidationError} When any top-level key is not a namespace or is named `toJSON`.
+ */
+export function bindingsOf(schema: SchemaView): readonly SourceBinding[] {
   assertNamespaces(schema)
   return Object.entries(schema.shape).flatMap(([namespace, namespaceSchema]) =>
     Object.entries(namespaceSchema.shape).map(([leafKey, leafSchema]) => ({
@@ -230,8 +274,8 @@ function describeUnusableEnv(leaf: OverrideNode): string | undefined {
  * @param schema - A schema produced by `defineEnv`.
  * @returns One entry per affected leaf: its path and a description of what `env` held.
  */
-export function findUnusableEnvOverrides<TShape extends EnvShape = EnvShape>(
-  schema: EnvSchema<TShape>
+export function findUnusableEnvOverrides(
+  schema: SchemaView
 ): ReadonlyArray<{ readonly path: string; readonly found: string }> {
   const unusable: Array<{ readonly path: string; readonly found: string }> = []
   for (const [namespace, namespaceSchema] of Object.entries(schema.shape)) {
@@ -289,9 +333,7 @@ function wrapsCoercedBoolean(node: CoercionNode | undefined): boolean {
  * @param schema - A schema produced by `defineEnv`.
  * @returns The path of every affected leaf, in schema order.
  */
-export function findCoercedBooleanLeaves<TShape extends EnvShape = EnvShape>(
-  schema: EnvSchema<TShape>
-): readonly string[] {
+export function findCoercedBooleanLeaves(schema: SchemaView): readonly string[] {
   return Object.entries(schema.shape).flatMap(([namespace, namespaceSchema]) =>
     Object.entries(namespaceSchema.shape)
       .filter(([, leafSchema]) => wrapsCoercedBoolean(leafSchema))
@@ -319,9 +361,7 @@ export function findCoercedBooleanLeaves<TShape extends EnvShape = EnvShape>(
  * // => [{ namespace: 'database', prefix: 'DATABASE_', open: false }]
  * ```
  */
-export function resolveNamespacePrefixes<TShape extends EnvShape = EnvShape>(
-  schema: EnvSchema<TShape>
-): readonly NamespacePrefix[] {
+export function resolveNamespacePrefixes(schema: SchemaView): readonly NamespacePrefix[] {
   return Object.entries(schema.shape).map(([namespace, namespaceSchema]) => ({
     namespace,
     prefix: `${toScreamingSnake(namespace)}_`,

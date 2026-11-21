@@ -88,7 +88,13 @@ describe('a host value that throws while the module reads it', () => {
   it.each(['useFactory', 'useClass', 'useExisting', 'inject', 'imports', 'isGlobal'])(
     'forRootAsync refuses a %s accessor that throws',
     (name) => {
-      const error = thrownBy(() => BymaxConfigModule.forRootAsync(throwingOn(name) as never))
+      const held = Object.defineProperty({}, name, {
+        enumerable: true,
+        get: () => {
+          throw hostError
+        }
+      })
+      const error = thrownBy(() => BymaxConfigModule.forRootAsync(held as never))
 
       expectRefusal(error, 'reading the options of forRootAsync')
     }

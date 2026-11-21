@@ -15,6 +15,30 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.21] - 2026-11-21
+
+### Fixed
+
+- **A registration option the module does not read is refused.** `forRoot` and `forRootAsync`, and the
+  object their options factory returns, dropped a key such as a misspelled `strict`, which left validation
+  laxer without a word. A plain object that lists a key outside the options of the entry point is refused
+  with a `BymaxConfigValidationError` whose issues (code `BYMAX_CONFIG_UNKNOWN_KEY`) name each key. An
+  instance of a class is not examined: its own keys are its fields.
+- **`onValidationError` that is set and is not a function is refused at registration** with a `TypeError`
+  that names the type received. It was accepted, and on a validation failure became the `cause` of the error.
+- **A `source` that is not an object of variables is refused.** An array, a `Map`, a `Set`, a function and a
+  primitive give a `BymaxConfigValidationError` that describes what was received; an array was accepted.
+- **A source variable named `__proto__` is taken only as a property of the source's own.** Read from a
+  source whose prototype was not `Object.prototype`, it took that prototype object as its value.
+- **The shape of a schema and of each of its namespaces is read once per validation**, so the bindings,
+  the prefixes and the refusals describe one schema.
+
+#### Apply to a derived backend
+
+A registration that passes a key the module does not read now fails at boot: remove it, or fix its spelling.
+Check that `onValidationError`, where you pass one, is a function, and that `source` is an object of
+variables, not an array or a `Map`.
+
 ## [1.2.20] - 2026-11-21
 
 ### Fixed
@@ -1085,6 +1109,7 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.16]: https://github.com/bymaxone/nest-config/compare/v1.2.15...v1.2.16
 [1.2.17]: https://github.com/bymaxone/nest-config/compare/v1.2.16...v1.2.17
 [1.2.18]: https://github.com/bymaxone/nest-config/compare/v1.2.17...v1.2.18
+[1.2.21]: https://github.com/bymaxone/nest-config/compare/v1.2.20...v1.2.21
 [1.2.20]: https://github.com/bymaxone/nest-config/compare/v1.2.19...v1.2.20
 [1.2.19]: https://github.com/bymaxone/nest-config/compare/v1.2.18...v1.2.19
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.20...HEAD
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.21...HEAD

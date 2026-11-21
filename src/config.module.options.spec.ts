@@ -345,7 +345,7 @@ describe('the options a forRootAsync factory, class or existing provider returns
     return provider(...args)
   }
 
-  const returned = { schema, source: valid, strict: true, isGlobal: false, futureKey: 1 }
+  const returned = { schema, source: valid, strict: true }
 
   it.each([
     {

@@ -21,6 +21,7 @@ import { assertBoolean, bymaxConfigProvider } from './config.providers'
 import { ConfigService } from './config.service'
 import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { guarded, guardedResolve } from './env-validator'
+import { ConfigErrorCode, libraryError } from './errors'
 
 /**
  * Append items to a possibly-absent module-definition list.
@@ -71,10 +72,73 @@ function assertOptionsObject(options: unknown, method: string): void {
   )
 }
 
+/** The options of the options token, which `forRoot` and the factory of `forRootAsync` supply. */
+const MODULE_OPTION_KEYS: readonly string[] = ['schema', 'source', 'onValidationError', 'strict']
+
+/** What `forRoot` reads: the options of the token and the `isGlobal` extra. */
+const FOR_ROOT_OPTION_KEYS: readonly string[] = [...MODULE_OPTION_KEYS, 'isGlobal']
+
+/** The options `forRootAsync` itself reads, besides the ones its factory returns. */
+const ASYNC_OPTION_KEYS: readonly string[] = [
+  'useFactory',
+  'useClass',
+  'useExisting',
+  'inject',
+  'imports',
+  'provideInjectionTokensFrom',
+  'isGlobal'
+]
+
+/**
+ * Refuse a registration argument that holds a key the entry point does not read.
+ *
+ * Such a key is dropped, so a misspelled `strict` would leave validation laxer without a word. Only a
+ * plain object is examined, by the keys it lists: an instance of a class keeps its own fields, which
+ * are not options, and its options are read by name from its accessors. The issues name each key,
+ * never a value.
+ *
+ * @param options - What the host passed or its factory returned, already known to be an object.
+ * @param known - The keys the entry point reads.
+ * @param method - The registration method, for the message.
+ * @throws {BymaxConfigValidationError} When the object lists a key outside `known`.
+ */
+function assertKnownOptions(options: object, known: readonly string[], method: string): void {
+  const unknown = guarded(`reading the options of ${method}`, () => {
+    const prototype = Object.getPrototypeOf(options) as object | null
+    // Plain: no prototype, or one that ends the chain.
+    const plain = prototype === null || Object.getPrototypeOf(prototype) === null
+    return plain ? Object.keys(options).filter((key) => !known.includes(key)) : []
+  })
+  if (unknown.length === 0) return
+  throw libraryError(
+    unknown.map((key) => ({
+      path: key,
+      variable: '(options)',
+      code: ConfigErrorCode.UNKNOWN_KEY,
+      message: `is not an option of BymaxConfigModule.${method}; a misspelled option is ignored`
+    }))
+  )
+}
+
+/**
+ * Refuse a validation hook that is set but is not a function.
+ *
+ * `undefined` and `null` mean no hook. The message names where the option was read and the type
+ * received, never the value.
+ *
+ * @param hook - What the host passed for `onValidationError`.
+ * @param where - The entry point that read it, for the message.
+ * @throws {TypeError} When `hook` is set and is not a function.
+ */
+function assertHook(hook: unknown, where: string): void {
+  if (hook === undefined || hook === null || typeof hook === 'function') return
+  throw new TypeError(`${where}: onValidationError must be a function, received ${typeof hook}`)
+}
+
 /**
  * Read the options the module hands to the options token, by property access, so options held by an
  * object whose properties are accessors on its prototype (a class instance) are read instead of
- * lost to a copy of its own keys. Whatever else the object holds stays behind.
+ * lost to a copy of its own keys. Whatever else a class instance holds stays behind.
  *
  * `source` is the one option whose undefined or null is not a default: a `source` key that is
  * present is passed on as it is, so the provider refuses it instead of falling back to the process
@@ -86,9 +150,11 @@ function assertOptionsObject(options: unknown, method: string): void {
  */
 function readModuleOptions(
   options: BymaxConfigModuleOptions,
-  method: string
+  method: string,
+  known: readonly string[] = MODULE_OPTION_KEYS
 ): BymaxConfigModuleOptions {
   assertOptionsObject(options, method)
+  assertKnownOptions(options, known, method)
   const { schema, source, onValidationError, strict, keyed } = guarded(
     `reading the options of ${method}`,
     () => {
@@ -105,6 +171,7 @@ function readModuleOptions(
     }
   )
   assertBoolean(strict, 'strict', `BymaxConfigModule.${method}`)
+  assertHook(onValidationError, `BymaxConfigModule.${method}`)
   const read: BymaxConfigModuleOptions = {
     schema,
     ...withoutNullish({ onValidationError, strict })
@@ -121,7 +188,7 @@ function readModuleOptions(
  * @returns A plain object the builder can copy.
  */
 function readRegistration(options: BymaxConfigForRootOptions): BymaxConfigForRootOptions {
-  const read = readModuleOptions(options, 'forRoot')
+  const read = readModuleOptions(options, 'forRoot', FOR_ROOT_OPTION_KEYS)
   const isGlobal = guarded('reading isGlobal', () => options.isGlobal)
   assertBoolean(isGlobal, 'isGlobal', 'BymaxConfigModule.forRoot')
   return { ...read, ...withoutNullish({ isGlobal }) }
@@ -159,6 +226,7 @@ function readAsyncRegistration(
   options: BymaxConfigForRootAsyncOptions
 ): BymaxConfigForRootAsyncOptions {
   assertOptionsObject(options, 'forRootAsync')
+  assertKnownOptions(options, ASYNC_OPTION_KEYS, 'forRootAsync')
   const {
     useFactory,
     useClass,

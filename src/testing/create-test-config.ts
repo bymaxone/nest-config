@@ -16,6 +16,7 @@ import {
   ConfigErrorCode,
   createValidatedConfig,
   guarded,
+  libraryError,
   resolveSourceNames,
   unusableOverrideIssues
 } from '@bymax-one/nest-config/internal'
@@ -162,7 +163,7 @@ function applyOverrides<TShape extends EnvShape>(
     overrides,
     new Set(bindings.map((binding) => binding.path))
   )
-  if (unplaced.length > 0) throw new BymaxConfigValidationError(unplaced)
+  if (unplaced.length > 0) throw libraryError(unplaced)
   const entries = new Map(Object.entries(base))
   // A node of the schema by the path its issues carry: false for a leaf the caller left alone, true for
   // one it overrode, null for a namespace or for any path that two nodes report alike.
@@ -210,7 +211,7 @@ function explainUnsatisfiedLeaves(
 ): BymaxConfigValidationError {
   // An error with nothing to explain is the caller's to see as it is, with the cause it may carry.
   if (!error.issues.some((issue) => nodes.get(issue.path) === false)) return error
-  return new BymaxConfigValidationError(
+  return libraryError(
     error.issues.map((issue) =>
       nodes.get(issue.path) !== false
         ? issue
@@ -246,7 +247,7 @@ export function prepareTestConfig<TShape extends EnvShape>(
     const bindings = resolveSourceNames(schema)
     assertDistinctVariables(bindings)
     const unusable = unusableOverrideIssues(schema, bindings)
-    if (unusable.length > 0) throw new BymaxConfigValidationError(unusable)
+    if (unusable.length > 0) throw libraryError(unusable)
     const placed = new Map<string, boolean | null>()
     return {
       nodes: placed,

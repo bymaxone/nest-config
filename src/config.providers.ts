@@ -18,9 +18,9 @@ import type { FactoryProvider } from '@nestjs/common'
 import type { BymaxConfigModuleOptions } from './config.options'
 import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { deepFreeze } from './deep-freeze'
-import { guarded, isLibraryError, toWithheldIssue, validateEnv, withCause } from './env-validator'
-import { BymaxConfigValidationError } from './errors'
-import type { ConfigIssue } from './errors'
+import { guarded, toWithheldIssue, validateEnv, withCause } from './env-validator'
+import { isLibraryError, libraryError } from './errors'
+import type { BymaxConfigValidationError, ConfigIssue } from './errors'
 import type { EnvOutput, EnvSchema, EnvShape } from './types'
 
 /** The stable event of the object message written when the validation fails. */
@@ -157,9 +157,7 @@ export function createValidatedConfig<TShape extends EnvShape>(
   try {
     return deepFreeze(redactRoot(validated))
   } catch (thrown) {
-    throw new BymaxConfigValidationError([
-      toWithheldIssue('freezing the validated configuration', thrown)
-    ])
+    throw libraryError([toWithheldIssue('freezing the validated configuration', thrown)])
   }
 }
 

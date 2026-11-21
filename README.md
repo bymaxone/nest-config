@@ -314,8 +314,9 @@ rejects is refused the same way. The refusal is a `BymaxConfigValidationError` o
 step (`reading the options of forRoot`, `reading the schema`, `reading the source`, `reading what the
 options factory returned`) and the class of what was thrown, never its message. The original is the
 non-enumerable `cause`: read it from there, and note that `util.inspect` and an uncaught-exception report
-print it. A `BymaxConfigValidationError` your factory throws passes unchanged. `source` and `strict` are
-read once.
+print it. A `BymaxConfigValidationError` that your own code builds and throws is refused like any other
+error, with it as the `cause`; only one the library raised itself, inside a call your factory makes to it,
+passes unchanged. `source` and `strict` are read once.
 
 Two things are not covered. A factory result, or a `then`, that never settles holds the boot, like a
 factory that never resolves: the module sets no timeout, so give such a call its own. And a rule of your

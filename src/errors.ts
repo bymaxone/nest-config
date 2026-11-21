@@ -178,3 +178,31 @@ export class BymaxConfigValidationError extends Error {
     Object.defineProperty(this, 'issues', { writable: false, configurable: false })
   }
 }
+
+/** The errors the library itself raised, so a host-built error of the same class is told apart. */
+const raised = new WeakSet<object>()
+
+/**
+ * Build a validation error the library raises, and remember it. The class is public, so a host can
+ * build and throw one of its own from code the library runs; only the errors made here pass through a
+ * guard unchanged.
+ *
+ * @param issues - Every collected violation.
+ * @returns The error, marked as the library's own.
+ */
+export function libraryError(issues: ReadonlyArray<ConfigIssue>): BymaxConfigValidationError {
+  const error = new BymaxConfigValidationError(issues)
+  raised.add(error)
+  return error
+}
+
+/**
+ * Whether a thrown value is an error the library raised itself. A set lookup runs none of the value's
+ * own code, which a prototype check would, and answers false for anything that is not an object.
+ *
+ * @param thrown - Whatever the host's code threw.
+ * @returns True only for an error built by {@link libraryError}.
+ */
+export function isLibraryError(thrown: unknown): thrown is BymaxConfigValidationError {
+  return raised.has(thrown as object)
+}

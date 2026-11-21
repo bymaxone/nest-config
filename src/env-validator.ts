@@ -13,8 +13,8 @@
 
 import type { z } from 'zod'
 
-import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
-import type { ConfigIssue } from './errors'
+import { ConfigErrorCode, isLibraryError, libraryError } from './errors'
+import type { BymaxConfigValidationError, ConfigIssue } from './errors'
 import {
   findCoercedBooleanLeaves,
   findUnusableEnvOverrides,
@@ -397,7 +397,7 @@ export function assertDistinctVariables(bindings: ReadonlyArray<SourceBinding>):
       })
     }
   }
-  if (issues.length > 0) throw new BymaxConfigValidationError(issues)
+  if (issues.length > 0) throw libraryError(issues)
 }
 
 /**
@@ -550,22 +550,6 @@ export async function guardedResolve<T>(
 }
 
 /**
- * Whether a thrown value is the library's own error. The host chooses what it throws, so the check runs
- * its code when the value is a Proxy with a `getPrototypeOf` trap, and a trap that throws is not a
- * library error.
- *
- * @param thrown - Whatever the host's code threw.
- * @returns True only for a BymaxConfigValidationError.
- */
-export function isLibraryError(thrown: unknown): thrown is BymaxConfigValidationError {
-  try {
-    return thrown instanceof BymaxConfigValidationError
-  } catch {
-    return false
-  }
-}
-
-/**
  * The error a failed read of the host's values becomes: a library error passes unchanged, anything
  * else is refused as one withheld issue with the original as the `cause`.
  *
@@ -575,7 +559,7 @@ export function isLibraryError(thrown: unknown): thrown is BymaxConfigValidation
  */
 function refusalOf(subject: string, thrown: unknown): BymaxConfigValidationError {
   if (isLibraryError(thrown)) return thrown
-  return withCause(new BymaxConfigValidationError([toWithheldIssue(subject, thrown)]), thrown)
+  return withCause(libraryError([toWithheldIssue(subject, thrown)]), thrown)
 }
 
 /**
@@ -648,17 +632,13 @@ export function validateEnv<TShape extends EnvShape>(
     try {
       result = schema.safeParse(candidate)
     } catch (thrown) {
-      throw new BymaxConfigValidationError([
-        ...overrides,
-        toWithheldIssue('a rule', thrown),
-        ...unknown
-      ])
+      throw libraryError([...overrides, toWithheldIssue('a rule', thrown), ...unknown])
     }
     if (result.success) {
       if (unknown.length === 0 && overrides.length === 0) return result.data
-      throw new BymaxConfigValidationError([...overrides, ...unknown])
+      throw libraryError([...overrides, ...unknown])
     }
     const issues = translateIssues(result.error.issues, bindings, prefixes, sourceMap)
-    throw new BymaxConfigValidationError([...overrides, ...issues, ...unknown])
+    throw libraryError([...overrides, ...issues, ...unknown])
   })
 }

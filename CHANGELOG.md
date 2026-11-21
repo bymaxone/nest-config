@@ -21,6 +21,12 @@ as the GitHub Release body, so each released version needs a matching
   service reads the injected object when it is built and in `toJSON`, under the same guard as the other
   host reads: a throwing Proxy or getter is refused with a `BymaxConfigValidationError`
   (`reading the configuration`) and the original as its `cause`.
+- **A validation error that the host builds and throws is refused like any other error.** The class is
+  public, so a getter or a factory could throw a `BymaxConfigValidationError` of its own and have it
+  reach the caller as the library's, with the host's issues and no `cause`. The library marks the errors
+  it raises and passes only those through a guard; the host's is refused as the withheld issue, with it as
+  the `cause`. An error the library raised inside a call that your factory makes to it still passes
+  unchanged.
 - **A lone surrogate in an issue field is written as an escape.** `\ud800` to `\udfff` joins the
   categories that were already written as escapes, so a report is well-formed UTF-16.
 
@@ -31,6 +37,12 @@ as the GitHub Release body, so each released version needs a matching
   reported escaped and bounded without its value; that a factory result that never settles holds the
   boot; that a rule that throws keeps no `cause` on purpose, because what it throws can quote the value
   it received; and which characters stay as written.
+
+#### Apply to a derived backend
+
+- A host whose factory, getter or provider throws a `BymaxConfigValidationError` that it built itself
+  now receives a `BymaxConfigValidationError` that the library built, and finds its own as `error.cause`.
+- The `./internal` subpath, which carries no compatibility promise, gains `libraryError`.
 
 ### Tests
 

@@ -274,7 +274,8 @@ describe('an options factory whose result runs host code that throws', () => {
     expect((error as BymaxConfigValidationError).cause).toBe(thrown)
   })
 
-  it('passes a library error thrown by the factory unchanged', async () => {
+  it('refuses a validation error the host built itself, with that error as the cause', async () => {
+    /** The class is public: an error of it that the host throws is the host's, not the library's. */
     const own = new BymaxConfigValidationError([
       { path: '', variable: '', code: ConfigErrorCode.INVALID, message: 'own' }
     ])
@@ -284,7 +285,27 @@ describe('an options factory whose result runs host code that throws', () => {
       }
     })
 
-    expect(await optionsRejection(registration)).toBe(own)
+    const refusal = expectRefusal(
+      await optionsRejection(registration),
+      'reading what the options factory returned'
+    )
+
+    expect(refusal).not.toBe(own)
+    expect(refusal.cause).toBe(own)
+    expect(refusal.issues[0]?.message).not.toContain('own')
+  })
+
+  it('passes unchanged an error the library itself raised inside the factory', async () => {
+    /** A factory that validates something with the library's own function throws the library's error. */
+    const registration = BymaxConfigModule.forRootAsync({
+      useFactory: () => createValidatedConfig({ schema, source: {} }) as never
+    })
+
+    const error = await optionsRejection(registration)
+
+    expect(error).toBeInstanceOf(BymaxConfigValidationError)
+    expect((error as BymaxConfigValidationError).issues[0]?.code).toBe(ConfigErrorCode.MISSING)
+    expect((error as Error).cause).toBeUndefined()
   })
 
   it('still reads the options of an ordinary factory result', async () => {
@@ -535,5 +556,75 @@ describe('an unknown override key of the test helpers', () => {
     )
 
     expect((error as BymaxConfigValidationError).issues[0]?.path).toBe('app.bad\\u001bkey')
+  })
+})
+
+describe('a getter that throws a validation error the host built', () => {
+  const own = new BymaxConfigValidationError([
+    { path: 'host', variable: 'HOST', code: ConfigErrorCode.INVALID, message: 'host issue' }
+  ])
+
+  it.each([
+    [
+      'an option of forRoot',
+      () =>
+        BymaxConfigModule.forRoot({
+          get schema(): never {
+            throw own
+          },
+          source: {}
+        } as never)
+    ],
+    [
+      'the source of createValidatedConfig',
+      () =>
+        createValidatedConfig({
+          schema,
+          get source(): never {
+            throw own
+          }
+        } as never)
+    ],
+    [
+      'a configuration given to ConfigService',
+      () =>
+        new ConfigService({
+          get app(): never {
+            throw own
+          }
+        } as never)
+    ]
+  ])('ends as the withheld refusal with the cause, from %s', (_name, run) => {
+    const error = thrownBy(run)
+
+    expect(error).toBeInstanceOf(BymaxConfigValidationError)
+    expect(error).not.toBe(own)
+    expect((error as BymaxConfigValidationError).issues[0]?.message).toMatch(
+      /threw BymaxConfigValidationError; its message is withheld/
+    )
+    expect((error as BymaxConfigValidationError).message).not.toContain('host issue')
+    expect((error as Error).cause).toBe(own)
+  })
+})
+
+describe('ConfigService over a validated configuration', () => {
+  it('holds every leaf the validation produced, none of them hidden from a key listing', () => {
+    /** The service lists keys, so a leaf the validation made non-enumerable would vanish; none is. */
+    const full = defineEnv({
+      app: z.object({ name: z.string(), mode: z.enum(['a', 'b']).default('a') }),
+      db: z.object({ port: z.coerce.number().int().default(5432), tags: z.string().default('x') })
+    })
+    const config = createValidatedConfig({ schema: full, source: { APP_NAME: 'n' } })
+    const service = new ConfigService(config as never)
+
+    for (const [namespace, leaves] of Object.entries(config)) {
+      for (const descriptor of Object.values(Object.getOwnPropertyDescriptors(leaves))) {
+        expect(descriptor.enumerable).toBe(true)
+      }
+      for (const [leaf, value] of Object.entries(leaves as Record<string, unknown>)) {
+        expect(service.get(`${namespace}.${leaf}` as never)).toBe(value)
+      }
+    }
+    expect(Object.keys(config)).toEqual(['app', 'db'])
   })
 })

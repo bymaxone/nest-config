@@ -25,7 +25,7 @@ export { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from '../config.tokens'
 
 // The error the validation path throws. `createValidatedConfig` narrows on it
 // with `instanceof`, so a second copy would make the narrowing silently fail.
-export { BymaxConfigValidationError, ConfigErrorCode } from '../errors'
+export { BymaxConfigValidationError, ConfigErrorCode, libraryError } from '../errors'
 export type { ConfigIssue, ConfigIssueCode, ConfigValidationCode } from '../errors'
 
 // Schema and validation helpers the testing entry builds on.

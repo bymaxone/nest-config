@@ -11,7 +11,7 @@
  * @layer Utility
  */
 
-import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
+import { ConfigErrorCode, libraryError } from './errors'
 import type { EnvNamespace, EnvSchema, EnvShape } from './types'
 
 /**
@@ -145,7 +145,7 @@ export function assertNamespaces<TShape extends EnvShape = EnvShape>(
       ? []
       : [{ path: key, variable: toScreamingSnake(key), code: ConfigErrorCode.INVALID, message }]
   })
-  if (issues.length > 0) throw new BymaxConfigValidationError(issues)
+  if (issues.length > 0) throw libraryError(issues)
 }
 
 /**

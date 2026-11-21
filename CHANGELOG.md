@@ -15,6 +15,8 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.18] - 2026-11-21
+
 ### Fixed
 
 - **A declared source variable held as a non-enumerable or inherited property is found.** The source
@@ -26,6 +28,14 @@ as the GitHub Release body, so each released version needs a matching
   without a word. A symbol key is ignored.
 - **A plain object made in another realm is accepted as overrides.** It was refused because its
   prototype is another realm's `Object.prototype`.
+
+#### Apply to a derived backend
+
+- A source that held a declared variable as a non-enumerable or inherited property used to supply the
+  default in its place. It now supplies the value. A host that depended on the default there leaves the
+  variable out.
+- An override held in a non-enumerable namespace or leaf of the test helpers used to be ignored. It is
+  applied now.
 
 ### Documentation
 
@@ -1011,4 +1021,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.15]: https://github.com/bymaxone/nest-config/compare/v1.2.14...v1.2.15
 [1.2.16]: https://github.com/bymaxone/nest-config/compare/v1.2.15...v1.2.16
 [1.2.17]: https://github.com/bymaxone/nest-config/compare/v1.2.16...v1.2.17
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.17...HEAD
+[1.2.18]: https://github.com/bymaxone/nest-config/compare/v1.2.17...v1.2.18
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.18...HEAD

@@ -243,4 +243,22 @@ describe('a validated configuration, whose root carries its own serializer', () 
 
     expect(createTestConfig(full, root as never).app?.name).toBe('n')
   })
+
+  it('reports a hidden function override at the root as an unknown path, and keeps a hidden function leaf', () => {
+    const ghost = hidden({ app: { name: 'x' } }, 'ghost', () => 1)
+    const leafy = { app: hidden({}, 'name', () => 'fn') }
+
+    const unknown = thrownBy(() => createTestConfig(schema, ghost as never))
+    const leaf = thrownBy(() =>
+      createTestConfig(schema, { app: hidden({}, 'other', () => 1) } as never)
+    )
+
+    expect((unknown as BymaxConfigValidationError).issues.map((issue) => issue.path)).toEqual([
+      'ghost'
+    ])
+    expect((leaf as BymaxConfigValidationError).issues.map((issue) => issue.path)).toEqual([
+      'app.other'
+    ])
+    expect(Object.getOwnPropertyNames(leafy.app)).toEqual(['name'])
+  })
 })

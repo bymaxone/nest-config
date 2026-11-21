@@ -60,15 +60,17 @@ function isPlainObject(value: unknown): value is Readonly<Record<string, unknown
 }
 
 /**
- * The own property names of an overrides object, enumerable or not. A non-enumerable function is left
- * out: it is the serializer a validated configuration carries on its root, not a namespace or a leaf,
- * and a configuration is a valid overrides object.
+ * The own property names of an overrides object, enumerable or not. At the root, the non-enumerable
+ * `toJSON` function is left out: it is the serializer a validated configuration carries, not a
+ * namespace, and a configuration is a valid overrides object. Nothing else is left out.
  *
  * @param value - An overrides object, or one of its namespaces.
+ * @param root - Whether `value` is the overrides object itself.
  * @returns The names to read.
  */
-function ownNames(value: object): string[] {
+function ownNames(value: object, root: boolean): string[] {
   return Object.getOwnPropertyNames(value).filter((name) => {
+    if (!root || name !== 'toJSON') return true
     const descriptor = Object.getOwnPropertyDescriptor(value, name)
     return descriptor?.enumerable !== false || typeof descriptor.value !== 'function'
   })
@@ -128,7 +130,7 @@ function flattenOverrides(
     )
     return { flat, unplaced }
   }
-  for (const namespace of ownNames(overrides)) {
+  for (const namespace of ownNames(overrides, true)) {
     const leaves: unknown = Reflect.get(overrides, namespace)
     if (!isPlainObject(leaves)) {
       unplaced.push(
@@ -140,7 +142,7 @@ function flattenOverrides(
       )
       continue
     }
-    for (const leaf of ownNames(leaves)) {
+    for (const leaf of ownNames(leaves, false)) {
       const value: unknown = Reflect.get(leaves, leaf)
       const path = `${namespace}.${leaf}`
       if (declared.has(path)) {

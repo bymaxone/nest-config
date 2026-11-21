@@ -36,10 +36,9 @@ as the GitHub Release body, so each released version needs a matching
 #### Apply to a derived backend
 
 A registration that passes a key the module does not read now fails at boot: remove it, or fix its spelling.
-This includes what the factory of `forRootAsync` returns: a factory that returns extra keys, `isGlobal`
-(which belongs to the `forRootAsync` options, not to the object the factory returns) or
-`{ ...process.env, schema }`, now fails when the options provider resolves, with every extra key listed by
-name and no value. Return only `schema`, `source`, `onValidationError` and `strict`. Check that `onValidationError`, where you pass one, is a function, and that `source` is an object of
+This includes a plain object that the factory of `forRootAsync` returns, such as one with `isGlobal` (which
+belongs to the `forRootAsync` options, not to the object the factory returns) or `{ ...process.env, schema }`:
+it now fails when the options provider resolves, with every extra key listed by name and no value. Check that `onValidationError`, where you pass one, is a function, and that `source` is an object of
 variables, not an array or a `Map`.
 
 ## [1.2.20] - 2026-11-21

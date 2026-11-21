@@ -30,8 +30,8 @@ as the GitHub Release body, so each released version needs a matching
 ### Changed
 
 - A namespace or leaf named `__proto__` is refused with an `INVALID` issue. It could not be held as a
-  property, so its value was dropped without a word. The message reads: "a namespace or leaf cannot be
-  named **proto**: it cannot be held as a property".
+  property, so its value was dropped without a word.
+  The issue reads `a namespace or leaf cannot be named __proto__: it cannot be held as a property`.
 - A source from another realm that declares a variable named like a member of `Object.prototype`
   (`toString`) is validated, so the function it inherits from its own realm is refused rather than
   ignored: this realm's member is the only one recognised. It fails closed.

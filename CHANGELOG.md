@@ -49,13 +49,16 @@ as the GitHub Release body, so each released version needs a matching
   never points at the wrong leaf.
 
   #### Apply to a derived backend
-  - A host whose own `forRootAsync` factory or `useClass` provider throws or rejects no longer receives
-    that error from a failed boot: it receives a `BymaxConfigValidationError`, and the original is its
-    `error.cause`. Matching the original by identity (`error === original`), by `error.message` or by
-    `error.code` stops working, and so does matching it by a class of your own (`instanceof MyError`) on
-    the thrown error: read `error.cause` and match that. `error instanceof Error` and
-    `error.cause === original` hold. The text of the original reaches the Nest boot log only through the
-    cause, which Node prints with the error, and never through the issue text or `error.message`.
+  - A host whose own `forRootAsync` factory, or the `create()` of its `useClass` or `useExisting`
+    provider, throws or rejects no longer receives that error from a failed boot: it receives a
+    `BymaxConfigValidationError`, and the original is its `error.cause`. Matching the original by
+    identity (`error === original`), by `error.message` or by `error.code` stops working, and so does
+    matching it by a class of your own (`instanceof MyError`) on the thrown error: read `error.cause` and
+    match that. `error instanceof Error` and `error.cause === original` hold. A `BymaxConfigValidationError`
+    your factory throws itself passes unchanged, with no `cause`, and a failure of the provider's
+    constructor or of a dependency Nest injects into it is still Nest's own error. The text of the
+    original reaches the Nest boot log only through the cause, which Node prints with the error, and never
+    through the issue text or `error.message`.
   - A schema whose reading throws used to reach the caller as it was thrown. It is a
     `BymaxConfigValidationError` now, with the original as `error.cause`, and being one it is reported to
     `onValidationError` and written as the `CONFIG_VALIDATION_FAILED` log event.

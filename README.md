@@ -312,6 +312,9 @@ keys are its fields, but its `schema`, `source`, `onValidationError` and `strict
 and its `strict` and `onValidationError` are checked by kind like those of a literal.
 `onValidationError`, when it is not `undefined` or `null`, must be a function, or the
 registration throws a `TypeError` that names the type received.
+The same holds for the object a `useFactory`, `useClass` or `useExisting` provider returns: a factory that
+returns extra keys, such as `isGlobal` or `{ ...process.env, schema }`, fails when the options provider
+resolves, with each extra key listed by name and never a value.
 
 Code of yours that runs while the module reads these values is refused when it throws. That covers an
 accessor or a Proxy among the options, in `schema` or in `source`, and the object an options factory or a

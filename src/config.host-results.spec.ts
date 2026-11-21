@@ -506,7 +506,8 @@ describe('ConfigService over a configuration whose reading runs host code that t
     expect(refusal.cause).toBeDefined()
   })
 
-  it('refuses a configuration whose keys throw only when it is serialized', () => {
+  it('serializes the namespaces it read when it was built, whatever the configuration does later', () => {
+    /** The service reads the configuration once, so a later change of the host's object cannot reach the caller. */
     let armed = false
     const late = new Proxy(config, {
       ownKeys: (target) => {
@@ -517,12 +518,7 @@ describe('ConfigService over a configuration whose reading runs host code that t
     const service = new ConfigService(late as never)
     armed = true
 
-    const refusal = expectRefusal(
-      thrownBy(() => service.toJSON()),
-      'reading the configuration'
-    )
-
-    expect(refusal.cause).toBe(hostError)
+    expect(service.toJSON().namespaces).toEqual(['app'])
   })
 
   it('still answers from an ordinary configuration', () => {

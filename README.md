@@ -332,6 +332,17 @@ wrapped, with the original as `cause`. And `ConfigService.get` and `has` call `t
 pass, so a path whose `toString` throws throws that error as it is, the error of your own call;
 `getAll()` returns the object the service was given, which in a module is the deep-frozen root.
 
+The mark that tells the library's own errors from yours does not expire: an error the library raised
+keeps passing the guards if your code catches it and throws it again later. It carries only the text the
+library wrote, so replaying it discloses nothing.
+
+The values the library finds are the ones it reads by name. A declared variable of the `source` is read
+by name, so one held as a non-enumerable or inherited property is found instead of replaced by its
+default; the other keys of the `source` are the ones it lists, which is what strict mode reports. The
+overrides of the test helpers and the configuration given to `ConfigService` are read by their own
+property names, enumerable or not, and a symbol key is ignored. An overrides object made in another
+realm (a `node:vm` context, say) is a plain object like any other.
+
 The options must be objects: the argument of `forRoot` and `forRootAsync`, and what an asynchronous
 provider resolves to. A primitive, `null`, a function or a class with static options throws a `TypeError`
 that names the method and the type received, never the value.

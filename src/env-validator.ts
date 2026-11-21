@@ -581,6 +581,34 @@ export function withCause<T extends Error>(error: T, cause: unknown): T {
 }
 
 /**
+ * Read the source into a map, each property once and by name: the keys come from the listing, and a
+ * declared variable that is not in it is read too, so one held as a non-enumerable or inherited property
+ * is found. What such a read answers counts only when it is text; a member of Object.prototype is not a
+ * value of the source.
+ *
+ * @param source - The record the host supplied.
+ * @param bindings - Every leaf binding of the schema, whose variables are read by name.
+ * @returns The variables of the source and the value of each.
+ * @throws {BymaxConfigValidationError} When reading the source runs host code that throws.
+ */
+function readSource(
+  source: EnvSource,
+  bindings: ReadonlyArray<SourceBinding>
+): Map<string, string | undefined> {
+  return guarded('reading the source', () => {
+    const read = new Map<string, string | undefined>(
+      Object.keys(source).map((name) => [name, Reflect.get(source, name) as string | undefined])
+    )
+    for (const { variable } of bindings) {
+      if (read.has(variable)) continue
+      const value: unknown = Reflect.get(source, variable)
+      read.set(variable, typeof value === 'string' ? value : undefined)
+    }
+    return read
+  })
+}
+
+/**
  * Validate a flat source against a schema in a single pass.
  *
  * Maps the source onto the nested schema, runs exactly one `safeParse`, and
@@ -623,7 +651,7 @@ export function validateEnv<TShape extends EnvShape>(
       ]
     }
   })
-  const sourceMap = new Map(guarded('reading the source', () => Object.entries(source)))
+  const sourceMap = readSource(source, bindings)
   // What the schema answers and what its issues hold are the host's code as well.
   return guarded('reading the schema', () => {
     const candidate = buildCandidate(namespaces, collectPresentLeaves(bindings, sourceMap))

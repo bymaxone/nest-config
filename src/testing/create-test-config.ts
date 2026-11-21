@@ -51,8 +51,29 @@ export type ConfigOverrides<TShape extends EnvShape> = {
  */
 function isPlainObject(value: unknown): value is Readonly<Record<string, unknown>> {
   if (typeof value !== 'object' || value === null) return false
-  const prototype: unknown = Object.getPrototypeOf(value)
-  return prototype === Object.prototype || prototype === null
+  const prototype = Object.getPrototypeOf(value) as object | null
+  // The prototype of a plain object is null, or an Object.prototype, whichever realm made it.
+  return (
+    prototype === null ||
+    (Object.getPrototypeOf(prototype) === null && Object.hasOwn(prototype, 'isPrototypeOf'))
+  )
+}
+
+/**
+ * The own property names of an overrides object, enumerable or not. At the root, the non-enumerable
+ * `toJSON` function is left out: it is the serializer a validated configuration carries, not a
+ * namespace, and a configuration is a valid overrides object. Nothing else is left out.
+ *
+ * @param value - An overrides object, or one of its namespaces.
+ * @param root - Whether `value` is the overrides object itself.
+ * @returns The names to read.
+ */
+function ownNames(value: object, root: boolean): string[] {
+  return Object.getOwnPropertyNames(value).filter((name) => {
+    if (!root || name !== 'toJSON') return true
+    const descriptor = Object.getOwnPropertyDescriptor(value, name)
+    return descriptor?.enumerable !== false || typeof descriptor.value !== 'function'
+  })
 }
 
 /**
@@ -109,7 +130,8 @@ function flattenOverrides(
     )
     return { flat, unplaced }
   }
-  for (const [namespace, leaves] of Object.entries(overrides)) {
+  for (const namespace of ownNames(overrides, true)) {
+    const leaves: unknown = Reflect.get(overrides, namespace)
     if (!isPlainObject(leaves)) {
       unplaced.push(
         unplacedIssue(
@@ -120,7 +142,8 @@ function flattenOverrides(
       )
       continue
     }
-    for (const [leaf, value] of Object.entries(leaves)) {
+    for (const leaf of ownNames(leaves, false)) {
+      const value: unknown = Reflect.get(leaves, leaf)
       const path = `${namespace}.${leaf}`
       if (declared.has(path)) {
         flat.set(path, value)

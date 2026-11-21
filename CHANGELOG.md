@@ -19,12 +19,11 @@ as the GitHub Release body, so each released version needs a matching
 
 ### Documentation
 
-- **The README names the `variable` field of an issue.** The four fields of a `ConfigIssue` are listed
-  together where the hook is described. A check that each member of a published contract is named
-  by an inline-code span that is or begins with it, rather than by any span that contains the word,
+- **The README names the `variable` field of an issue**, where the hook is described. A check that
+  each member of a published contract is named by an inline-code span that is or begins with it
   found `variable` named only inside longer spans.
-- **The README says that a misspelled own field of a class-instance options object is not reported**, as
-  a plain object's is. Its accessors are read by name, as before.
+- **The README says that a misspelled own field of a class-instance options object is not reported.**
+  A plain object's unknown key is refused; an instance is not key-checked.
 
 No runtime or declaration change: there is nothing to apply to a derived backend.
 

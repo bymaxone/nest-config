@@ -308,7 +308,7 @@ instance, works like a literal. `forRoot` and `forRootAsync` hand the `BYMAX_CON
 `useExisting` produced them. A plain object that lists a key its entry point does not read is refused with a
 `BymaxConfigValidationError` that names the key (code `BYMAX_CONFIG_UNKNOWN_KEY`), so a misspelled `strict`
 cannot leave validation laxer without a word; an instance of a class is not key-checked, because its own
-keys are its fields (so a misspelled own field of such an object is not reported), but its `schema`, `source`, `onValidationError` and `strict` are still read by name,
+keys are its fields, but its `schema`, `source`, `onValidationError` and `strict` are still read by name,
 and its `strict` and `onValidationError` are checked by kind like those of a literal.
 `onValidationError`, when it is not `undefined` or `null`, must be a function, or the
 registration throws a `TypeError` that names the type received.

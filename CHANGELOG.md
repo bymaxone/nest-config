@@ -15,6 +15,19 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.22] - 2026-11-21
+
+### Documentation
+
+- **The README names the `variable` field of an issue**, where the hook is described. A check that
+  each member of a published contract is named by an inline-code span that is or begins with it
+  found `variable` named only inside longer spans.
+- **The README says that only a plain object is key-checked.** An options object that is not plain, an
+  instance of a class or an object created with `Object.create` on an ordinary object, boots with a misspelled
+  key silently ignored.
+
+No runtime or declaration change: there is nothing to apply to a derived backend.
+
 ## [1.2.21] - 2026-11-21
 
 ### Fixed
@@ -1111,7 +1124,8 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.16]: https://github.com/bymaxone/nest-config/compare/v1.2.15...v1.2.16
 [1.2.17]: https://github.com/bymaxone/nest-config/compare/v1.2.16...v1.2.17
 [1.2.18]: https://github.com/bymaxone/nest-config/compare/v1.2.17...v1.2.18
+[1.2.22]: https://github.com/bymaxone/nest-config/compare/v1.2.21...v1.2.22
 [1.2.21]: https://github.com/bymaxone/nest-config/compare/v1.2.20...v1.2.21
 [1.2.20]: https://github.com/bymaxone/nest-config/compare/v1.2.19...v1.2.20
 [1.2.19]: https://github.com/bymaxone/nest-config/compare/v1.2.18...v1.2.19
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.21...HEAD
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.22...HEAD

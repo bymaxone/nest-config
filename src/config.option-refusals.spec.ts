@@ -306,7 +306,7 @@ describe('a source that is not an object of variables', () => {
 })
 
 describe('the shapes of a schema read for one validation', () => {
-  it('are each read once', () => {
+  it('are each read once, with the parse of the schema included', () => {
     const reads = { root: 0, namespace: 0 }
     const app = z.object({ name: z.string().default('n') })
     const spiedApp = new Proxy(app, {

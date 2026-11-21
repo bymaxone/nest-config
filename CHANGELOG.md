@@ -15,6 +15,8 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.16] - 2026-11-20
+
 ### Fixed
 
 - **A host accessor or Proxy that throws no longer surfaces its own error.** The options of `forRoot`
@@ -924,4 +926,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.13]: https://github.com/bymaxone/nest-config/compare/v1.2.12...v1.2.13
 [1.2.14]: https://github.com/bymaxone/nest-config/compare/v1.2.13...v1.2.14
 [1.2.15]: https://github.com/bymaxone/nest-config/compare/v1.2.14...v1.2.15
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.15...HEAD
+[1.2.16]: https://github.com/bymaxone/nest-config/compare/v1.2.15...v1.2.16
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.16...HEAD

@@ -305,7 +305,12 @@ row in the options table says, because a source that failed to load must not bec
 The options are read by property access, so an object whose options are accessors, such as a class
 instance, works like a literal. `forRoot` and `forRootAsync` hand the `BYMAX_CONFIG_OPTIONS` token only
 `schema`, `source`, `onValidationError` and `strict`, whichever of `forRoot`, `useFactory`, `useClass` or
-`useExisting` produced them; any other key is left behind.
+`useExisting` produced them. A plain object that lists any other key is refused with a
+`BymaxConfigValidationError` that names the key (code `BYMAX_CONFIG_UNKNOWN_KEY`), so a misspelled `strict`
+cannot leave validation laxer without a word; an instance of a class is not key-checked, because its own
+keys are its fields, but its `schema`, `source`, `onValidationError` and `strict` are still read by name and
+checked by kind like those of a literal. `onValidationError`, when it is not `undefined` or `null`, must be a function, or the
+registration throws a `TypeError` that names the type received.
 
 Code of yours that runs while the module reads these values is refused when it throws. That covers an
 accessor or a Proxy among the options, in `schema` or in `source`, and the object an options factory or a
@@ -342,8 +347,11 @@ by name, so one held as a non-enumerable or inherited property, or answered only
 nothing else), and a value that is not one is validated like any other: it is refused if it does not
 satisfy the schema, not replaced by the default. The one thing never taken is what a plain object itself
 answers for a variable named like a member of `Object.prototype` (`toString` say), which is not a value of
-the source; any other value held under such a name is validated. The other keys of the `source` are the ones it lists,
-which is what strict mode reports.
+the source; any other value held under such a name is validated, and a variable named `__proto__` is taken
+only as a property of the source's own, never as the prototype of the object. The `source` must be an
+object of variables: an array, a `Map`, a `Set`, a function or a primitive is refused with a
+`BymaxConfigValidationError` that names the kind received, never a value. The other keys of the `source`
+are the ones it lists, which is what strict mode reports.
 
 A namespace or leaf may be named like a member of `Object.prototype` (`constructor`, `valueOf`); it takes its
 default and its value like any other. A name of `__proto__` cannot be held as a property, so a schema that

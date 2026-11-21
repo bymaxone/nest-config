@@ -8,6 +8,8 @@
  * Mocks: none. The host's objects are written for the case.
  */
 
+import { runInNewContext } from 'node:vm'
+
 import { z } from 'zod'
 
 import { createValidatedConfig } from './config.providers'
@@ -174,5 +176,26 @@ describe('a source variable named like a member of Object.prototype', () => {
 
   it('uses the default when the source is plain and holds nothing under that name', () => {
     expect(createValidatedConfig({ schema: named, source: {} }).app?.name).toBe('default-name')
+  })
+})
+
+describe('a source variable named __proto__', () => {
+  const named = defineEnv({
+    app: z.object({ name: z.string().default('default-name').meta({ env: '__proto__' }) })
+  })
+
+  it.each([
+    ['an object built on another', () => Object.create({ marker: 1 }) as Record<string, unknown>],
+    ['an object with no prototype', () => Object.create(null) as Record<string, unknown>],
+    ['a plain object of another realm', () => runInNewContext('({})') as Record<string, unknown>],
+    ['a plain object', () => ({})]
+  ])('is not the prototype of %s, so its default applies', (_name, make) => {
+    expect(createValidatedConfig({ schema: named, source: make() }).app?.name).toBe('default-name')
+  })
+
+  it('is taken from a source that holds it as a property of its own', () => {
+    const source = JSON.parse('{"__proto__":"own"}') as Record<string, string>
+
+    expect(createValidatedConfig({ schema: named, source }).app?.name).toBe('own')
   })
 })

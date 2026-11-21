@@ -310,7 +310,7 @@ describe('an options factory whose result runs host code that throws', () => {
 
   it('still reads the options of an ordinary factory result', async () => {
     const registration = BymaxConfigModule.forRootAsync({
-      useFactory: async () => ({ schema, source: { APP_NAME: 'x' }, extra: 'dropped' })
+      useFactory: async () => ({ schema, source: { APP_NAME: 'x' } })
     })
     const provider = (registration.providers ?? []).find(
       (candidate) => Reflect.get(candidate, 'useFactory') !== undefined

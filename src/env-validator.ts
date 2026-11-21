@@ -16,12 +16,13 @@ import type { z } from 'zod'
 import { ConfigErrorCode, isLibraryError, libraryError } from './errors'
 import type { BymaxConfigValidationError, ConfigIssue } from './errors'
 import {
+  bindingsOf,
   findCoercedBooleanLeaves,
   findUnusableEnvOverrides,
   resolveNamespacePrefixes,
-  resolveSourceNames
+  snapshotSchema
 } from './source-mapping'
-import type { NamespacePrefix, SourceBinding } from './source-mapping'
+import type { NamespacePrefix, SchemaView, SourceBinding } from './source-mapping'
 import type { EnvOutput, EnvSchema, EnvShape } from './types'
 
 /** The flat, value-free source record consumed by the validator. */
@@ -414,8 +415,8 @@ export function assertDistinctVariables(bindings: ReadonlyArray<SourceBinding>):
  * @param bindings - Every leaf binding of the schema, from `resolveSourceNames`.
  * @returns One issue per affected leaf, in schema order.
  */
-export function unusableOverrideIssues<TShape extends EnvShape>(
-  schema: EnvSchema<TShape>,
+export function unusableOverrideIssues(
+  schema: SchemaView,
   bindings: ReadonlyArray<SourceBinding>
 ): ConfigIssue[] {
   const variables = new Map(bindings.map((binding) => [binding.path, binding.variable]))
@@ -441,8 +442,8 @@ export function unusableOverrideIssues<TShape extends EnvShape>(
  * @param bindings - Every leaf binding of the schema, from `resolveSourceNames`.
  * @returns One issue per affected leaf, in schema order.
  */
-export function coercedBooleanIssues<TShape extends EnvShape>(
-  schema: EnvSchema<TShape>,
+export function coercedBooleanIssues(
+  schema: SchemaView,
   bindings: ReadonlyArray<SourceBinding>
 ): ConfigIssue[] {
   const variables = new Map(bindings.map((binding) => [binding.path, binding.variable]))
@@ -605,12 +606,32 @@ export function withCause<T extends Error>(error: T, cause: unknown): T {
 }
 
 /**
+ * Describe a source that is not an object of variables, without quoting it.
+ *
+ * Variables are looked up by name, so anything but an object is refused, and so is an array, a Map or
+ * another object whose own kind says it is no record of variables. An object built on another, or on
+ * a class, is a record and stays accepted.
+ *
+ * @param source - What the host supplied as the source.
+ * @returns The kind of a refused source, or `undefined` when it is accepted.
+ */
+function refusedSourceKind(source: unknown): string | undefined {
+  if (source === undefined || source === null) return String(source)
+  if (typeof source !== 'object') return `a ${typeof source}`
+  if (Array.isArray(source)) return 'an array'
+  return Object.prototype.toString.call(source) === '[object Object]'
+    ? undefined
+    : 'an object that is not a record of variables'
+}
+
+/**
  * Read the source into a map, each property once and by name: the keys come from the listing, and a
  * declared variable that is not in it is read too, so one held as a non-enumerable or inherited property,
  * or answered only by the get trap of a Proxy, is found. A value found by name is validated whatever its
  * type, as a listed one is. The one thing never taken is what a plain object itself answers for a name
  * that matches a member of Object.prototype (`toString`, `constructor`): that member is not a value of
- * the source. Any other value held under such a name is validated.
+ * the source. Any other value held under such a name is validated. `__proto__` is taken only as a
+ * property of the source's own.
  *
  * @param source - The record the host supplied.
  * @param bindings - Every leaf binding of the schema, whose variables are read by name.
@@ -622,14 +643,31 @@ function readSource(
   bindings: ReadonlyArray<SourceBinding>
 ): Map<string, string | undefined> {
   return guarded('reading the source', () => {
+    const kind = refusedSourceKind(source)
+    if (kind !== undefined) {
+      throw libraryError([
+        {
+          path: '',
+          variable: '(source)',
+          code: ConfigErrorCode.INVALID,
+          message: `the source must be an object of variables, received ${kind}`
+        }
+      ])
+    }
     const read = new Map<string, string | undefined>(
       Object.keys(source).map((name) => [name, Reflect.get(source, name) as string | undefined])
     )
     for (const { variable } of bindings) {
       if (read.has(variable)) continue
       const value = Reflect.get(source, variable) as string | undefined
-      // What a plain object answers for the name is the chain's member, not the host's value.
-      read.set(variable, value === Reflect.get({}, variable) ? undefined : value)
+      // What a plain object answers for the name is the chain's member, not the host's value. Under
+      // `__proto__` the chain answers the prototype of whatever object it is, so only a property of
+      // the source's own is its value.
+      const inherited =
+        variable === '__proto__'
+          ? !Object.hasOwn(source, variable)
+          : value === Reflect.get({}, variable)
+      read.set(variable, inherited ? undefined : value)
     }
     return read
   })
@@ -666,15 +704,17 @@ export function validateEnv<TShape extends EnvShape>(
 ): EnvOutput<TShape> {
   // The schema is the host's too: a Proxy or a getter in it runs while its structure is read.
   const { bindings, namespaces, prefixes, overrides } = guarded('reading the schema', () => {
-    const resolved = resolveSourceNames(schema)
+    // The shapes are read once, so the bindings, the prefixes and the refusals describe one schema.
+    const view = snapshotSchema(schema)
+    const resolved = bindingsOf(view)
     assertDistinctVariables(resolved)
     return {
       bindings: resolved,
-      namespaces: Object.keys(schema.shape),
-      prefixes: resolveNamespacePrefixes(schema),
+      namespaces: Object.keys(view.shape),
+      prefixes: resolveNamespacePrefixes(view),
       overrides: [
-        ...unusableOverrideIssues(schema, resolved),
-        ...coercedBooleanIssues(schema, resolved),
+        ...unusableOverrideIssues(view, resolved),
+        ...coercedBooleanIssues(view, resolved),
         ...protoNamedIssues(resolved)
       ]
     }

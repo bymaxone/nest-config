@@ -5,7 +5,7 @@
  * Goal: prove that a declared source variable is validated whatever its type and however the source holds
  * it, that the overrides of the test helpers are found by the names the schema declares when the object
  * lists none of them (a get-only Proxy, a prototype that is itself a bare object), and that the service
- * reads leaves only from namespaces that are plain objects.
+ * reads no leaf of a namespace that is a function, a string, an array or null.
  * Mocks: none. The host's objects are written for the case.
  */
 
@@ -143,7 +143,7 @@ describe('the overrides are found by the names the schema declares', () => {
   })
 })
 
-describe('ConfigService reads leaves only from the namespaces that are plain objects', () => {
+describe('ConfigService reads no leaf of a namespace that is not an object, or is an array', () => {
   it.each([
     ['a function', () => function named() {}],
     ['a string', () => 'abc'],
@@ -157,7 +157,7 @@ describe('ConfigService reads leaves only from the namespaces that are plain obj
     expect(service.has('app.length' as never)).toBe(false)
   })
 
-  it('reads the own fields of a plain configuration, as the library builds it', () => {
+  it('reads the own fields of a namespace that is an object, as the library builds it', () => {
     const service = new ConfigService({ app: { name: 'n' } } as never)
 
     expect(service.get('app.name' as never)).toBe('n')

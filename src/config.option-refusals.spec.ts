@@ -16,6 +16,7 @@ import { defineEnv } from './define-env'
 import { validateEnv } from './env-validator'
 import { BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
+import type { ConfigIssue } from './errors'
 
 const schema = defineEnv({ app: z.object({ name: z.string().default('n') }) })
 
@@ -29,9 +30,19 @@ function thrownBy(run: () => unknown): unknown {
   throw new Error('expected the call to throw')
 }
 
-/** The paths of the issues of a refusal. */
-function pathsOf(error: unknown): string[] {
-  return (error as BymaxConfigValidationError).issues.map((issue) => issue.path)
+/** The whole issue that an option the module does not read becomes, for a path and a method. */
+function unknownKeyIssue(path: string, method: string): ConfigIssue {
+  return {
+    path,
+    variable: '(options)',
+    code: ConfigErrorCode.UNKNOWN_KEY,
+    message: `is not an option of BymaxConfigModule.${method}; a misspelled option is ignored`
+  }
+}
+
+/** The issues of a refusal. */
+function issuesOf(error: unknown): ConfigIssue[] {
+  return [...(error as BymaxConfigValidationError).issues]
 }
 
 /** The resolved options of the options provider a `forRootAsync` registration carries. */
@@ -49,18 +60,10 @@ describe('a registration option that the module does not read', () => {
     )
 
     expect(error).toBeInstanceOf(BymaxConfigValidationError)
-    expect(pathsOf(error)).toEqual(['stict', 'onValidationErorr'])
-    expect((error as BymaxConfigValidationError).issues[0]).toEqual({
-      path: 'stict',
-      variable: '(options)',
-      code: ConfigErrorCode.UNKNOWN_KEY,
-      message: 'is not an option of BymaxConfigModule.forRoot; a misspelled option is ignored'
-    })
-    expect(
-      (error as BymaxConfigValidationError).issues.every(
-        (issue) => issue.code === ConfigErrorCode.UNKNOWN_KEY
-      )
-    ).toBe(true)
+    expect(issuesOf(error)).toEqual([
+      unknownKeyIssue('stict', 'forRoot'),
+      unknownKeyIssue('onValidationErorr', 'forRoot')
+    ])
   })
 
   it('is refused by forRootAsync', () => {
@@ -72,10 +75,7 @@ describe('a registration option that the module does not read', () => {
       } as never)
     )
 
-    expect(pathsOf(error)).toEqual(['injects'])
-    expect((error as BymaxConfigValidationError).issues[0]?.message).toBe(
-      'is not an option of BymaxConfigModule.forRootAsync; a misspelled option is ignored'
-    )
+    expect(issuesOf(error)).toEqual([unknownKeyIssue('injects', 'forRootAsync')])
   })
 
   it.each([
@@ -90,13 +90,15 @@ describe('a registration option that the module does not read', () => {
     )
 
     expect(error).toBeInstanceOf(BymaxConfigValidationError)
-    expect(pathsOf(error)).toEqual([Object.keys(returned)[1]])
+    expect(issuesOf(error)).toEqual([
+      unknownKeyIssue(Object.keys(returned)[1] as string, 'forRootAsync')
+    ])
   })
 
   it('is written with its unsafe characters escaped', () => {
     const error = thrownBy(() => BymaxConfigModule.forRoot({ schema, 'a\nb': 1 } as never))
 
-    expect(pathsOf(error)).toEqual(['a\\u000ab'])
+    expect(issuesOf(error)).toEqual([unknownKeyIssue('a\\u000ab', 'forRoot')])
   })
 
   it('is refused as a read that threw when the listing of the keys throws', () => {

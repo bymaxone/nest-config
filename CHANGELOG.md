@@ -32,8 +32,8 @@ as the GitHub Release body, so each released version needs a matching
 #### Apply to a derived backend
 
 - A source that held a declared variable as a non-enumerable or inherited property used to supply the
-  default in its place. It now supplies the value. A host that depended on the default there passes the
-  variable as an own enumerable property, or leaves it out.
+  default in its place. It now supplies the value. A host that depended on the default there leaves the
+  variable out.
 - An override held in a non-enumerable namespace or leaf of the test helpers used to be ignored. It is
   applied now.
 

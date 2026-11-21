@@ -8,6 +8,10 @@
  * Mocks: none. The host's lists are written for the case.
  */
 
+import { z } from 'zod'
+
+import { defineEnv } from './define-env'
+import { validateEnv } from './env-validator'
 import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
 import type { ConfigIssue } from './errors'
 
@@ -252,5 +256,40 @@ describe('the host code that reads a list of issues', () => {
     const code = (error.issues[0] as ConfigIssue).code as string
     expect(code.startsWith('a\\u000ab')).toBe(true)
     expect(code.length).toBeLessThanOrEqual(201)
+  })
+})
+
+describe('the issues the validator itself raises', () => {
+  it('are accepted again by the constructor, with every code and the empty path', () => {
+    const plain = defineEnv({
+      app: z.object({ name: z.string(), port: z.coerce.number().max(10) })
+    })
+    const throwing = defineEnv({
+      app: z.object({
+        flag: z.string().transform(() => {
+          throw new Error('rule')
+        })
+      })
+    })
+    const issues = [
+      ...(
+        thrownBy(() =>
+          validateEnv(plain, { APP_PORT: '99', APP_STRAY: 'y' }, { strict: true })
+        ) as BymaxConfigValidationError
+      ).issues,
+      ...(thrownBy(() => validateEnv(throwing, { APP_FLAG: 'x' })) as BymaxConfigValidationError)
+        .issues
+    ]
+
+    const rebuilt = new BymaxConfigValidationError(issues)
+
+    expect(issues.map((entry) => entry.code).sort()).toEqual([
+      ConfigErrorCode.INVALID,
+      ConfigErrorCode.INVALID,
+      ConfigErrorCode.MISSING,
+      ConfigErrorCode.UNKNOWN_KEY
+    ])
+    expect(issues.some((entry) => entry.path === '')).toBe(true)
+    expect(rebuilt.issues).toEqual(issues)
   })
 })

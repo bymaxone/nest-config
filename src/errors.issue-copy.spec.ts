@@ -36,10 +36,16 @@ describe('a list of issues that no iterator can shorten', () => {
   it.each([
     [
       'an Array subclass with an empty iterator',
-      Object.assign(Object.create(Object.assign([], { [Symbol.iterator]: () => [].values() })), {
-        0: issue,
-        length: 1
-      }) as unknown
+      (() => {
+        class Quiet extends Array<unknown> {
+          public override [Symbol.iterator](): ArrayIterator<unknown> {
+            return [].values()
+          }
+        }
+        const list = new Quiet()
+        list.push(issue)
+        return list as unknown
+      })()
     ],
     [
       'an array whose map answers nothing',
@@ -112,11 +118,18 @@ describe('the length and the entries of a list of issues', () => {
     expect([...reads].sort()).toEqual(['code', 'message', 'path', 'variable'])
   })
 
+  /** An array whose length answers `length`, which only a Proxy can make a list say. */
+  const claiming = (length: unknown): unknown =>
+    new Proxy([issue], {
+      get: (target, key, receiver) =>
+        key === 'length' ? length : (Reflect.get(target, key, receiver) as unknown)
+    })
+
   it.each([
-    ['a length that is not a number', { length: '1', 0: issue }],
-    ['a fractional length', { length: 1.5, 0: issue }],
-    ['a negative length', { length: -1 }],
-    ['no length', {}]
+    ['a length that is not a number', claiming('1')],
+    ['a fractional length', claiming(1.5)],
+    ['a negative length', claiming(-1)],
+    ['no length', claiming(undefined)]
   ])('refuses %s', (_name, list) => {
     const error = thrownBy(() => new BymaxConfigValidationError(list as never))
 
@@ -128,15 +141,13 @@ describe('the length and the entries of a list of issues', () => {
 
   it('refuses a list longer than the cap before it reads an entry', () => {
     let entryReads = 0
-    const huge = new Proxy(
-      { length: 10_001 },
-      {
-        get: (target, key) => {
-          if (key !== 'length') entryReads += 1
-          return Reflect.get(target, key) as unknown
-        }
+    const huge = new Proxy([] as unknown[], {
+      get: (target, key) => {
+        if (key === 'length') return 10_001
+        entryReads += 1
+        return Reflect.get(target, key) as unknown
       }
-    )
+    })
 
     const error = thrownBy(() => new BymaxConfigValidationError(huge as never))
 
@@ -190,14 +201,11 @@ describe('the host code that reads a list of issues', () => {
     ],
     [
       'the keys of a list that claims no entries',
-      new Proxy(
-        { length: 0 },
-        {
-          ownKeys: () => {
-            throw hostError
-          }
+      new Proxy([] as unknown[], {
+        ownKeys: () => {
+          throw hostError
         }
-      )
+      })
     ],
     [
       'an entry',
@@ -291,5 +299,62 @@ describe('the issues the validator itself raises', () => {
     ])
     expect(issues.some((entry) => entry.path === '')).toBe(true)
     expect(rebuilt.issues).toEqual(issues)
+  })
+})
+
+describe('a value that is not an array', () => {
+  it.each([
+    ['a function', () => issue],
+    ['a String object', new String('')],
+    ['an object that has a length of 0', { length: 0 }],
+    ['an object that lists an issue', { length: 1, 0: issue }],
+    ['a string', 'text'],
+    ['a number', 3],
+    ['null', null]
+  ])('is refused as %s, naming no value', (_name, list) => {
+    const error = thrownBy(() => new BymaxConfigValidationError(list as never))
+
+    expect(error).toBeInstanceOf(TypeError)
+    expect((error as Error).message).toBe('BymaxConfigValidationError: issues must be an array')
+  })
+})
+
+describe('an empty array that carries more than entries', () => {
+  it.each([
+    ['a named property', Object.assign([], { note: 'x' })],
+    ['a property whose name is not an index', Object.assign([], { '01': 'x', '-1': 'y' })]
+  ])('is accepted as empty with %s', (_name, list) => {
+    expect(new BymaxConfigValidationError(list as never).issues).toEqual([])
+  })
+
+  it('is refused only for an own index key, with its own reason', () => {
+    const claimed = new Proxy([issue], {
+      get: (target, key, receiver) =>
+        key === 'length' ? 0 : (Reflect.get(target, key, receiver) as unknown)
+    })
+
+    const error = thrownBy(() => new BymaxConfigValidationError(claimed as never))
+
+    expect((error as Error).message).toBe(
+      'BymaxConfigValidationError: issues claims no entries but lists some'
+    )
+  })
+})
+
+describe('a list or an entry whose Symbol.iterator throws', () => {
+  it('is read by index, so the iterator is never asked for', () => {
+    const list = Object.defineProperty([issue], Symbol.iterator, {
+      get: () => {
+        throw new Error('iterator')
+      }
+    })
+    const entry = Object.defineProperty({ ...issue }, Symbol.iterator, {
+      get: () => {
+        throw new Error('iterator')
+      }
+    })
+
+    expect(new BymaxConfigValidationError(list as never).issues).toEqual([issue])
+    expect(new BymaxConfigValidationError([entry] as never).issues).toEqual([issue])
   })
 })

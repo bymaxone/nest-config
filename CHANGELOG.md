@@ -25,9 +25,18 @@ as the GitHub Release body, so each released version needs a matching
   withheld and the thrown value as its `cause`. Each of `path`, `variable`, `code` and `message` must be
   a string, else a `TypeError` names the index and the field; `code` is written escaped and bounded like the
   others.
+- **Only an array is a list of issues.** A function, a `String` object, or an object with a `length` was
+  accepted as an empty or a short list; each is now a `TypeError`. An array that claims no entries is
+  refused only when it holds an own index key, so an empty array that carries a named property is
+  empty, and the refusal has its own reason.
+
+### Documentation
+
+- **The README and the constructor documentation state the refusals** of `new BymaxConfigValidationError(issues)`:
+  the `TypeError`, the `RangeError` and the 10 000 cap.
 
 **Apply to a derived backend:** nothing to change unless it builds a `BymaxConfigValidationError` itself
-from issues whose fields are not strings; that now throws.
+from a value that is not an array of issues whose fields are strings; that now throws.
 
 ## [1.2.23] - 2026-11-21
 

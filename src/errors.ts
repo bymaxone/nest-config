@@ -74,6 +74,9 @@ function printable(text: string): string {
 /** The most issues one error carries; a longer list is refused rather than copied. */
 const MAX_ISSUES = 10_000
 
+/** A property name that is an array index: only such an own key is an entry the list holds. */
+const INDEX_KEY = /^(?:0|[1-9]\d*)$/
+
 /** The four fields an issue carries, in the order they are read. */
 const ISSUE_FIELDS = ['path', 'variable', 'code', 'message'] as const
 
@@ -122,17 +125,20 @@ function copyIssue(issue: object, index: number): ConfigIssue {
 /**
  * Copy a list of issues by index, the way no iterator the list answers can shorten it: the length is read
  * once and must be a whole number up to {@link MAX_ISSUES}, each index is read once, and each field of an
- * issue is read once. A list that claims no entries yet lists keys of its own is the empty copy of a
- * non-empty list, and is refused, as is an entry that is not an object. A read of the host's that throws
+ * issue is read once. Only an array is a list. One that claims no entries yet holds an own index key is the
+ * empty copy of a non-empty list, and is refused, as is an entry that is not an object. A read of the host's that throws
  * is refused with its cause.
  *
  * @param issues - The issues the host handed to the constructor.
  * @returns The issues, each a frozen object with the four contract fields, escaped and bounded.
- * @throws {TypeError} When the length is not a whole number, an entry is not an object, a field is not a
- * string, the list is claimed empty while it lists keys, or a read threw.
+ * @throws {TypeError} When the value is not an array, the length is not a whole number, an entry is not an
+ * object, a field is not a string, the list claims no entries while it holds an index key, or a read threw.
  * @throws {RangeError} When the list is longer than {@link MAX_ISSUES}.
  */
 function copyIssues(issues: ReadonlyArray<ConfigIssue>): ReadonlyArray<ConfigIssue> {
+  if (!hostRead(() => Array.isArray(issues))) {
+    throw new TypeError('BymaxConfigValidationError: issues must be an array')
+  }
   const length = hostRead(() => issues.length as unknown)
   if (typeof length !== 'number' || !Number.isInteger(length) || length < 0) {
     throw new TypeError(
@@ -144,7 +150,7 @@ function copyIssues(issues: ReadonlyArray<ConfigIssue>): ReadonlyArray<ConfigIss
       `BymaxConfigValidationError: at most ${MAX_ISSUES} issues, received ${length}`
     )
   }
-  if (length === 0 && hostRead(() => Object.keys(issues)).length > 0) {
+  if (length === 0 && hostRead(() => Object.keys(issues)).some((key) => INDEX_KEY.test(key))) {
     throw new TypeError('BymaxConfigValidationError: issues claims no entries but lists some')
   }
   const copy: ConfigIssue[] = []
@@ -229,8 +235,12 @@ export class BymaxConfigValidationError extends Error {
   /**
    * Build the aggregated error from the collected issues.
    *
-   * @param issues - Every collected violation; copied and frozen so neither the
-   * caller nor consumer code can mutate the reported list.
+   * @param issues - Every collected violation, as an array of issues whose four fields are strings;
+   * copied and frozen so neither the caller nor consumer code can mutate the reported list.
+   * @throws {TypeError} When `issues` is not an array, an entry is not an object, a field is not a
+   * string, the array claims no entries while it holds an index key, or reading it threw (the host's
+   * error is the `cause` and its message is withheld).
+   * @throws {RangeError} When `issues` holds more than 10 000 entries; none is read.
    */
   constructor(issues: ReadonlyArray<ConfigIssue>) {
     // Copy each issue into a fresh, frozen object carrying only the four

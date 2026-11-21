@@ -40,6 +40,15 @@ function unknownKeyIssue(path: string, method: string): ConfigIssue {
   }
 }
 
+/** A value no refusal may carry. */
+const SENTINEL = 'sentinel-value-never-printed'
+
+/** Fails when the sentinel appears in the message of the error or in any of its issues. */
+function expectNoSentinel(error: unknown): void {
+  expect((error as Error).message).not.toContain(SENTINEL)
+  expect(JSON.stringify((error as BymaxConfigValidationError).issues)).not.toContain(SENTINEL)
+}
+
 /** The issues of a refusal. */
 function issuesOf(error: unknown): ConfigIssue[] {
   return [...(error as BymaxConfigValidationError).issues]
@@ -56,7 +65,7 @@ async function resolvedOptions(registration: object): Promise<unknown> {
 describe('a registration option that the module does not read', () => {
   it('is refused by forRoot, naming every such key and no value', () => {
     const error = thrownBy(() =>
-      BymaxConfigModule.forRoot({ schema, stict: true, onValidationErorr: () => 1 } as never)
+      BymaxConfigModule.forRoot({ schema, stict: SENTINEL, onValidationErorr: SENTINEL } as never)
     )
 
     expect(error).toBeInstanceOf(BymaxConfigValidationError)
@@ -64,6 +73,7 @@ describe('a registration option that the module does not read', () => {
       unknownKeyIssue('stict', 'forRoot'),
       unknownKeyIssue('onValidationErorr', 'forRoot')
     ])
+    expectNoSentinel(error)
   })
 
   it('is refused by forRootAsync', () => {
@@ -71,16 +81,17 @@ describe('a registration option that the module does not read', () => {
       BymaxConfigModule.forRootAsync({
         useFactory: () => ({ schema }),
         inject: [],
-        injects: []
+        injects: SENTINEL
       } as never)
     )
 
     expect(issuesOf(error)).toEqual([unknownKeyIssue('injects', 'forRootAsync')])
+    expectNoSentinel(error)
   })
 
   it.each([
-    ['isGlobal', { schema, isGlobal: false }],
-    ['a misspelled strict', { schema, stict: true }]
+    ['isGlobal', { schema, isGlobal: SENTINEL }],
+    ['a misspelled strict', { schema, stict: SENTINEL }]
   ])('is refused in what the factory of forRootAsync returns: %s', async (_name, returned) => {
     const registration = BymaxConfigModule.forRootAsync({ useFactory: () => returned } as never)
 
@@ -93,12 +104,14 @@ describe('a registration option that the module does not read', () => {
     expect(issuesOf(error)).toEqual([
       unknownKeyIssue(Object.keys(returned)[1] as string, 'forRootAsync')
     ])
+    expectNoSentinel(error)
   })
 
   it('is written with its unsafe characters escaped', () => {
-    const error = thrownBy(() => BymaxConfigModule.forRoot({ schema, 'a\nb': 1 } as never))
+    const error = thrownBy(() => BymaxConfigModule.forRoot({ schema, 'a\nb': SENTINEL } as never))
 
     expect(issuesOf(error)).toEqual([unknownKeyIssue('a\\u000ab', 'forRoot')])
+    expectNoSentinel(error)
   })
 
   it('is refused as a read that threw when the listing of the keys throws', () => {

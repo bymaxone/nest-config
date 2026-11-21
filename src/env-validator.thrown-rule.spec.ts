@@ -8,6 +8,8 @@
  * Mocks: none; the Nest boot test replaces the logger with a recorder.
  */
 
+import { runInNewContext } from 'node:vm'
+
 import { NestFactory } from '@nestjs/core'
 import { Module } from '@nestjs/common'
 import type { LoggerService } from '@nestjs/common'
@@ -322,5 +324,26 @@ describe('a thrown rule in a Nest boot', () => {
 
     expect(lines.length).toBeGreaterThan(0)
     expect(lines.join('\n')).not.toContain(SECRET)
+  })
+})
+
+describe('a rule that throws an Error made in another realm', () => {
+  it('names its class, which instanceof Error cannot tell', () => {
+    /** An Error from a `vm` context has another `Error` constructor, so `instanceof Error` is false. */
+    const foreign = runInNewContext('new TypeError("x")') as Error
+    expect(foreign instanceof Error).toBe(false)
+    const schema = defineEnv({
+      feature: z.object({
+        key: z.string().transform(() => {
+          throw foreign
+        })
+      })
+    })
+
+    const error = failureOf(() => validateEnv(schema, { FEATURE_KEY: 'x' }))
+
+    expect(error.issues.map((issue) => issue.message)).toEqual([
+      'a rule threw TypeError; its message is withheld because it can carry the value'
+    ])
   })
 })

@@ -2,17 +2,18 @@
  * Unit tests that sweep every operation the library performs on the host's objects.
  *
  * Layer: unit.
- * Goal: prove that wherever the library runs host code (a property read, a key listing, a call) a throw
- * there is refused with the library's error and never reaches the caller raw. The host's object is
- * wrapped so that its Nth operation throws; the sweep runs N from 1 up to the number of operations the
- * call performs, so no read is skipped by a hand-written case list.
+ * Goal: prove that wherever the library runs host code on the objects below (a property read, a key
+ * listing, a call, and the results of calls) a throw there is refused with the library's error and never
+ * reaches the caller raw. The host's object is wrapped so that its Nth operation throws; the sweep runs N
+ * from 1 up to the number of operations the call performs, so no read of these objects is skipped by a
+ * hand-written case list.
  * Mocks: none. The wrappers are Proxies written for the sweep.
  */
 
 import { z } from 'zod'
 
 import { BymaxConfigModule } from './config.module'
-import { createValidatedConfig } from './config.providers'
+import { bymaxConfigProvider, createValidatedConfig } from './config.providers'
 import { defineEnv } from './define-env'
 import { BymaxConfigValidationError } from './errors'
 import { configTestingModule } from './testing/config-testing.module'
@@ -87,9 +88,10 @@ async function sweep(
 
 /** Asserts that no run let the host's error out raw, and that the sweep reached some operations. */
 function expectNothingRaw(
-  outcomes: ReadonlyArray<{ readonly at: number; readonly threw: unknown }>
+  outcomes: ReadonlyArray<{ readonly at: number; readonly threw: unknown }>,
+  atLeast = 4
 ): void {
-  expect(outcomes.length).toBeGreaterThan(3)
+  expect(outcomes.length).toBeGreaterThanOrEqual(atLeast)
   const raw = outcomes.filter(
     ({ threw }) => threw !== undefined && !(threw instanceof BymaxConfigValidationError)
   )
@@ -139,18 +141,44 @@ describe('every operation on the host object is guarded', () => {
     )
   })
 
-  it('forRootAsync reads its options and what its factory returns', async () => {
+  it('forRootAsync reads its options, what its factory returns, and then validates them', async () => {
     expectNothingRaw(
       await sweep((ticker) => async () => {
         const registration = BymaxConfigModule.forRootAsync(
-          hostile({ useFactory: () => ({ schema, source }), isGlobal: false }, ticker) as never
+          hostile(
+            {
+              useFactory: () => hostile({ schema, source: { APP_NAME: 'x' } }, ticker),
+              isGlobal: false
+            },
+            ticker
+          ) as never
         )
         const provider = (registration.providers ?? []).find(
           (candidate) => Reflect.get(candidate, 'useFactory') !== undefined
         )
         const factory = Reflect.get(provider as object, 'useFactory') as () => Promise<unknown>
-        await factory()
+        const options = await factory()
+        await (bymaxConfigProvider.useFactory as (options: unknown) => Promise<unknown>)(options)
       })
+    )
+  })
+
+  it.each([
+    ['a succeeding parse', { APP_NAME: 'x', DB_PORT_X: '5' }],
+    ['a failing parse', { DB_PORT_X: '0' }]
+  ])('createValidatedConfig reads the answer of %s', async (_name, input) => {
+    /** Only the answer of safeParse is hostile here: wrapping the schema deeper would stop the run before the parse. */
+    expectNothingRaw(
+      await sweep((ticker) => () => {
+        const answering = new Proxy(schema, {
+          get: (target, key) =>
+            key === 'safeParse'
+              ? (data: unknown) => hostile(target.safeParse(data), ticker)
+              : Reflect.get(target, key, target)
+        })
+        return createValidatedConfig({ schema: answering, source: input })
+      }),
+      3
     )
   })
 

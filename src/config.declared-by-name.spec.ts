@@ -126,7 +126,7 @@ describe('the overrides are found by the names the schema declares', () => {
     const config = createTestConfig(schema, getOnly({ app: { name: 'o' } }) as never)
 
     expect(config.app?.name).toBe('o')
-    expect(config.app?.port).toBeLessThanOrEqual(100)
+    expect(config.app?.port).toBe(5)
   })
 
   it('leaves a declared namespace alone when the object answers undefined for it', () => {

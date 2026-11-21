@@ -164,10 +164,10 @@ function flattenOverrides(
       )
       continue
     }
-    const known = declared.get(namespace) ?? []
-    for (const [leaf, value] of entriesOf(leaves, false, known)) {
+    const known = new Set(declared.get(namespace))
+    for (const [leaf, value] of entriesOf(leaves, false, [...known])) {
       const path = `${namespace}.${leaf}`
-      if (known.includes(leaf)) {
+      if (known.has(leaf)) {
         flat.set(path, value)
       } else {
         unplaced.push(

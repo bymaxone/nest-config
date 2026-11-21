@@ -129,6 +129,27 @@ describe('the overrides are found by the names the schema declares', () => {
     expect(config.app?.port).toBeLessThanOrEqual(100)
   })
 
+  it('leaves a declared namespace alone when the object answers undefined for it', () => {
+    const two = defineEnv({
+      app: z.object({ name: z.string().default('a') }),
+      db: z.object({ port: z.coerce.number().default(5) })
+    })
+
+    const config = createTestConfig(two, getOnly({ app: { name: 'o' } }) as never)
+
+    expect(config.app?.name).toBe('o')
+    expect(config.db?.port).toBe(5)
+  })
+
+  it('applies a function found by name under a name that is not a member of Object.prototype', () => {
+    const named = defineEnv({ app: z.object({ handler: z.string() }) })
+    const handler = (): number => 1
+
+    const config = createTestConfig(named, { app: getOnly({ handler }) } as never)
+
+    expect(config.app?.handler).toBe(String(handler))
+  })
+
   it('does not report a key of a get-only Proxy that the object does not list', () => {
     const config = createTestConfig(schema, { app: getOnly({ name: 'o', extra: 1 }) } as never)
 

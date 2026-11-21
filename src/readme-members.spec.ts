@@ -49,9 +49,14 @@ const prose = (() => {
 /** The inline code spans of the prose, joined: where a member has to be named. */
 const inlineCode = (prose.match(/`[^`\n]+`/g) ?? []).join('\n')
 
+/** Text as a pattern that matches only itself: every character a pattern gives a meaning is escaped. */
+function literal(text: string): string {
+  return text.replace(/[\\^$.*+?()[\]{}|/]/g, '\\$&')
+}
+
 /** Whether the README names `member` as inline code, on its own or inside a longer span. */
 function isNamed(member: string): boolean {
-  const escaped = member.replace(/[$.*+?^${}()|[\]\\/]/g, '\\$&')
+  const escaped = literal(member)
   return new RegExp(`\`[^\`\\n]*(?<![\\w$])${escaped}(?![\\w$])[^\`\\n]*\``).test(inlineCode)
 }
 
@@ -103,6 +108,18 @@ const DOCUMENTED_SUBPATHS = ['.', './testing', './internal']
 
 /** The keys of `exports` that are no entry point of the code. */
 const NOT_ENTRY_POINTS = ['./package.json']
+
+describe('the escaping the README matches are built with', () => {
+  it.each(['a.b', 'a\\b', '(x)', '[y]', 'a|b', 'a/b', '$x', '^x', 'x+', 'x*', 'x?', '{x}'])(
+    'makes %s match only itself',
+    (text) => {
+      const pattern = new RegExp(`^${literal(text)}$`)
+
+      expect(pattern.test(text)).toBe(true)
+      expect(pattern.test(`${text}${text}`)).toBe(false)
+    }
+  )
+})
 
 describe('README names every member of the published contracts', () => {
   it.each([
@@ -167,6 +184,6 @@ describe('README documents every subpath of the package', () => {
   })
 
   it.each(DOCUMENTED_SUBPATHS)('lists %s in the table of entry points', (subpath) => {
-    expect(prose).toMatch(new RegExp(`^\\| \`${subpath.replace(/[./]/g, '\\$&')}\` +\\|`, 'm'))
+    expect(prose).toMatch(new RegExp(`^\\| \`${literal(subpath)}\` +\\|`, 'm'))
   })
 })

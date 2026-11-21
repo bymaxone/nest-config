@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
 
+# The default token is read-only; the job below adds `pull-requests: read` for itself.
+permissions:
+  contents: read
+
 jobs:
   attribution:
     permissions:

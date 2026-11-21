@@ -36,7 +36,7 @@ as the GitHub Release body, so each released version needs a matching
 #### Apply to a derived backend
 
 A registration that passes a key the module does not read now fails at boot: remove it, or fix its spelling.
-Check that `onValidationError`, where you pass one, is a function, and that `source` is a plain record of
+Check that `onValidationError`, where you pass one, is a function, and that `source` is an object of
 variables, not an array or a `Map`.
 
 ## [1.2.20] - 2026-11-21

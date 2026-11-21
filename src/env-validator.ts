@@ -557,7 +557,7 @@ export async function guardedResolve<T>(
  * @param thrown - Whatever the host's code threw.
  * @returns True only for a BymaxConfigValidationError.
  */
-function isLibraryError(thrown: unknown): thrown is BymaxConfigValidationError {
+export function isLibraryError(thrown: unknown): thrown is BymaxConfigValidationError {
   try {
     return thrown instanceof BymaxConfigValidationError
   } catch {
@@ -640,22 +640,25 @@ export function validateEnv<TShape extends EnvShape>(
     }
   })
   const sourceMap = new Map(guarded('reading the source', () => Object.entries(source)))
-  const candidate = buildCandidate(namespaces, collectPresentLeaves(bindings, sourceMap))
-  const unknown = options?.strict === true ? detectUnknownKeys(prefixes, bindings, sourceMap) : []
-  let result: ReturnType<typeof schema.safeParse>
-  try {
-    result = schema.safeParse(candidate)
-  } catch (thrown) {
-    throw new BymaxConfigValidationError([
-      ...overrides,
-      toWithheldIssue('a rule', thrown),
-      ...unknown
-    ])
-  }
-  if (result.success) {
-    if (unknown.length === 0 && overrides.length === 0) return result.data
-    throw new BymaxConfigValidationError([...overrides, ...unknown])
-  }
-  const issues = translateIssues(result.error.issues, bindings, prefixes, sourceMap)
-  throw new BymaxConfigValidationError([...overrides, ...issues, ...unknown])
+  // What the schema answers and what its issues hold are the host's code as well.
+  return guarded('reading the schema', () => {
+    const candidate = buildCandidate(namespaces, collectPresentLeaves(bindings, sourceMap))
+    const unknown = options?.strict === true ? detectUnknownKeys(prefixes, bindings, sourceMap) : []
+    let result: ReturnType<typeof schema.safeParse>
+    try {
+      result = schema.safeParse(candidate)
+    } catch (thrown) {
+      throw new BymaxConfigValidationError([
+        ...overrides,
+        toWithheldIssue('a rule', thrown),
+        ...unknown
+      ])
+    }
+    if (result.success) {
+      if (unknown.length === 0 && overrides.length === 0) return result.data
+      throw new BymaxConfigValidationError([...overrides, ...unknown])
+    }
+    const issues = translateIssues(result.error.issues, bindings, prefixes, sourceMap)
+    throw new BymaxConfigValidationError([...overrides, ...issues, ...unknown])
+  })
 }

@@ -301,6 +301,106 @@ describe('an options factory whose result runs host code that throws', () => {
   })
 })
 
+describe('an answer of the schema that runs host code which throws', () => {
+  const base = defineEnv({ app: z.object({ mode: z.enum(['a', 'b']).default('a') }) })
+  const answering = (answer: () => unknown) =>
+    new Proxy(base, {
+      get: (target, key) => (key === 'safeParse' ? answer : Reflect.get(target, key, target))
+    }) as never
+  const boom = () => {
+    throw hostError
+  }
+
+  it.each([
+    [
+      'a success getter',
+      () => ({
+        get success(): never {
+          return boom()
+        }
+      })
+    ],
+    [
+      'an error getter',
+      () => ({
+        success: false,
+        get error(): never {
+          return boom()
+        }
+      })
+    ],
+    [
+      'an issues getter',
+      () => ({
+        success: false,
+        error: {
+          get issues(): never {
+            return boom()
+          }
+        }
+      })
+    ]
+  ])('createValidatedConfig refuses a result with %s that throws', (_name, answer) => {
+    const refusal = expectRefusal(
+      thrownBy(() => createValidatedConfig({ schema: answering(answer), source: {} })),
+      'reading the schema'
+    )
+
+    expect(refusal.cause).toBe(hostError)
+  })
+
+  it('refuses a schema value whose text conversion throws while the constraint is described', () => {
+    const literal = defineEnv({
+      app: z.object({ mode: z.literal({ toString: boom } as never) })
+    })
+
+    const refusal = expectRefusal(
+      thrownBy(() => createValidatedConfig({ schema: literal, source: { APP_MODE: 'x' } })),
+      'reading the schema'
+    )
+
+    expect(refusal.cause).toBe(hostError)
+  })
+
+  it('refuses an authored message that is not text', () => {
+    const refined = defineEnv({
+      app: z.object({ v: z.string().refine(() => false, { message: { replace: boom } as never }) })
+    })
+
+    const refusal = expectRefusal(
+      thrownBy(() => createValidatedConfig({ schema: refined, source: { APP_V: 'x' } })),
+      'reading the schema'
+    )
+
+    expect(refusal.cause).toBeInstanceOf(Error)
+  })
+
+  it('reports it to the hook once even when what was thrown has a prototype lookup that throws', async () => {
+    const thrown = new Proxy(
+      {},
+      {
+        getPrototypeOf: () => {
+          throw new Error('HOST RAW SECRET')
+        }
+      }
+    )
+    const factory = bymaxConfigProvider.useFactory as (options: unknown) => Promise<unknown>
+    const hook = jest.fn()
+
+    const error = await factory({
+      schema: answering(() => {
+        throw thrown
+      }),
+      source: {},
+      onValidationError: hook
+    }).catch((rejected: unknown) => rejected)
+
+    expect(error).toBeInstanceOf(BymaxConfigValidationError)
+    expect((error as BymaxConfigValidationError).message).not.toContain('HOST RAW SECRET')
+    expect(hook).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('the test helpers when the schema or the overrides run host code that throws', () => {
   const broken = () =>
     Object.defineProperty(defineEnv({ app: z.object({ name: z.string() }) }), 'shape', {

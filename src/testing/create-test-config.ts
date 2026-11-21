@@ -208,18 +208,18 @@ function explainUnsatisfiedLeaves(
   error: BymaxConfigValidationError,
   nodes: ReadonlyMap<string, boolean | null>
 ): BymaxConfigValidationError {
-  const explained = error.issues.map((issue) =>
-    nodes.get(issue.path) !== false
-      ? issue
-      : {
-          ...issue,
-          message: `no placeholder satisfies this leaf (${issue.message}); pass an override for ${issue.path}`
-        }
-  )
   // An error with nothing to explain is the caller's to see as it is, with the cause it may carry.
-  return explained.every((issue, index) => issue === error.issues[index])
-    ? error
-    : new BymaxConfigValidationError(explained)
+  if (!error.issues.some((issue) => nodes.get(issue.path) === false)) return error
+  return new BymaxConfigValidationError(
+    error.issues.map((issue) =>
+      nodes.get(issue.path) !== false
+        ? issue
+        : {
+            ...issue,
+            message: `no placeholder satisfies this leaf (${issue.message}); pass an override for ${issue.path}`
+          }
+    )
+  )
 }
 
 /**

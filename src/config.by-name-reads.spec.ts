@@ -142,6 +142,11 @@ describe('overrides are read by name', () => {
 
   it.each([
     ['an instance of a class', () => new (class Holder {})()],
+    [
+      'an object whose prototype owns isPrototypeOf but has a prototype of its own',
+      () =>
+        Object.create(Object.assign(Object.create({}), { isPrototypeOf: () => false })) as object
+    ],
     ['an array', () => []],
     ['a Map', () => new Map()]
   ])('still refuses %s as the overrides', (_name, make) => {

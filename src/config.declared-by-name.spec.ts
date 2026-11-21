@@ -184,6 +184,19 @@ describe('the overrides are found by the names the schema declares', () => {
   )
 
   it.each(['constructor', 'toString', 'valueOf', 'hasOwnProperty'])(
+    'applies a text found by name under the name %s, which only a function or the prototype would make inherited',
+    (name) => {
+      const named = defineEnv({
+        app: z.object(Object.fromEntries([[name, z.string().optional()]]))
+      } as never)
+
+      const config = createTestConfig(named, { app: getOnly({ [name]: 'given' }) } as never)
+
+      expect(leavesOf(config, 'app')).toEqual(['given'])
+    }
+  )
+
+  it.each(['constructor', 'toString', 'valueOf', 'hasOwnProperty'])(
     'still applies an override of the leaf %s when the object lists it',
     (name) => {
       const named = defineEnv({

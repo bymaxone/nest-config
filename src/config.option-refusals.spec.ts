@@ -114,9 +114,15 @@ describe('a registration option that the module does not read', () => {
 
     expect(error).toBeInstanceOf(BymaxConfigValidationError)
     expect((error as Error).cause).toBe(hostError)
-    expect((error as BymaxConfigValidationError).issues[0]?.message).toMatch(
-      /^reading the options of forRoot threw /
-    )
+    expect((error as BymaxConfigValidationError).issues).toEqual([
+      {
+        path: '',
+        variable: '(schema)',
+        code: ConfigErrorCode.INVALID,
+        message:
+          'reading the options of forRoot threw Error; its message is withheld because it can carry the value'
+      }
+    ])
   })
 
   it.each([

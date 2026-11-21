@@ -923,8 +923,8 @@ error catalog below for every value.
 
 ### Reporting the failure
 
-`onValidationError` receives `ReadonlyArray<ConfigIssue>`: four string fields per issue,
-JSON-serializable, with no error to unwrap. Every description this package generates is
+`onValidationError` receives `ReadonlyArray<ConfigIssue>`: four string fields per issue (`path`,
+`variable`, `code` and `message`), JSON-serializable, with no error to unwrap. Every description this package generates is
 value-free, so it can go straight into a log as structured data; a `custom` message written by
 your own schema is printed as written, so reviewing it is the schema author's job.
 

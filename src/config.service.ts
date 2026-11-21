@@ -78,7 +78,7 @@ export class ConfigService<TConfig> {
       const leaves = new Map<string, unknown>()
       const root = config as Record<string, unknown>
       for (const namespace of Object.getOwnPropertyNames(root)) {
-        const value = Reflect.get(root, namespace) as Record<string, unknown>
+        const value = Object(Reflect.get(root, namespace)) as Record<string, unknown>
         for (const leaf of Object.getOwnPropertyNames(value)) {
           leaves.set(`${namespace}.${leaf}`, Reflect.get(value, leaf))
         }
@@ -104,7 +104,7 @@ export class ConfigService<TConfig> {
     return {
       service: 'ConfigService',
       namespaces: guarded('reading the configuration', () =>
-        Object.keys(this.#config as Record<string, unknown>)
+        Object.getOwnPropertyNames(this.#config as Record<string, unknown>)
       )
     }
   }

@@ -175,3 +175,48 @@ describe('the ConfigService snapshot is read by name', () => {
     expect(service.toJSON().namespaces).toEqual(['app'])
   })
 })
+
+describe('a declared variable named like a member of Object.prototype', () => {
+  it.each(['constructor', 'toString', 'valueOf', 'hasOwnProperty', '__proto__'])(
+    'uses the default for %s, which the prototype chain must not supply',
+    (name) => {
+      const named = defineEnv({
+        app: z.object({ name: z.string().default('default-name').meta({ env: name }) })
+      })
+
+      expect(createValidatedConfig({ schema: named, source: {} }).app?.name).toBe('default-name')
+    }
+  )
+
+  it('still supplies such a variable when the source has it as a string of its own', () => {
+    const named = defineEnv({
+      app: z.object({ name: z.string().default('default-name').meta({ env: 'constructor' }) })
+    })
+    const source = hidden({}, 'constructor', 'own')
+
+    expect(createValidatedConfig({ schema: named, source }).app?.name).toBe('own')
+  })
+})
+
+describe('the shape of the values the service and the overrides accept', () => {
+  it('lists a non-enumerable namespace in toJSON as it reads it with get', () => {
+    const service = new ConfigService(hidden({}, 'hidden', { x: 1 }) as never)
+
+    expect(service.get('hidden.x' as never)).toBe(1)
+    expect(service.toJSON().namespaces).toEqual(['hidden'])
+  })
+
+  it('reads a configuration whose namespace is a string as it always did', () => {
+    expect(() => new ConfigService({ app: 'abc' } as never)).not.toThrow()
+  })
+
+  it('refuses an object whose prototype is another object with no prototype', () => {
+    const odd = Object.create(Object.create(null)) as object
+
+    const error = thrownBy(() => createTestConfig(schema, odd as never))
+
+    expect((error as BymaxConfigValidationError).issues[0]?.message).toBe(
+      'the overrides must be an object'
+    )
+  })
+})

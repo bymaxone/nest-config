@@ -51,9 +51,12 @@ export type ConfigOverrides<TShape extends EnvShape> = {
  */
 function isPlainObject(value: unknown): value is Readonly<Record<string, unknown>> {
   if (typeof value !== 'object' || value === null) return false
-  const prototype: unknown = Object.getPrototypeOf(value)
+  const prototype = Object.getPrototypeOf(value) as object | null
   // The prototype of a plain object is null, or an Object.prototype, whichever realm made it.
-  return prototype === null || Object.getPrototypeOf(prototype) === null
+  return (
+    prototype === null ||
+    (Object.getPrototypeOf(prototype) === null && Object.hasOwn(prototype, 'isPrototypeOf'))
+  )
 }
 
 /**

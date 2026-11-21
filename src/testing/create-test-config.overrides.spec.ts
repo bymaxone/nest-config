@@ -357,7 +357,7 @@ describe('createTestConfig attributes an issue to a leaf only when one node repo
     ['the default variable', undefined],
     ['a variable made of the cut namespace and a wildcard', 'N'.repeat(205) + '_*']
   ])(
-    'keeps the description of a namespace issue that reads like a leaf of a cut namespace: %s',
+    'words no issue as leaf guidance when a cut namespace and its leaf report one path: %s',
     (_n, env) => {
       /** Cut at the bound, the namespace and its leaf report one path: neither is guided. */
       const namespace = 'N'.repeat(205)
@@ -374,7 +374,7 @@ describe('createTestConfig attributes an issue to a leaf only when one node repo
     }
   )
 
-  it('keeps the description of a namespace issue when the cut namespace name holds a dot', () => {
+  it('words no issue as leaf guidance when the cut namespace name holds a dot', () => {
     const namespace = 'N'.repeat(190) + '.' + 'N'.repeat(20)
     const named = defineEnv({
       [namespace]: unsatisfiable('port', namespace.toUpperCase() + '_*').superRefine(

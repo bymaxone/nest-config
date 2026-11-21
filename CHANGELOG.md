@@ -28,7 +28,7 @@ as the GitHub Release body, so each released version needs a matching
 - **Only an array is a list of issues.** A function, a `String` object, or an object with a `length` was
   accepted as an empty or a short list; each is now a `TypeError`. An array that claims no entries is
   refused only when it holds an own index key, so an empty array that carries a named property is
-  empty, and the refusal has its own reason.
+  empty.
 
 ### Documentation
 

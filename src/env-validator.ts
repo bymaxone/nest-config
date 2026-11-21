@@ -582,9 +582,11 @@ export function withCause<T extends Error>(error: T, cause: unknown): T {
 
 /**
  * Read the source into a map, each property once and by name: the keys come from the listing, and a
- * declared variable that is not in it is read too, so one held as a non-enumerable or inherited property
- * is found. What such a read answers counts only when it is text; a member of Object.prototype is not a
- * value of the source.
+ * declared variable that is not in it is read too, so one held as a non-enumerable or inherited property,
+ * or answered only by the get trap of a Proxy, is found. A value found by name is validated whatever its
+ * type, as a listed one is. The one thing never taken is a member of Object.prototype that the chain
+ * answers for a name that happens to match one (`toString`, `constructor`), which is not a value of the
+ * source unless it is text.
  *
  * @param source - The record the host supplied.
  * @param bindings - Every leaf binding of the schema, whose variables are read by name.
@@ -601,8 +603,12 @@ function readSource(
     )
     for (const { variable } of bindings) {
       if (read.has(variable)) continue
-      const value: unknown = Reflect.get(source, variable)
-      read.set(variable, typeof value === 'string' ? value : undefined)
+      const value = Reflect.get(source, variable) as string | undefined
+      // `in Object.prototype` is a name test: the member itself is what the chain would answer.
+      read.set(
+        variable,
+        variable in Object.prototype && typeof value !== 'string' ? undefined : value
+      )
     }
     return read
   })

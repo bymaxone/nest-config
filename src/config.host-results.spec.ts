@@ -239,6 +239,40 @@ describe('an options factory whose result runs host code that throws', () => {
     expect(refusal.cause).toBe(hostError)
   })
 
+  it.each([
+    [
+      'throws',
+      (value: object) => () => {
+        throw value
+      }
+    ],
+    [
+      'rejects with',
+      (value: object) => async () => {
+        throw value
+      }
+    ]
+  ])('refuses a factory that %s a value whose prototype lookup throws', async (_name, wrap) => {
+    const thrown = new Proxy(
+      {},
+      {
+        getPrototypeOf: () => {
+          throw new Error('HOST RAW SECRET')
+        }
+      }
+    )
+    const registration = BymaxConfigModule.forRootAsync({ useFactory: wrap(thrown) as never })
+
+    const error = await optionsRejection(registration)
+
+    expect(error).toBeInstanceOf(BymaxConfigValidationError)
+    expect((error as BymaxConfigValidationError).issues[0]?.message).toMatch(
+      /threw a value that is not an Error; the value is withheld/
+    )
+    expect((error as BymaxConfigValidationError).message).not.toContain('HOST RAW SECRET')
+    expect((error as BymaxConfigValidationError).cause).toBe(thrown)
+  })
+
   it('passes a library error thrown by the factory unchanged', async () => {
     const own = new BymaxConfigValidationError([
       { path: '', variable: '', code: ConfigErrorCode.INVALID, message: 'own' }

@@ -16,6 +16,7 @@ import { BymaxConfigModule } from './config.module'
 import { bymaxConfigProvider, createValidatedConfig } from './config.providers'
 import { defineEnv } from './define-env'
 import { BymaxConfigValidationError } from './errors'
+import { ConfigService } from './config.service'
 import { configTestingModule } from './testing/config-testing.module'
 import { createTestConfig } from './testing/create-test-config'
 
@@ -147,7 +148,8 @@ describe('every operation on the host object is guarded', () => {
         const registration = BymaxConfigModule.forRootAsync(
           hostile(
             {
-              useFactory: () => hostile({ schema, source: { APP_NAME: 'x' } }, ticker),
+              useFactory: () =>
+                hostile({ schema, source: { APP_NAME: 'x', DB_PORT_X: '5' } }, ticker),
               isGlobal: false
             },
             ticker
@@ -179,6 +181,19 @@ describe('every operation on the host object is guarded', () => {
         return createValidatedConfig({ schema: answering, source: input })
       }),
       3
+    )
+  })
+
+  it('ConfigService reads the configuration it is given, when built and when serialized', async () => {
+    expectNothingRaw(
+      await sweep((ticker) => () => {
+        const service = new ConfigService(
+          hostile({ app: { name: 'x' }, db: { port: 5 } }, ticker) as never
+        )
+        service.toJSON()
+        service.get('app.name' as never)
+        service.has('db.port' as never)
+      })
     )
   })
 

@@ -53,7 +53,11 @@ const ESCAPED: ReadonlyArray<readonly [string, string]> = [
   ['U+2069', '\u2069'],
   ['U+206A', '\u206a'],
   ['U+206F', '\u206f'],
-  ['BOM U+FEFF', '\ufeff']
+  ['BOM U+FEFF', '\ufeff'],
+  ['lone high surrogate U+D800', '\ud800'],
+  ['lone high surrogate U+DBFF', '\udbff'],
+  ['lone low surrogate U+DC00', '\udc00'],
+  ['lone low surrogate U+DFFF', '\udfff']
 ]
 
 const LEFT_ALONE: ReadonlyArray<readonly [string, string]> = [
@@ -71,6 +75,8 @@ const LEFT_ALONE: ReadonlyArray<readonly [string, string]> = [
   ['U+205F', '\u205f'],
   ['U+2070', '\u2070'],
   ['U+FEFE', '\ufefe'],
+  ['U+D7FF', '\ud7ff'],
+  ['private use U+E000', '\ue000'],
   ['an accented letter', 'é'],
   ['an emoji', '😀']
 ]
@@ -169,5 +175,13 @@ describe('the text of an issue', () => {
 
     expect(messageOf(`${'a'.repeat(191)}${tag}`)).toBe(`${'a'.repeat(191)}\\u{e0041}`)
     expect(messageOf(`${'a'.repeat(192)}${tag}`)).toBe(`${'a'.repeat(192)}…`)
+  })
+
+  it('writes each half of a reversed surrogate pair as its own escape', () => {
+    expect(messageOf('a\udc00\ud800b')).toBe('a\\udc00\\ud800b')
+  })
+
+  it('leaves a well-formed pair of surrogates, an emoji, as written', () => {
+    expect(messageOf('a\ud83d\ude00b')).toBe('a\ud83d\ude00b')
   })
 })

@@ -40,12 +40,12 @@ const MAX_FIELD_LENGTH = 200
 
 /**
  * Characters that change how text reads on a terminal or in a log line without being visible, by
- * Unicode category: the controls (`Cc`: C0, DEL, C1, so ESC, CR, LF and NEL), the format characters
+ * Unicode category: the controls (`Cc`: C0, DEL, C1, so ESC, CR, LF and NEL), a lone surrogate (`Cs`), the format characters
  * (`Cf`: the soft hyphen, the Arabic letter mark, the zero-width and directional marks, the
  * bidirectional embeddings and isolates, the invisible operators, the byte order mark), and the line
  * and paragraph separators (`Zl`, `Zp`).
  */
-const UNSAFE_CHARACTER = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u
+const UNSAFE_CHARACTER = /[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]/u
 
 /**
  * Make text taken from the host safe to print: each character that changes how a line reads is

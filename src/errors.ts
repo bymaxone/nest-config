@@ -74,20 +74,66 @@ function printable(text: string): string {
 /** The most issues one error carries; a longer list is refused rather than copied. */
 const MAX_ISSUES = 10_000
 
+/** The four fields an issue carries, in the order they are read. */
+const ISSUE_FIELDS = ['path', 'variable', 'code', 'message'] as const
+
+/**
+ * Run a read of the host's list. What it throws is the host's own code failing, and its message can carry
+ * the value, so it is refused with a message of the library's and kept as the cause.
+ *
+ * @typeParam TResult - What the read returns.
+ * @param read - The read of the list, of an entry or of a field.
+ * @returns What the read returned.
+ * @throws {TypeError} When the read threw, with the thrown value as the cause.
+ */
+function hostRead<TResult>(read: () => TResult): TResult {
+  try {
+    return read()
+  } catch (cause) {
+    throw new TypeError(
+      'BymaxConfigValidationError: reading the issues threw; its message is withheld because it can carry the value',
+      { cause }
+    )
+  }
+}
+
+/**
+ * Copy one issue: each field is read once, must be a string, and is written escaped and bounded.
+ *
+ * @param issue - The entry the host listed.
+ * @param index - Its position in the list, for the refusal.
+ * @returns The frozen copy with the four contract fields.
+ * @throws {TypeError} When a field is not a string.
+ */
+function copyIssue(issue: object, index: number): ConfigIssue {
+  const fields = ISSUE_FIELDS.map((field) => {
+    const value = hostRead(() => Reflect.get(issue, field) as unknown)
+    if (typeof value !== 'string') {
+      throw new TypeError(
+        `BymaxConfigValidationError: issue ${index} field ${field} must be a string`
+      )
+    }
+    return printable(value)
+  })
+  const [path, variable, code, message] = fields as [string, string, string, string]
+  return Object.freeze({ path, variable, code: code as ConfigIssue['code'], message })
+}
+
 /**
  * Copy a list of issues by index, the way no iterator the list answers can shorten it: the length is read
  * once and must be a whole number up to {@link MAX_ISSUES}, each index is read once, and each field of an
  * issue is read once. A list that claims no entries yet lists keys of its own is the empty copy of a
- * non-empty list, and is refused, as is an entry that is not an object.
+ * non-empty list, and is refused, as is an entry that is not an object. A read of the host's that throws
+ * is refused with its cause.
  *
  * @param issues - The issues the host handed to the constructor.
  * @returns The issues, each a frozen object with the four contract fields, escaped and bounded.
- * @throws {TypeError} When the length is not a whole number, an entry is not an object, or the list is
- * claimed empty while it lists keys.
+ * @throws {TypeError} When the length is not a whole number, an entry is not an object, a field is not a
+ * string, the list is claimed empty while it lists keys, or a read threw.
  * @throws {RangeError} When the list is longer than {@link MAX_ISSUES}.
  */
 function copyIssues(issues: ReadonlyArray<ConfigIssue>): ReadonlyArray<ConfigIssue> {
-  const length = issues.length as unknown
+  const length = hostRead(() => issues.length as unknown)
   if (typeof length !== 'number' || !Number.isInteger(length) || length < 0) {
     throw new TypeError(
       'BymaxConfigValidationError: issues must be a list with a whole-number length'
@@ -98,24 +144,16 @@ function copyIssues(issues: ReadonlyArray<ConfigIssue>): ReadonlyArray<ConfigIss
       `BymaxConfigValidationError: at most ${MAX_ISSUES} issues, received ${length}`
     )
   }
-  if (length === 0 && Object.keys(issues).length > 0) {
+  if (length === 0 && hostRead(() => Object.keys(issues)).length > 0) {
     throw new TypeError('BymaxConfigValidationError: issues claims no entries but lists some')
   }
   const copy: ConfigIssue[] = []
   for (let index = 0; index < length; index += 1) {
-    const issue = Reflect.get(issues, index) as unknown
+    const issue = hostRead(() => Reflect.get(issues, index) as unknown)
     if (typeof issue !== 'object' || issue === null) {
       throw new TypeError(`BymaxConfigValidationError: issue ${index} must be an object`)
     }
-    const { path, variable, code, message } = issue as ConfigIssue
-    copy.push(
-      Object.freeze({
-        path: printable(path),
-        variable: printable(variable),
-        code,
-        message: printable(message)
-      })
-    )
+    copy.push(copyIssue(issue, index))
   }
   return copy
 }

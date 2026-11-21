@@ -165,3 +165,92 @@ describe('the length and the entries of a list of issues', () => {
     )
   })
 })
+
+describe('the host code that reads a list of issues', () => {
+  const SENTINEL = 'sentinel-value-never-printed'
+  const WITHHELD =
+    'BymaxConfigValidationError: reading the issues threw; its message is withheld because it can carry the value'
+
+  /** A host error whose message carries a value no refusal may print. */
+  const hostError = new Error(SENTINEL)
+
+  it.each([
+    [
+      'the length',
+      new Proxy([issue], {
+        get: (target, key, receiver) => {
+          if (key === 'length') throw hostError
+          return Reflect.get(target, key, receiver) as unknown
+        }
+      })
+    ],
+    [
+      'the keys of a list that claims no entries',
+      new Proxy(
+        { length: 0 },
+        {
+          ownKeys: () => {
+            throw hostError
+          }
+        }
+      )
+    ],
+    [
+      'an entry',
+      new Proxy([issue], {
+        get: (target, key, receiver) => {
+          if (key === '0') throw hostError
+          return Reflect.get(target, key, receiver) as unknown
+        }
+      })
+    ],
+    [
+      'a field of an entry',
+      [
+        {
+          ...issue,
+          get message(): string {
+            throw hostError
+          }
+        }
+      ]
+    ]
+  ])(
+    'is refused with its cause when it throws reading %s, and the message is withheld',
+    (_name, list) => {
+      const error = thrownBy(() => new BymaxConfigValidationError(list as never))
+
+      expect(error).toBeInstanceOf(TypeError)
+      expect((error as Error).message).toBe(WITHHELD)
+      expect((error as Error).message).not.toContain(SENTINEL)
+      expect((error as Error).cause).toBe(hostError)
+    }
+  )
+
+  it.each([
+    ['path', 7],
+    ['variable', ['A', 'B']],
+    ['code', undefined],
+    ['code', 5],
+    ['message', { toString: () => SENTINEL }]
+  ])('refuses an entry whose %s is not a string, naming the field and no value', (field, value) => {
+    const error = thrownBy(
+      () => new BymaxConfigValidationError([{ ...issue }, { ...issue, [field]: value }] as never)
+    )
+
+    expect(error).toBeInstanceOf(TypeError)
+    expect((error as Error).message).toBe(
+      `BymaxConfigValidationError: issue 1 field ${field} must be a string`
+    )
+  })
+
+  it('writes the code like the other fields: escaped and bounded', () => {
+    const error = new BymaxConfigValidationError([
+      { ...issue, code: `a\nb${'x'.repeat(300)}` } as never
+    ])
+
+    const code = (error.issues[0] as ConfigIssue).code as string
+    expect(code.startsWith('a\\u000ab')).toBe(true)
+    expect(code.length).toBeLessThanOrEqual(201)
+  })
+})

@@ -199,8 +199,9 @@ function applyOverrides<TShape extends EnvShape>(
  * a leaf the caller did override keeps its own description. So does an issue that names no
  * leaf (a rule on a namespace or on the whole schema, whose path has no `.`): there is no
  * leaf to point at, and the rule may as well have failed on a value the caller supplied. A leaf is
- * recognised by the path and variable its issue carries, not by the shape of the path, so a name cut at
- * the bound cannot turn a leaf issue into a namespace one.
+ * matched to its issue by the path and variable the issue carries. A name cut at the bound can lose the
+ * dot of a path, and the issue is then indistinguishable from one on its namespace, so it keeps its own
+ * description rather than be taken for a leaf it may not be.
  *
  * @param error - The validation error of the synthesized source.
  * @param leaves - Every leaf of the schema by the identity its issues carry, with whether the caller
@@ -213,7 +214,7 @@ function explainUnsatisfiedLeaves(
 ): BymaxConfigValidationError {
   return new BymaxConfigValidationError(
     error.issues.map((issue) =>
-      leaves.get(identityOf(issue)) !== false
+      !issue.path.includes('.') || leaves.get(identityOf(issue)) !== false
         ? issue
         : {
             ...issue,

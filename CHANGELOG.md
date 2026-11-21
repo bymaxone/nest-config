@@ -38,7 +38,9 @@ as the GitHub Release body, so each released version needs a matching
   escaped.** `createTestConfig` and `configTestingModule` match the leaves the caller overrode with the
   leaves of the issues by path and variable together, in the escaped, bounded form the issues carry, so
   leaves whose variable names alone read alike are told apart by their path. Leaves that read alike in
-  both once reported cannot be told apart by their issues, and count as overridden when either was.
+  both once reported cannot be told apart by their issues, and count as overridden when either was. An
+  issue whose path lost its dot to the bound is left as it is, since it cannot be told from one on a
+  namespace.
 
 ### Tests
 

@@ -331,32 +331,35 @@ describe('createTestConfig with a variable name that the report escapes or cuts'
     expect(messages['database.second']).toContain('no placeholder satisfies')
   })
 
-  it('still guides a leaf whose namespace name is cut before the dot of its path', () => {
-    /** The path of the issue reads as a namespace alone once cut, yet the leaf is declared and guided. */
-    const named = defineEnv({
-      ['N'.repeat(205)]: z.object({ port: z.coerce.number().int().min(10).max(5) })
-    })
+  it.each(['N'.repeat(205) + '_PORT', 'N'.repeat(205) + '_*'])(
+    'does not take an issue on a namespace for a leaf when the namespace name is cut (%#)',
+    (env) => {
+      /** Cut at the bound, the path of the namespace issue and of the leaf issue read the same; neither is guided. */
+      const named = defineEnv({
+        ['N'.repeat(205)]: z
+          .object({ port: z.coerce.number().int().min(10).max(5).meta({ env }) })
+          .superRefine((_value, ctx) => ctx.addIssue({ code: 'custom', message: 'namespace rule' }))
+      })
 
-    const thrown = outcome(() => createTestConfig(named))
+      const thrown = outcome(() => createTestConfig(named))
 
-    expect((thrown as BymaxConfigValidationError).issues[0]?.message).toContain(
-      'no placeholder satisfies'
-    )
-  })
+      const messages = (thrown as BymaxConfigValidationError).issues.map((issue) => issue.message)
+      expect(messages).toHaveLength(2)
+      for (const message of messages) expect(message).not.toContain('no placeholder satisfies')
+    }
+  )
 
   it('keeps the description of an issue that two leaves report alike when either was overridden', () => {
-    /** Cut paths and cut variables read the same, so nothing separates the leaves: no guidance is claimed. */
-    const namespace = 'N'.repeat(205)
+    /** Two leaf names share their first 200 characters, as do their variables: the issues read the same. */
+    const leaf = 'L'.repeat(205)
     const variable = 'V'.repeat(205)
     const named = defineEnv({
-      [`${namespace}a`]: z.object({
-        port: z.coerce
+      database: z.object({
+        [`${leaf}a`]: z.coerce
           .number()
           .int()
-          .meta({ env: `${variable}a` })
-      }),
-      [`${namespace}b`]: z.object({
-        port: z.coerce
+          .meta({ env: `${variable}a` }),
+        [`${leaf}b`]: z.coerce
           .number()
           .int()
           .min(10)
@@ -366,11 +369,38 @@ describe('createTestConfig with a variable name that the report escapes or cuts'
     })
 
     const thrown = outcome(() =>
-      createTestConfig(named, { [`${namespace}a`]: { port: 'not-a-number' } } as never)
+      createTestConfig(named, { database: { [`${leaf}a`]: 'not-a-number' } } as never)
     )
 
-    for (const issue of (thrown as BymaxConfigValidationError).issues) {
-      expect(issue.message).not.toContain('no placeholder satisfies')
-    }
+    const issues = (thrown as BymaxConfigValidationError).issues
+    expect(issues).toHaveLength(2)
+    for (const issue of issues) expect(issue.message).not.toContain('no placeholder satisfies')
+  })
+
+  it('guides both of two leaves that report alike when neither was overridden', () => {
+    const leaf = 'L'.repeat(205)
+    const variable = 'V'.repeat(205)
+    const named = defineEnv({
+      database: z.object({
+        [`${leaf}a`]: z.coerce
+          .number()
+          .int()
+          .min(10)
+          .max(5)
+          .meta({ env: `${variable}a` }),
+        [`${leaf}b`]: z.coerce
+          .number()
+          .int()
+          .min(10)
+          .max(5)
+          .meta({ env: `${variable}b` })
+      })
+    })
+
+    const thrown = outcome(() => createTestConfig(named))
+
+    const issues = (thrown as BymaxConfigValidationError).issues
+    expect(issues).toHaveLength(2)
+    for (const issue of issues) expect(issue.message).toContain('no placeholder satisfies')
   })
 })

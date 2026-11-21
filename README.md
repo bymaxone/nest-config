@@ -307,6 +307,16 @@ instance, works like a literal. `forRoot` and `forRootAsync` hand the `BYMAX_CON
 `schema`, `source`, `onValidationError` and `strict`, whichever of `forRoot`, `useFactory`, `useClass` or
 `useExisting` produced them; any other key is left behind.
 
+Code of yours that runs while the module reads these values is refused when it throws. That covers an
+accessor or a Proxy among the options, in `schema` or in `source`, and the object an options factory or a
+`useClass` provider returns, including a `then` that throws while it is awaited. A factory that throws or
+rejects is refused the same way. The refusal is a `BymaxConfigValidationError` of one issue that names the
+step (`reading the options of forRoot`, `reading the schema`, `reading the source`, `reading what the
+options factory returned`) and the class of what was thrown, never its message. The original is the
+non-enumerable `cause`: read it from there, and note that `util.inspect` and an uncaught-exception report
+print it. A `BymaxConfigValidationError` your factory throws passes unchanged. `source` and `strict` are
+read once.
+
 The options must be objects: the argument of `forRoot` and `forRootAsync`, and what an asynchronous
 provider resolves to. A primitive, `null`, a function or a class with static options throws a `TypeError`
 that names the method and the type received, never the value.

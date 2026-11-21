@@ -285,32 +285,47 @@ describe('the BYMAX_CONFIG provider factory and the validation hook', () => {
     expect(error.cause).toBe('plain string')
   })
 
-  it('propagates a non-validation error without invoking the hook', async () => {
+  it('refuses a schema that cannot be read with the library error and reports it to the hook', async () => {
     /**
-     * Non-validation failure bypasses observability.
-     *
-     * The hook exists to report validation issues; an error that is not a
-     * BymaxConfigValidationError carries no issue list, so it must propagate untouched and
-     * leave the hook uncalled. A schema rule that throws is reported as a validation issue,
-     * so this failure comes from reading the schema itself: a namespace whose metadata cannot
-     * be read.
+     * Reading the schema runs the host's code (here a namespace whose metadata throws). The
+     * failure is refused as a BymaxConfigValidationError with the original as its cause, so the
+     * hook sees it once like any other validation failure.
      */
     const namespace = z.object({ port: z.string() })
+    const failure = new RangeError('meta failed')
     Object.defineProperty(namespace, 'meta', {
       value: () => {
-        throw new RangeError('meta failed')
+        throw failure
       }
     })
     const hook = jest.fn()
 
-    const outcome = provide({
+    const error = await rejection({
       schema: defineEnv({ server: namespace }),
       source: { SERVER_PORT: 'x' },
       onValidationError: hook
     })
 
-    await expect(outcome).rejects.toThrow(RangeError)
-    await expect(outcome).rejects.not.toBeInstanceOf(BymaxConfigValidationError)
+    expect(error.cause).toBe(failure)
+    expect(error.issues[0]?.message).toBe(
+      'reading the schema threw RangeError; its message is withheld because it can carry the value'
+    )
+    expect(hook).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not call the hook for an error that is not a validation error', async () => {
+    /** A refused option is a TypeError for the caller to fix, not an issue list to report. */
+    const hook = jest.fn()
+
+    await expect(
+      provide({
+        schema,
+        source: { SERVER_PORT: '1' },
+        strict: 'yes',
+        onValidationError: hook
+      } as never)
+    ).rejects.toThrow(TypeError)
+
     expect(hook).not.toHaveBeenCalled()
   })
 })
@@ -404,11 +419,10 @@ describe('the log event written when the validation fails', () => {
   it('writes nothing for an error that is not a validation error', async () => {
     const error = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
     const failing = defineEnv({ server: z.object({ port: z.coerce.number() }) })
-    jest.spyOn(failing, 'shape', 'get').mockImplementation(() => {
-      throw new TypeError('boom')
-    })
 
-    await expect(provide({ schema: failing, source: {} })).rejects.toThrow('boom')
+    await expect(provide({ schema: failing, source: {}, strict: 'yes' } as never)).rejects.toThrow(
+      TypeError
+    )
 
     expect(error).not.toHaveBeenCalled()
   })

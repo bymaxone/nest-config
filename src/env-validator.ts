@@ -521,8 +521,45 @@ export function guarded<T>(subject: string, read: () => T): T {
   try {
     return read()
   } catch (thrown) {
-    throw withCause(new BymaxConfigValidationError([toWithheldIssue(subject, thrown)]), thrown)
+    throw refusalOf(subject, thrown)
   }
+}
+
+/**
+ * Await what the host's code produces, and refuse with a library error when producing or settling it
+ * throws. Awaiting looks up `then` on the result, so a Proxy or a getter that throws there is the
+ * host's code running inside the await, and it is covered like any other read.
+ *
+ * The result is handed back in a box: an `async` function that returned the host's object itself would
+ * have it unwrapped again, outside this guard.
+ *
+ * @param subject - What was being produced, as the start of the message.
+ * @param run - The step, which produces the value or a promise of it.
+ * @returns The settled value, in a box.
+ * @throws {BymaxConfigValidationError} When the step threw, rejected, or its result threw while settling.
+ */
+export async function guardedResolve<T>(
+  subject: string,
+  run: () => T | PromiseLike<T>
+): Promise<{ readonly value: T }> {
+  try {
+    return { value: await run() }
+  } catch (thrown) {
+    throw refusalOf(subject, thrown)
+  }
+}
+
+/**
+ * The error a failed read of the host's values becomes: a library error passes unchanged, anything
+ * else is refused as one withheld issue with the original as the `cause`.
+ *
+ * @param subject - What was being read, as the start of the message.
+ * @param thrown - Whatever the host's code threw.
+ * @returns The error to throw.
+ */
+function refusalOf(subject: string, thrown: unknown): BymaxConfigValidationError {
+  if (thrown instanceof BymaxConfigValidationError) return thrown
+  return withCause(new BymaxConfigValidationError([toWithheldIssue(subject, thrown)]), thrown)
 }
 
 /**
@@ -572,17 +609,23 @@ export function validateEnv<TShape extends EnvShape>(
   source: EnvSource,
   options?: EnvValidationOptions
 ): EnvOutput<TShape> {
-  const bindings = resolveSourceNames(schema)
-  assertDistinctVariables(bindings)
+  // The schema is the host's too: a Proxy or a getter in it runs while its structure is read.
+  const { bindings, namespaces, prefixes, overrides } = guarded('reading the schema', () => {
+    const resolved = resolveSourceNames(schema)
+    assertDistinctVariables(resolved)
+    return {
+      bindings: resolved,
+      namespaces: Object.keys(schema.shape),
+      prefixes: resolveNamespacePrefixes(schema),
+      overrides: [
+        ...unusableOverrideIssues(schema, resolved),
+        ...coercedBooleanIssues(schema, resolved)
+      ]
+    }
+  })
   const sourceMap = new Map(guarded('reading the source', () => Object.entries(source)))
-  const namespaces = Object.keys(schema.shape)
   const candidate = buildCandidate(namespaces, collectPresentLeaves(bindings, sourceMap))
-  const prefixes = resolveNamespacePrefixes(schema)
   const unknown = options?.strict === true ? detectUnknownKeys(prefixes, bindings, sourceMap) : []
-  const overrides = [
-    ...unusableOverrideIssues(schema, bindings),
-    ...coercedBooleanIssues(schema, bindings)
-  ]
   let result: ReturnType<typeof schema.safeParse>
   try {
     result = schema.safeParse(candidate)

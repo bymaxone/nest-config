@@ -227,22 +227,31 @@ describe('createTestConfig when the schema itself throws', () => {
     expect(error?.message).not.toContain('pass an override')
   })
 
-  it('rethrows an error that is not a validation error, untouched', () => {
+  it('refuses a schema that cannot be read without guidance about overrides', () => {
     /**
-     * Only a BymaxConfigValidationError carries issues to explain. An error from reading the
-     * schema itself, here a namespace whose metadata cannot be read, reaches the caller as it
-     * was thrown instead of being wrapped in guidance about overrides.
+     * Only an issue on a leaf the caller left alone is explained. A failure of reading the
+     * schema itself, here a namespace whose metadata cannot be read, is refused with the library
+     * error and the original as its cause, without guidance about overrides.
      */
+    const failure = new RangeError('meta failed')
     const namespace = z.object({ v: z.string() })
     Object.defineProperty(namespace, 'meta', {
       value: () => {
-        throw new RangeError('meta failed')
+        throw failure
       }
     })
     const broken = defineEnv({ s: namespace })
 
-    expect(() => createTestConfig(broken)).toThrow(RangeError)
-    expect(() => createTestConfig(broken)).not.toThrow(BymaxConfigValidationError)
+    let thrown: unknown
+    try {
+      createTestConfig(broken)
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).toBeInstanceOf(BymaxConfigValidationError)
+    expect((thrown as BymaxConfigValidationError).cause).toBe(failure)
+    expect((thrown as BymaxConfigValidationError).message).not.toContain('pass an override')
   })
 })
 

@@ -207,16 +207,18 @@ function explainUnsatisfiedLeaves(
   error: BymaxConfigValidationError,
   nodes: ReadonlyMap<string, boolean | null>
 ): BymaxConfigValidationError {
-  return new BymaxConfigValidationError(
-    error.issues.map((issue) =>
-      nodes.get(issue.path) !== false
-        ? issue
-        : {
-            ...issue,
-            message: `no placeholder satisfies this leaf (${issue.message}); pass an override for ${issue.path}`
-          }
-    )
+  const explained = error.issues.map((issue) =>
+    nodes.get(issue.path) !== false
+      ? issue
+      : {
+          ...issue,
+          message: `no placeholder satisfies this leaf (${issue.message}); pass an override for ${issue.path}`
+        }
   )
+  // An error with nothing to explain is the caller's to see as it is, with the cause it may carry.
+  return explained.every((issue, index) => issue === error.issues[index])
+    ? error
+    : new BymaxConfigValidationError(explained)
 }
 
 /**
@@ -246,9 +248,9 @@ export function prepareTestConfig<TShape extends EnvShape>(
   try {
     return { source, config: createValidatedConfig({ schema, source }) }
   } catch (error) {
-    throw error instanceof BymaxConfigValidationError
-      ? explainUnsatisfiedLeaves(error, nodes)
-      : error
+    // The source is a plain record and the options are the helper's own, so the only failure left is
+    // the validation error: reading the schema is refused with that error too.
+    throw explainUnsatisfiedLeaves(error as BymaxConfigValidationError, nodes)
   }
 }
 

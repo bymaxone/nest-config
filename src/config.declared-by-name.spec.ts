@@ -37,6 +37,11 @@ function withBareAncestor(data: Record<string, unknown>): Record<string, unknown
   >
 }
 
+/** The values of the leaves of a namespace of a configuration, or none when it has no such namespace. */
+function leavesOf(config: object, namespace: string): unknown[] {
+  return Object.values((Reflect.get(config, namespace) ?? {}) as object)
+}
+
 /** Runs `run` and returns what it threw, or fails when it did not throw. */
 function thrownBy(run: () => unknown): unknown {
   try {
@@ -129,6 +134,47 @@ describe('the overrides are found by the names the schema declares', () => {
 
     expect(config.app?.name).toBe('o')
   })
+
+  describe.each(['constructor', 'toString', 'valueOf', 'hasOwnProperty', '__proto__'])(
+    'a name that matches a member of Object.prototype: %s',
+    (name) => {
+      it('is a namespace of the schema that the overrides need not mention', () => {
+        const named = defineEnv(
+          Object.fromEntries([[name, z.object({ name: z.string().default('n') })]]) as never
+        )
+
+        expect(() => createTestConfig(named, {} as never)).not.toThrow()
+      })
+
+      it('is a leaf whose value is not the source text of an inherited function', () => {
+        const named = defineEnv({
+          app: z.object(Object.fromEntries([[name, z.string().optional()]]))
+        } as never)
+        let leaves: unknown[] = []
+        try {
+          leaves = leavesOf(createTestConfig(named, { app: {} } as never), 'app')
+        } catch {
+          // A leaf with such a name may be reported as missing; what must not happen is a value.
+        }
+
+        expect(leaves.join()).not.toContain('native code')
+      })
+    }
+  )
+
+  it.each(['constructor', 'toString', 'valueOf', 'hasOwnProperty'])(
+    'still applies an override of the leaf %s when the object lists it',
+    (name) => {
+      const named = defineEnv({
+        app: z.object(Object.fromEntries([[name, z.string().optional()]]))
+      } as never)
+      const overrides = {
+        app: Object.defineProperty({}, name, { value: 'given', enumerable: true })
+      }
+
+      expect(leavesOf(createTestConfig(named, overrides as never), 'app')).toEqual(['given'])
+    }
+  )
 
   it.each([
     ['a class instance', () => new (class Holder {})()],

@@ -45,8 +45,8 @@ export type ConfigOverrides<TShape extends EnvShape> = {
  *
  * Arrays, `Map`, `Date` and class instances are objects too, but their own entries are not
  * leaves: a `Map` or a `Date` has none, an array's are its indices, and an instance's are fields
- * that were never written as overrides. A bare ancestor holds data and no behaviour, so an object built
- * on one is plain.
+ * that were never written as overrides. A prototype with no prototype of its own ends the chain, as
+ * `Object.prototype` does, so an object built on one is plain.
  *
  * @param value - The value to test.
  * @returns True when the value is a plain object.
@@ -62,8 +62,8 @@ function isPlainObject(value: unknown): value is Readonly<Record<string, unknown
 /**
  * The entries of an overrides object, each property read once and by name. The names are the own ones,
  * enumerable or not, and then those the schema declares that the object does not list, so an override
- * held by a get-only Proxy or by a bare ancestor is found; a declared name that answers `undefined` is
- * not supplied. At the root, the non-enumerable `toJSON` function is left out: it is the serializer a
+ * held by a get-only Proxy or by a bare ancestor is found; a declared name that answers `undefined`, or that
+ * only the chain of Object.prototype answers, is not supplied. At the root, the non-enumerable `toJSON` function is left out: it is the serializer a
  * validated configuration carries, not a namespace, and a configuration is a valid overrides object.
  * Nothing else is left out.
  *
@@ -82,12 +82,20 @@ function entriesOf(
     const descriptor = Object.getOwnPropertyDescriptor(value, name)
     return descriptor?.enumerable !== false || typeof descriptor.value !== 'function'
   })
-  const unlisted = declared.filter((name) => !listed.includes(name))
+  const prototype = Object.getPrototypeOf(value) as unknown
+  const unlisted = declared
+    .filter((name) => !listed.includes(name))
+    .map((name): readonly [string, unknown] => [name, Reflect.get(value, name)])
+    // What the chain answers for a name that matches a member of Object.prototype (a function, or the
+    // prototype itself under `__proto__`) is not an override: it is what every object inherits.
+    .filter(
+      ([name, held]) =>
+        held !== undefined &&
+        !(name in Object.prototype && (typeof held === 'function' || held === prototype))
+    )
   return [
     ...listed.map((name): readonly [string, unknown] => [name, Reflect.get(value, name)]),
     ...unlisted
-      .map((name): readonly [string, unknown] => [name, Reflect.get(value, name)])
-      .filter(([, held]) => held !== undefined)
   ]
 }
 

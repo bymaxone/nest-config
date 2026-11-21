@@ -15,6 +15,8 @@ import { BymaxConfigModule } from './config.module'
 import { bymaxConfigProvider, createValidatedConfig } from './config.providers'
 import { defineEnv } from './define-env'
 import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
+import { configTestingModule } from './testing/config-testing.module'
+import { createTestConfig } from './testing/create-test-config'
 
 const schema = defineEnv({ app: z.object({ name: z.string() }) })
 const hostError = new Error('HOST RAW SECRET')
@@ -262,5 +264,63 @@ describe('an options factory whose result runs host code that throws', () => {
     const options = await factory()
 
     expect(Object.keys(options).sort()).toEqual(['schema', 'source'])
+  })
+})
+
+describe('the test helpers when the schema or the overrides run host code that throws', () => {
+  const broken = () =>
+    Object.defineProperty(defineEnv({ app: z.object({ name: z.string() }) }), 'shape', {
+      get: () => {
+        throw hostError
+      }
+    })
+
+  it.each([
+    ['a Proxy schema whose get trap throws', () => throwingProxy(schema)],
+    ['a schema whose shape getter throws', broken]
+  ])('createTestConfig and configTestingModule refuse %s', (_name, make) => {
+    for (const run of [
+      () => createTestConfig(make() as never),
+      () => configTestingModule(make() as never)
+    ]) {
+      const refusal = expectRefusal(thrownBy(run), 'reading the schema or the overrides')
+
+      expect(refusal.cause).toBe(hostError)
+    }
+  })
+
+  it('refuses a revoked Proxy as the schema', () => {
+    const refusal = expectRefusal(
+      thrownBy(() => createTestConfig(revokedProxy(schema))),
+      'reading the schema or the overrides'
+    )
+
+    expect(refusal.cause).toBeInstanceOf(TypeError)
+  })
+
+  it('refuses overrides held by a Proxy whose key listing throws', () => {
+    const overrides = new Proxy(
+      {},
+      {
+        ownKeys: () => {
+          throw hostError
+        }
+      }
+    )
+
+    const refusal = expectRefusal(
+      thrownBy(() => createTestConfig(schema, overrides as never)),
+      'reading the schema or the overrides'
+    )
+
+    expect(refusal.cause).toBe(hostError)
+  })
+
+  it('leaves the refusals of the helper itself unchanged', () => {
+    const error = thrownBy(() => createTestConfig(schema, { ghost: { x: '1' } } as never))
+
+    expect(error).toBeInstanceOf(BymaxConfigValidationError)
+    expect((error as BymaxConfigValidationError).issues[0]?.code).toBe(ConfigErrorCode.UNKNOWN_KEY)
+    expect((error as Error).cause).toBeUndefined()
   })
 })

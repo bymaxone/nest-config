@@ -28,6 +28,8 @@ as the GitHub Release body, so each released version needs a matching
   non-enumerable `cause`. It used to reach the caller raw, with no library code. A factory that throws or
   rejects with its own error is refused the same way, since a promise cannot tell that from a result
   that throws while it settles; a `BymaxConfigValidationError` it throws passes unchanged.
+  `createTestConfig` and `configTestingModule` refuse a schema or an overrides argument that throws the
+  same way.
 - **`createValidatedConfig` reads `source` once.** It read the option more than once, so an accessor
   that answered differently the second time validated `process.env` in place of the source it had
   handed over.
@@ -52,6 +54,8 @@ as the GitHub Release body, so each released version needs a matching
     original as `error.cause`. The same holds for a schema whose reading throws, which used to reach the
     caller as it was thrown and, being a validation error now, is reported to `onValidationError` and
     written as the `CONFIG_VALIDATION_FAILED` log event.
+  - The `./internal` subpath, which carries no compatibility promise, gains `guarded`, the step the guard
+    is built on.
 
 ### Tests
 

@@ -15,6 +15,7 @@ import {
   BymaxConfigValidationError,
   ConfigErrorCode,
   createValidatedConfig,
+  guarded,
   resolveSourceNames,
   unusableOverrideIssues
 } from '@bymax-one/nest-config/internal'
@@ -239,12 +240,19 @@ export function prepareTestConfig<TShape extends EnvShape>(
   schema: EnvSchema<TShape>,
   overrides?: ConfigOverrides<TShape>
 ): { readonly source: Record<string, string>; readonly config: Readonly<EnvOutput<TShape>> } {
-  const bindings = resolveSourceNames(schema)
-  assertDistinctVariables(bindings)
-  const unusable = unusableOverrideIssues(schema, bindings)
-  if (unusable.length > 0) throw new BymaxConfigValidationError(unusable)
-  const nodes = new Map<string, boolean | null>()
-  const source = applyOverrides(schema, synthesizePlaceholderSource(schema), overrides, nodes)
+  // The schema and the overrides are the caller's code too: reading them is refused like the schema read
+  // inside the validation, and the refusals this step throws itself pass unchanged.
+  const { source, nodes } = guarded('reading the schema or the overrides', () => {
+    const bindings = resolveSourceNames(schema)
+    assertDistinctVariables(bindings)
+    const unusable = unusableOverrideIssues(schema, bindings)
+    if (unusable.length > 0) throw new BymaxConfigValidationError(unusable)
+    const placed = new Map<string, boolean | null>()
+    return {
+      nodes: placed,
+      source: applyOverrides(schema, synthesizePlaceholderSource(schema), overrides, placed)
+    }
+  })
   try {
     return { source, config: createValidatedConfig({ schema, source }) }
   } catch (error) {

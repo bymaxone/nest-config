@@ -109,10 +109,13 @@ function buildCandidate(
   namespaces: readonly string[],
   present: readonly PresentLeaf[]
 ): Record<string, Record<string, string>> {
-  return Object.fromEntries(
+  // Objects with no prototype, so a name that matches a member of Object.prototype is absent, not inherited.
+  const bare = <T extends object>(entries: Array<[string, unknown]>): T =>
+    Object.assign(Object.create(null) as T, Object.fromEntries(entries))
+  return bare(
     namespaces.map((namespace) => [
       namespace,
-      Object.fromEntries(
+      bare(
         present
           .filter((leaf) => leaf.namespace === namespace)
           .map((leaf) => [leaf.leaf, leaf.value])
@@ -451,6 +454,27 @@ export function coercedBooleanIssues<TShape extends EnvShape>(
   }))
 }
 
+/**
+ * Describe every leaf whose namespace or own name is `__proto__`.
+ *
+ * Assigning that key sets a prototype instead of creating a property, so the parsed value would be
+ * dropped from the configuration without a word. The refusal is a mistake in the schema, decided
+ * before the parse and reported beside the violations of the source.
+ *
+ * @param bindings - Every leaf binding of the schema, from `resolveSourceNames`.
+ * @returns One issue per affected leaf, in schema order.
+ */
+export function protoNamedIssues(bindings: ReadonlyArray<SourceBinding>): ConfigIssue[] {
+  return bindings
+    .filter(({ path }) => path.split('.').includes('__proto__'))
+    .map(({ path, variable }) => ({
+      path,
+      variable,
+      code: ConfigErrorCode.INVALID,
+      message: 'a namespace or leaf cannot be named __proto__: it cannot be held as a property'
+    }))
+}
+
 /** A constructor name that is plain code: an identifier, which a thrown object cannot smuggle text into. */
 const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/
 
@@ -584,9 +608,9 @@ export function withCause<T extends Error>(error: T, cause: unknown): T {
  * Read the source into a map, each property once and by name: the keys come from the listing, and a
  * declared variable that is not in it is read too, so one held as a non-enumerable or inherited property,
  * or answered only by the get trap of a Proxy, is found. A value found by name is validated whatever its
- * type, as a listed one is. The one thing never taken is a member of Object.prototype that the chain
- * answers for a name that happens to match one (`toString`, `constructor`), which is not a value of the
- * source unless it is text.
+ * type, as a listed one is. The one thing never taken is what a plain object itself answers for a name
+ * that matches a member of Object.prototype (`toString`, `constructor`): that member is not a value of
+ * the source. Any other value held under such a name is validated.
  *
  * @param source - The record the host supplied.
  * @param bindings - Every leaf binding of the schema, whose variables are read by name.
@@ -604,11 +628,8 @@ function readSource(
     for (const { variable } of bindings) {
       if (read.has(variable)) continue
       const value = Reflect.get(source, variable) as string | undefined
-      // `in Object.prototype` is a name test: the member itself is what the chain would answer.
-      read.set(
-        variable,
-        variable in Object.prototype && typeof value !== 'string' ? undefined : value
-      )
+      // What a plain object answers for the name is the chain's member, not the host's value.
+      read.set(variable, value === Reflect.get({}, variable) ? undefined : value)
     }
     return read
   })
@@ -653,7 +674,8 @@ export function validateEnv<TShape extends EnvShape>(
       prefixes: resolveNamespacePrefixes(schema),
       overrides: [
         ...unusableOverrideIssues(schema, resolved),
-        ...coercedBooleanIssues(schema, resolved)
+        ...coercedBooleanIssues(schema, resolved),
+        ...protoNamedIssues(resolved)
       ]
     }
   })

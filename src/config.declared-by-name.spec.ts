@@ -156,7 +156,7 @@ describe('the overrides are found by the names the schema declares', () => {
     expect(config.app?.name).toBe('o')
   })
 
-  describe.each(['constructor', 'toString', 'valueOf', 'hasOwnProperty', '__proto__'])(
+  describe.each(['constructor', 'toString', 'valueOf', 'hasOwnProperty'])(
     'a name that matches a member of Object.prototype: %s',
     (name) => {
       it('is a namespace of the schema that the overrides need not mention', () => {

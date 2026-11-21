@@ -15,6 +15,31 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.20] - 2026-11-21
+
+### Fixed
+
+- **A leaf or namespace named like a member of `Object.prototype` takes its default.** A leaf named
+  `constructor`, `toString`, `valueOf` or `hasOwnProperty` was reported as missing even with a default,
+  because the parse candidate inherited the member; the candidate has no prototype now (#223).
+- **A declared source variable named like such a member is validated whatever it holds.** A number,
+  a boolean, `null` or an array held under `toString` or `valueOf` as a non-enumerable property, inherited
+  from a parent with no prototype or behind a `Proxy` was replaced by the default. Only what a plain
+  object itself answers for the name is ignored.
+
+### Changed
+
+- A namespace or leaf named `__proto__` is refused with an `INVALID` issue. It could not be held as a
+  property, so its value was dropped without a word.
+  The issue reads `a namespace or leaf cannot be named __proto__: it cannot be held as a property`.
+- A source from another realm that declares a variable named like a member of `Object.prototype`
+  (`toString`) is validated, so the function it inherits from its own realm is refused rather than
+  ignored: this realm's member is the only one recognised. It fails closed.
+
+#### Apply to a derived backend
+
+Rename any namespace or leaf named `__proto__`; nothing else needs a change.
+
 ## [1.2.19] - 2026-11-21
 
 ### Fixed
@@ -1060,5 +1085,6 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.16]: https://github.com/bymaxone/nest-config/compare/v1.2.15...v1.2.16
 [1.2.17]: https://github.com/bymaxone/nest-config/compare/v1.2.16...v1.2.17
 [1.2.18]: https://github.com/bymaxone/nest-config/compare/v1.2.17...v1.2.18
+[1.2.20]: https://github.com/bymaxone/nest-config/compare/v1.2.19...v1.2.20
 [1.2.19]: https://github.com/bymaxone/nest-config/compare/v1.2.18...v1.2.19
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.19...HEAD
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.20...HEAD

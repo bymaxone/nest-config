@@ -11,6 +11,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 
 import { BYMAX_CONFIG } from './config.tokens'
+import { guarded } from './env-validator'
 import type { Path, PathValue } from './types'
 
 /**
@@ -72,13 +73,16 @@ export class ConfigService<TConfig> {
    */
   public constructor(@Inject(BYMAX_CONFIG) config: Readonly<TConfig>) {
     this.#config = config
-    const leaves = new Map<string, unknown>()
-    for (const [namespace, value] of Object.entries(config as Record<string, unknown>)) {
-      for (const [leaf, leafValue] of Object.entries(value as Record<string, unknown>)) {
-        leaves.set(`${namespace}.${leaf}`, leafValue)
+    // An injected object is the host's to supply, so reading it is refused like any other host read.
+    this.#leaves = guarded('reading the configuration', () => {
+      const leaves = new Map<string, unknown>()
+      for (const [namespace, value] of Object.entries(config as Record<string, unknown>)) {
+        for (const [leaf, leafValue] of Object.entries(value as Record<string, unknown>)) {
+          leaves.set(`${namespace}.${leaf}`, leafValue)
+        }
       }
-    }
-    this.#leaves = leaves
+      return leaves
+    })
   }
 
   /**
@@ -97,7 +101,9 @@ export class ConfigService<TConfig> {
   public toJSON(): { readonly service: string; readonly namespaces: readonly string[] } {
     return {
       service: 'ConfigService',
-      namespaces: Object.keys(this.#config as Record<string, unknown>)
+      namespaces: guarded('reading the configuration', () =>
+        Object.keys(this.#config as Record<string, unknown>)
+      )
     }
   }
 

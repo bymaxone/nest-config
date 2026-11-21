@@ -40,12 +40,12 @@ const MAX_FIELD_LENGTH = 200
 
 /**
  * Characters that change how text reads on a terminal or in a log line without being visible, by
- * Unicode category: the controls (`Cc`: C0, DEL, C1, so ESC, CR, LF and NEL), the format characters
+ * Unicode category: the controls (`Cc`: C0, DEL, C1, so ESC, CR, LF and NEL), a lone surrogate (`Cs`), the format characters
  * (`Cf`: the soft hyphen, the Arabic letter mark, the zero-width and directional marks, the
  * bidirectional embeddings and isolates, the invisible operators, the byte order mark), and the line
  * and paragraph separators (`Zl`, `Zp`).
  */
-const UNSAFE_CHARACTER = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u
+const UNSAFE_CHARACTER = /[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]/u
 
 /**
  * Make text taken from the host safe to print: each character that changes how a line reads is
@@ -177,4 +177,32 @@ export class BymaxConfigValidationError extends Error {
     Object.defineProperty(this, 'code', { writable: false, configurable: false })
     Object.defineProperty(this, 'issues', { writable: false, configurable: false })
   }
+}
+
+/** The errors the library itself raised, so a host-built error of the same class is told apart. */
+const raised = new WeakSet<object>()
+
+/**
+ * Build a validation error the library raises, and remember it. The class is public, so a host can
+ * build and throw one of its own from code the library runs; only the errors made here pass through a
+ * guard unchanged.
+ *
+ * @param issues - Every collected violation.
+ * @returns The error, marked as the library's own.
+ */
+export function libraryError(issues: ReadonlyArray<ConfigIssue>): BymaxConfigValidationError {
+  const error = new BymaxConfigValidationError(issues)
+  raised.add(error)
+  return error
+}
+
+/**
+ * Whether a thrown value is an error the library raised itself. A set lookup runs none of the value's
+ * own code, which a prototype check would, and answers false for anything that is not an object.
+ *
+ * @param thrown - Whatever the host's code threw.
+ * @returns True only for an error built by {@link libraryError}.
+ */
+export function isLibraryError(thrown: unknown): thrown is BymaxConfigValidationError {
+  return raised.has(thrown as object)
 }

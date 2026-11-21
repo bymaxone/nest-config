@@ -314,8 +314,15 @@ rejects is refused the same way. The refusal is a `BymaxConfigValidationError` o
 step (`reading the options of forRoot`, `reading the schema`, `reading the source`, `reading what the
 options factory returned`) and the class of what was thrown, never its message. The original is the
 non-enumerable `cause`: read it from there, and note that `util.inspect` and an uncaught-exception report
-print it. A `BymaxConfigValidationError` your factory throws passes unchanged. `source` and `strict` are
-read once.
+print it. A `BymaxConfigValidationError` that your own code builds and throws is refused like any other
+error, with it as the `cause`; only one the library raised itself, inside a call your factory makes to it,
+passes unchanged. `source` and `strict` are read once.
+
+Two things are not covered. A factory result, or a `then`, that never settles holds the boot, like a
+factory that never resolves: the module sets no timeout, so give such a call its own. And a rule of your
+schema that throws is reported as one issue for the whole schema (`a rule threw <class>`) with no
+`cause`, on purpose: what a rule throws can quote the value it received, and the cause is printed with
+the error.
 
 The options must be objects: the argument of `forRoot` and `forRootAsync`, and what an asynchronous
 provider resolves to. A primitive, `null`, a function or a class with static options throws a `TypeError`
@@ -573,7 +580,11 @@ report.
 Its wording is yours, its form is not: in every field of an issue (the variable, the path and the
 message) a control character, a line or paragraph separator, and any other invisible format
 character (a zero-width or directional mark, the soft hyphen, the byte order mark) are written as a `\uXXXX` escape (`\u{XXXXX}` past U+FFFF), and a field whose output would pass 200 characters, an escape counting as its full length, is
-cut and ends with `…`, so a message or a variable name cannot rewrite or flood a log line.
+cut and ends with `…`, so a message or a variable name cannot rewrite or flood a log line. A lone
+surrogate is written as an escape too. Other characters stay as written: the spaces other than the plain
+one, the Hangul fillers, the variation selectors and the combining marks change no line break or order.
+A name that holds a literal backslash-`u` and four digits reads like the escape of the character it
+spells.
 
 ---
 
@@ -719,8 +730,11 @@ const config = createTestConfig(envSchema, {
 `createTestConfig<TShape>(schema: EnvSchema<TShape>, overrides?: ConfigOverrides<TShape>): Readonly<EnvOutput<TShape>>`
 and `configTestingModule<TShape>(schema: EnvSchema<TShape>, overrides?: ConfigOverrides<TShape>): DynamicModule`
 both throw a `BymaxConfigValidationError` when an override breaks a constraint or when no placeholder
-satisfies a leaf (that issue names the leaf to override); `configTestingModule` throws at the call, before any
-module is built. `ConfigOverrides<TShape>` is not exported by name.
+satisfies a leaf (that issue names the leaf to override, by the path it carries, which a path longer
+than 200 characters cuts); `configTestingModule` throws at the call, before any module is built. A schema
+or an overrides argument whose reading throws is refused as `reading the schema or the overrides`, with the
+original as `cause`, and an override key that matches no leaf is reported escaped and bounded, never with
+its value. `ConfigOverrides<TShape>` is not exported by name.
 
 `configTestingModule` registers the production `BymaxConfigModule` with a
 synthesized source, ready to drop into a Nest `TestingModule` graph:

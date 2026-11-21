@@ -20,11 +20,11 @@ as the GitHub Release body, so each released version needs a matching
 ### Fixed
 
 - **`new BymaxConfigValidationError(issues)` copies the list by index.** The constructor copied the
-  list through `map`, so a list whose iterator or `map` was replaced, such as an `Array` subclass, produced
-  an error with no issues and a report that said "0 issues". The length is now read once, each entry and
-  each field of an entry once, and a list that claims no entries while it lists some is refused with a
-  `TypeError`, as is a length that is not a whole number or an entry that is not an object. A list of more than
-  10 000 issues is refused with a `RangeError` before an entry is read.
+  list through its own `map`, so a list whose `map` answered an empty array, as an `Array` subclass can,
+  produced an error with no issues and a report that said "0 issues". The length is now read once, each
+  entry and each field of an entry once, and a list that claims no entries while it lists some is refused
+  with a `TypeError`, as is a length that is not a whole number or an entry that is not an object. A list of
+  more than 10 000 issues is refused with a `RangeError` before an entry is read.
 - **The class name of a rule's thrown Error is told by `util.types.isNativeError`.** An Error made in
   another realm, such as a `vm` context, failed `instanceof Error`, so the issue said "a rule threw a value
   that is not an Error" instead of naming its class.

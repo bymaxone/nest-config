@@ -352,8 +352,8 @@ context, say) is a plain object like any other.
 
 `ConfigService` reads the configuration it is given by its own property names, once, when it is built:
 `BYMAX_CONFIG` must be a plain object with own fields, as the module provides. A `Proxy` that lists
-nothing is read as an empty configuration, and a namespace that is not a plain object (a function, a
-string, an array) holds no leaves.
+nothing is read as an empty configuration, and a namespace that is a function, a string or an
+array holds no leaves.
 
 The options must be objects: the argument of `forRoot` and `forRootAsync`, and what an asynchronous
 provider resolves to. A primitive, `null`, a function or a class with static options throws a `TypeError`

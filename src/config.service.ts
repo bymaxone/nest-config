@@ -73,7 +73,7 @@ export class ConfigService<TConfig> {
    *
    * The configuration must be a plain object with own fields, as the module provides: its own property
    * names are read once, here, so a Proxy that lists none yields an empty configuration. A namespace that
-   * is not a plain object holds no leaves.
+   * is a function, a string or an array holds no leaves.
    *
    * @param config - The validated, deep-frozen config injected via {@link BYMAX_CONFIG}.
    */
@@ -95,7 +95,7 @@ export class ConfigService<TConfig> {
           continue
         namespaces.push(namespace)
         const value = Reflect.get(root, namespace) as Record<string, unknown> | null
-        // A namespace that is not a plain object (a function, a string, an array) holds no leaves: the
+        // A namespace that is a function, a string or an array holds no leaves: the
         // own names of those are `name`, `length` and indices, which no schema declared.
         if (typeof value !== 'object' || value === null || Array.isArray(value)) continue
         for (const leaf of Object.getOwnPropertyNames(value)) {

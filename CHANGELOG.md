@@ -26,8 +26,8 @@ as the GitHub Release body, so each released version needs a matching
   a bare prototype, had every value dropped; they are applied now. An object whose prototype is a bare
   object with no prototype of its own is a plain object, where it was refused. A key the schema does not
   declare is reported only when the object lists it.
-- **`ConfigService` lists leaves only from a namespace that is a plain object.** A function, a string or
-  an array held as a namespace exposed `name`, `length` or indices as leaves.
+- **`ConfigService` lists no leaf of a namespace that is a function, a string or an array.** Their own
+  `name`, `length` or indices were exposed as leaves.
 
 ### Changed
 

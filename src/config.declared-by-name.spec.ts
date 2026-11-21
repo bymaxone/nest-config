@@ -235,6 +235,8 @@ describe('ConfigService reads no leaf of a namespace that is not an object, or i
     expect(service.toJSON().namespaces).toEqual(['app'])
     expect(service.has('app.name' as never)).toBe(false)
     expect(service.has('app.length' as never)).toBe(false)
+    expect(service.has('app.0' as never)).toBe(false)
+    expect(service.has('app.1' as never)).toBe(false)
   })
 
   it('reads the own fields of a namespace that is an object, as the library builds it', () => {

@@ -340,10 +340,14 @@ The values the library finds are the ones it reads by name. A declared variable 
 by name, so one held as a non-enumerable or inherited property, or answered only by the `get` trap of a
 `Proxy`, is found instead of replaced by its default. Source values are strings (`process.env` holds
 nothing else), and a value that is not one is validated like any other: it is refused if it does not
-satisfy the schema, not replaced by the default (the exception is a variable named like a member of `Object.prototype`, `toString` say: found by name
-rather than listed, it is taken only as text, so such a variable held as a non-enumerable property with a
-value that is not text is dropped). The other keys of the `source` are the ones it lists,
+satisfy the schema, not replaced by the default. The one thing never taken is what a plain object itself
+answers for a variable named like a member of `Object.prototype` (`toString` say), which is not a value of
+the source; any other value held under such a name is validated. The other keys of the `source` are the ones it lists,
 which is what strict mode reports.
+
+A namespace or leaf may be named like a member of `Object.prototype` (`constructor`, `valueOf`); it takes its
+default and its value like any other. A name of `__proto__` cannot be held as a property, so a schema that
+declares one is refused with an `INVALID` issue instead of having its value dropped.
 
 The overrides of the test helpers are read by their own property names, enumerable or not, and then by
 the names the schema declares, so an overrides object held by a `Proxy` that lists nothing, or built on

@@ -308,8 +308,8 @@ instance, works like a literal. `forRoot` and `forRootAsync` hand the `BYMAX_CON
 `useExisting` produced them. A plain object that lists a key its entry point does not read is refused with a
 `BymaxConfigValidationError` that names the key (code `BYMAX_CONFIG_UNKNOWN_KEY`), so a misspelled `strict`
 cannot leave validation laxer without a word. **Only a plain object is key-checked**: a literal, or an
-object with no prototype. An options object that is not plain, an instance of a class or an object built
-on another with `Object.create(base)`, boots with a misspelled key silently ignored, because its own keys
+object with no prototype. An options object that is not plain, an instance of a class or an object created
+with `Object.create` on an ordinary object, boots with a misspelled key silently ignored, because its own keys
 are its fields. Its `schema`, `source`, `onValidationError` and `strict` are still read by name, and its
 `strict` and `onValidationError` are checked by kind like those of a literal.
 `onValidationError`, when it is not `undefined` or `null`, must be a function, or the

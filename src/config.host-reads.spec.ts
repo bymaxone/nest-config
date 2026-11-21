@@ -292,3 +292,59 @@ describe('a refused host read when the validation hook fails too', () => {
     expect(hook).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('a host that throws a value whose prototype lookup throws', () => {
+  const trap = () =>
+    new Proxy(
+      {},
+      {
+        getPrototypeOf: () => {
+          throw new Error('HOST RAW SECRET')
+        }
+      }
+    )
+
+  /** Asserts the refusal names no class and keeps the thrown value, the Proxy itself, as the cause. */
+  function expectWithheld(error: unknown, thrown: object): void {
+    expect(error).toBeInstanceOf(BymaxConfigValidationError)
+    const refusal = error as BymaxConfigValidationError
+    expect(refusal.issues[0]?.message).toMatch(
+      /threw a value that is not an Error; the value is withheld/
+    )
+    expect(refusal.message).not.toContain('HOST RAW SECRET')
+    expect(refusal.cause).toBe(thrown)
+  }
+
+  it('refuses it from an accessor of the options', () => {
+    const thrown = trap()
+
+    expectWithheld(
+      thrownBy(() =>
+        BymaxConfigModule.forRoot({
+          get schema(): never {
+            throw thrown
+          },
+          source: {}
+        } as never)
+      ),
+      thrown
+    )
+  })
+
+  it('refuses it from the source of createValidatedConfig', () => {
+    const thrown = trap()
+    const source = new Proxy(
+      {},
+      {
+        ownKeys: () => {
+          throw thrown
+        }
+      }
+    )
+
+    expectWithheld(
+      thrownBy(() => createValidatedConfig({ schema, source })),
+      thrown
+    )
+  })
+})

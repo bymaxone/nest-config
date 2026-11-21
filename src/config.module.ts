@@ -20,7 +20,7 @@ import type { BymaxConfigModuleOptions } from './config.options'
 import { assertBoolean, bymaxConfigProvider } from './config.providers'
 import { ConfigService } from './config.service'
 import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
-import { guarded } from './env-validator'
+import { guarded, guardedResolve } from './env-validator'
 
 /**
  * Append items to a possibly-absent module-definition list.
@@ -140,8 +140,12 @@ function readOptionsOf(provider: Provider): Provider {
   if (typeof factory !== 'function') return provider
   return {
     ...provider,
-    useFactory: async (...args: unknown[]) =>
-      readModuleOptions((await factory(...args)) as BymaxConfigModuleOptions, 'forRootAsync')
+    useFactory: async (...args: unknown[]) => {
+      const { value } = await guardedResolve('reading what the options factory returned', () =>
+        factory(...args)
+      )
+      return readModuleOptions(value as BymaxConfigModuleOptions, 'forRootAsync')
+    }
   } as Provider
 }
 

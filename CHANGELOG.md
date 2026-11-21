@@ -20,10 +20,16 @@ as the GitHub Release body, so each released version needs a matching
 ### Fixed
 
 - **A host accessor or Proxy that throws no longer surfaces its own error.** The options of `forRoot`
-  and `forRootAsync` (including `isGlobal`, the `forRootAsync` keys and what a factory resolves), and
-  the `source` of `createValidatedConfig`, are read under one guard. A throw is refused with a
-  `BymaxConfigValidationError` of one issue that names the step and the class of what was thrown, and
-  the original is its non-enumerable `cause`. It used to reach the caller raw, with no library code.
+  and `forRootAsync` (including `isGlobal` and the `forRootAsync` keys), what an options factory or a
+  `useClass` provider returns (read while it is awaited, so a Proxy trap, a revoked Proxy or a `then`
+  getter that throws is covered), the schema and the structure read from it, and the `source` of
+  `createValidatedConfig`, are read under a guard. A throw is refused with a `BymaxConfigValidationError`
+  of one issue that names the step and the class of what was thrown, and the original is its
+  non-enumerable `cause`. It used to reach the caller raw, with no library code. A factory that throws or
+  rejects with its own error is refused the same way, since a promise cannot tell that from a result
+  that throws while it settles; a `BymaxConfigValidationError` it throws passes unchanged.
+  `createTestConfig` and `configTestingModule` refuse a schema or an overrides argument that throws the
+  same way.
 - **`createValidatedConfig` reads `source` once.** It read the option more than once, so an accessor
   that answered differently the second time validated `process.env` in place of the source it had
   handed over.
@@ -41,6 +47,15 @@ as the GitHub Release body, so each released version needs a matching
   only when exactly one node of the schema, leaf or namespace, reports that path once escaped and
   bounded. Where two read alike the issue keeps its own description, so the guidance can be missing but
   never points at the wrong leaf.
+
+  #### Apply to a derived backend
+  - A host that matched the error of its own `forRootAsync` factory or `useClass` provider by class (an
+    `instanceof` on what a failed boot throws) now receives a `BymaxConfigValidationError` and reads the
+    original as `error.cause`. The same holds for a schema whose reading throws, which used to reach the
+    caller as it was thrown and, being a validation error now, is reported to `onValidationError` and
+    written as the `CONFIG_VALIDATION_FAILED` log event.
+  - The `./internal` subpath, which carries no compatibility promise, gains `guarded`, the step the guard
+    is built on.
 
 ### Tests
 

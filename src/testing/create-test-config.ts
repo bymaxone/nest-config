@@ -15,6 +15,7 @@ import {
   BymaxConfigValidationError,
   ConfigErrorCode,
   createValidatedConfig,
+  guarded,
   resolveSourceNames,
   unusableOverrideIssues
 } from '@bymax-one/nest-config/internal'
@@ -207,6 +208,8 @@ function explainUnsatisfiedLeaves(
   error: BymaxConfigValidationError,
   nodes: ReadonlyMap<string, boolean | null>
 ): BymaxConfigValidationError {
+  // An error with nothing to explain is the caller's to see as it is, with the cause it may carry.
+  if (!error.issues.some((issue) => nodes.get(issue.path) === false)) return error
   return new BymaxConfigValidationError(
     error.issues.map((issue) =>
       nodes.get(issue.path) !== false
@@ -237,18 +240,25 @@ export function prepareTestConfig<TShape extends EnvShape>(
   schema: EnvSchema<TShape>,
   overrides?: ConfigOverrides<TShape>
 ): { readonly source: Record<string, string>; readonly config: Readonly<EnvOutput<TShape>> } {
-  const bindings = resolveSourceNames(schema)
-  assertDistinctVariables(bindings)
-  const unusable = unusableOverrideIssues(schema, bindings)
-  if (unusable.length > 0) throw new BymaxConfigValidationError(unusable)
-  const nodes = new Map<string, boolean | null>()
-  const source = applyOverrides(schema, synthesizePlaceholderSource(schema), overrides, nodes)
+  // The schema and the overrides are the caller's code too: reading them is refused like the schema read
+  // inside the validation, and the refusals this step throws itself pass unchanged.
+  const { source, nodes } = guarded('reading the schema or the overrides', () => {
+    const bindings = resolveSourceNames(schema)
+    assertDistinctVariables(bindings)
+    const unusable = unusableOverrideIssues(schema, bindings)
+    if (unusable.length > 0) throw new BymaxConfigValidationError(unusable)
+    const placed = new Map<string, boolean | null>()
+    return {
+      nodes: placed,
+      source: applyOverrides(schema, synthesizePlaceholderSource(schema), overrides, placed)
+    }
+  })
   try {
     return { source, config: createValidatedConfig({ schema, source }) }
   } catch (error) {
-    throw error instanceof BymaxConfigValidationError
-      ? explainUnsatisfiedLeaves(error, nodes)
-      : error
+    // The source is a plain record and the options are the helper's own, so the only failure left is
+    // the validation error: reading the schema is refused with that error too.
+    throw explainUnsatisfiedLeaves(error as BymaxConfigValidationError, nodes)
   }
 }
 

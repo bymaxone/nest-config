@@ -18,7 +18,7 @@ import type { FactoryProvider } from '@nestjs/common'
 import type { BymaxConfigModuleOptions } from './config.options'
 import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { deepFreeze } from './deep-freeze'
-import { guarded, toWithheldIssue, validateEnv, withCause } from './env-validator'
+import { guarded, isLibraryError, toWithheldIssue, validateEnv, withCause } from './env-validator'
 import { BymaxConfigValidationError } from './errors'
 import type { ConfigIssue } from './errors'
 import type { EnvOutput, EnvSchema, EnvShape } from './types'
@@ -181,7 +181,7 @@ async function provideValidatedConfig(
   try {
     return createValidatedConfig(options)
   } catch (error) {
-    if (error instanceof BymaxConfigValidationError) {
+    if (isLibraryError(error)) {
       // The Nest `Logger` forwards to a host-installed logger and drops what it returns, so only a
       // synchronous throw can reach this point; it must not replace the validation error or skip the hook.
       try {

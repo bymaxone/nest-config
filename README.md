@@ -94,11 +94,11 @@ minimal.
 
 ## 📦 Subpath Exports
 
-| Subpath      | Contents                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.`          | `BymaxConfigModule`, `ConfigService`, `defineEnv`, `resolveSourceNames`, the DI tokens, `BymaxConfigValidationError`, `ConfigErrorCode` and every option type                                                                                                                                                                                                                                                                                   |
-| `./testing`  | `configTestingModule`, `createTestConfig` — a validated config for a test without booting the application's own                                                                                                                                                                                                                                                                                                                                 |
-| `./internal` | The shared runtime both entry points build on. **Not public API**: it is in the `exports` map because it has to resolve at runtime, not because it is meant to be imported, and it carries no compatibility promise: any export can change in any release. Besides the root's exports it holds `createValidatedConfig`, `assertNamespaces`, `assertDistinctVariables` and `unusableOverrideIssues`, the validation steps the entry points share |
+| Subpath      | Contents                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.`          | `BymaxConfigModule`, `ConfigService`, `defineEnv`, `resolveSourceNames`, the DI tokens, `BymaxConfigValidationError`, `ConfigErrorCode` and every option type                                                                                                                                                                                                                                                                                              |
+| `./testing`  | `configTestingModule`, `createTestConfig` — a validated config for a test without booting the application's own                                                                                                                                                                                                                                                                                                                                            |
+| `./internal` | The shared runtime both entry points build on. **Not public API**: it is in the `exports` map because it has to resolve at runtime, not because it is meant to be imported, and it carries no compatibility promise: any export can change in any release. Besides the root's exports it holds `createValidatedConfig`, `assertNamespaces`, `assertDistinctVariables`, `guarded` and `unusableOverrideIssues`, the validation steps the entry points share |
 
 `.` and `./testing` are separate bundles, and a module reached from both by a
 relative path would be _copied_ into each — a copied class is a different injection
@@ -306,6 +306,16 @@ The options are read by property access, so an object whose options are accessor
 instance, works like a literal. `forRoot` and `forRootAsync` hand the `BYMAX_CONFIG_OPTIONS` token only
 `schema`, `source`, `onValidationError` and `strict`, whichever of `forRoot`, `useFactory`, `useClass` or
 `useExisting` produced them; any other key is left behind.
+
+Code of yours that runs while the module reads these values is refused when it throws. That covers an
+accessor or a Proxy among the options, in `schema` or in `source`, and the object an options factory or a
+`useClass` provider returns, including a `then` that throws while it is awaited. A factory that throws or
+rejects is refused the same way. The refusal is a `BymaxConfigValidationError` of one issue that names the
+step (`reading the options of forRoot`, `reading the schema`, `reading the source`, `reading what the
+options factory returned`) and the class of what was thrown, never its message. The original is the
+non-enumerable `cause`: read it from there, and note that `util.inspect` and an uncaught-exception report
+print it. A `BymaxConfigValidationError` your factory throws passes unchanged. `source` and `strict` are
+read once.
 
 The options must be objects: the argument of `forRoot` and `forRootAsync`, and what an asynchronous
 provider resolves to. A primitive, `null`, a function or a class with static options throws a `TypeError`

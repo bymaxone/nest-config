@@ -76,9 +76,11 @@ export class ConfigService<TConfig> {
     // An injected object is the host's to supply, so reading it is refused like any other host read.
     this.#leaves = guarded('reading the configuration', () => {
       const leaves = new Map<string, unknown>()
-      for (const [namespace, value] of Object.entries(config as Record<string, unknown>)) {
-        for (const [leaf, leafValue] of Object.entries(value as Record<string, unknown>)) {
-          leaves.set(`${namespace}.${leaf}`, leafValue)
+      const root = config as Record<string, unknown>
+      for (const namespace of Object.getOwnPropertyNames(root)) {
+        const value = Reflect.get(root, namespace) as Record<string, unknown>
+        for (const leaf of Object.getOwnPropertyNames(value)) {
+          leaves.set(`${namespace}.${leaf}`, Reflect.get(value, leaf))
         }
       }
       return leaves

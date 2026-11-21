@@ -52,7 +52,8 @@ export type ConfigOverrides<TShape extends EnvShape> = {
 function isPlainObject(value: unknown): value is Readonly<Record<string, unknown>> {
   if (typeof value !== 'object' || value === null) return false
   const prototype: unknown = Object.getPrototypeOf(value)
-  return prototype === Object.prototype || prototype === null
+  // The prototype of a plain object is null, or an Object.prototype, whichever realm made it.
+  return prototype === null || Object.getPrototypeOf(prototype) === null
 }
 
 /**
@@ -109,7 +110,8 @@ function flattenOverrides(
     )
     return { flat, unplaced }
   }
-  for (const [namespace, leaves] of Object.entries(overrides)) {
+  for (const namespace of Object.getOwnPropertyNames(overrides)) {
+    const leaves: unknown = Reflect.get(overrides, namespace)
     if (!isPlainObject(leaves)) {
       unplaced.push(
         unplacedIssue(
@@ -120,7 +122,8 @@ function flattenOverrides(
       )
       continue
     }
-    for (const [leaf, value] of Object.entries(leaves)) {
+    for (const leaf of Object.getOwnPropertyNames(leaves)) {
+      const value: unknown = Reflect.get(leaves, leaf)
       const path = `${namespace}.${leaf}`
       if (declared.has(path)) {
         flat.set(path, value)

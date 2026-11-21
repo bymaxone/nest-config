@@ -15,6 +15,18 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Fixed
+
+- **A declared source variable held as a non-enumerable or inherited property is found.** The source
+  was copied with `Object.entries`, which lists only own enumerable keys, so a variable supplied that
+  way read as missing and a default silently replaced the host's value. The declared variables are read
+  by name, each property once, and the other keys are listed as before, so strict mode reports the same.
+- **The overrides of `createTestConfig` and `configTestingModule` and the configuration given to
+  `ConfigService` are read by their own property names.** A non-enumerable namespace or leaf was dropped
+  without a word. A symbol key is ignored.
+- **A plain object made in another realm is accepted as overrides.** It was refused because its
+  prototype is another realm's `Object.prototype`.
+
 ### Documentation
 
 - The README names `libraryError` among the exports of `./internal` and says that code importing it can
@@ -24,7 +36,8 @@ as the GitHub Release body, so each released version needs a matching
   another validation ends as the boot's own validation error with the hook's error as `cause`; a
   library error that crosses the CommonJS and ESM copies of the package is wrapped, with the original as
   `cause`; and `ConfigService.get` and `has` run `toString` on the path they are given, while `getAll()`
-  returns the object the service was given.
+  returns the object the service was given. A library error that your code catches and throws again later
+  keeps passing the guards, since the mark does not expire; it carries only the library's text.
 
 ## [1.2.17] - 2026-11-21
 

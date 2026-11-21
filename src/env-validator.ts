@@ -623,7 +623,18 @@ export function validateEnv<TShape extends EnvShape>(
       ]
     }
   })
-  const sourceMap = new Map(guarded('reading the source', () => Object.entries(source)))
+  // Each property is read once, by name: the keys come from the listing and the declared variables are
+  // added when they are not in it, so a variable held as a non-enumerable or inherited property is
+  // found, as it was when the module read it by name.
+  const sourceMap = guarded(
+    'reading the source',
+    () =>
+      new Map(
+        [...new Set([...Object.keys(source), ...bindings.map((binding) => binding.variable)])].map(
+          (name) => [name, Reflect.get(source, name) as string | undefined] as const
+        )
+      )
+  )
   // What the schema answers and what its issues hold are the host's code as well.
   return guarded('reading the schema', () => {
     const candidate = buildCandidate(namespaces, collectPresentLeaves(bindings, sourceMap))

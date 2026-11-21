@@ -71,6 +71,55 @@ function printable(text: string): string {
   return out
 }
 
+/** The most issues one error carries; a longer list is refused rather than copied. */
+const MAX_ISSUES = 10_000
+
+/**
+ * Copy a list of issues by index, the way no iterator the list answers can shorten it: the length is read
+ * once and must be a whole number up to {@link MAX_ISSUES}, each index is read once, and each field of an
+ * issue is read once. A list that claims no entries yet lists keys of its own is the empty copy of a
+ * non-empty list, and is refused, as is an entry that is not an object.
+ *
+ * @param issues - The issues the host handed to the constructor.
+ * @returns The issues, each a frozen object with the four contract fields, escaped and bounded.
+ * @throws {TypeError} When the length is not a whole number, an entry is not an object, or the list is
+ * claimed empty while it lists keys.
+ * @throws {RangeError} When the list is longer than {@link MAX_ISSUES}.
+ */
+function copyIssues(issues: ReadonlyArray<ConfigIssue>): ReadonlyArray<ConfigIssue> {
+  const length = issues.length as unknown
+  if (typeof length !== 'number' || !Number.isInteger(length) || length < 0) {
+    throw new TypeError(
+      'BymaxConfigValidationError: issues must be a list with a whole-number length'
+    )
+  }
+  if (length > MAX_ISSUES) {
+    throw new RangeError(
+      `BymaxConfigValidationError: at most ${MAX_ISSUES} issues, received ${length}`
+    )
+  }
+  if (length === 0 && Object.keys(issues).length > 0) {
+    throw new TypeError('BymaxConfigValidationError: issues claims no entries but lists some')
+  }
+  const copy: ConfigIssue[] = []
+  for (let index = 0; index < length; index += 1) {
+    const issue = Reflect.get(issues, index) as unknown
+    if (typeof issue !== 'object' || issue === null) {
+      throw new TypeError(`BymaxConfigValidationError: issue ${index} must be an object`)
+    }
+    const { path, variable, code, message } = issue as ConfigIssue
+    copy.push(
+      Object.freeze({
+        path: printable(path),
+        variable: printable(variable),
+        code,
+        message: printable(message)
+      })
+    )
+  }
+  return copy
+}
+
 /** The stable top-level code carried by {@link BymaxConfigValidationError}. */
 export type ConfigValidationCode = typeof ConfigErrorCode.VALIDATION
 
@@ -150,14 +199,7 @@ export class BymaxConfigValidationError extends Error {
     // contract fields, so the shape holds structurally: even an issue that
     // arrives with an extra property cannot leak it through the report or
     // through JSON serialization of the error.
-    const normalized = issues.map((issue) =>
-      Object.freeze({
-        path: printable(issue.path),
-        variable: printable(issue.variable),
-        code: issue.code,
-        message: printable(issue.message)
-      })
-    )
+    const normalized = copyIssues(issues)
     super(formatIssueReport(normalized))
     // Keep `name` non-enumerable so JSON.stringify(error) surfaces only the
     // code and the collected issues, while it stays available for

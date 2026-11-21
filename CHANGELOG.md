@@ -15,6 +15,24 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.23] - 2026-11-21
+
+### Fixed
+
+- **`new BymaxConfigValidationError(issues)` copies the list by index.** The constructor copied the
+  list through `map`, so a list whose iterator or `map` was replaced, such as an `Array` subclass, produced
+  an error with no issues and a report that said "0 issues". The length is now read once, each entry and
+  each field of an entry once, and a list that claims no entries while it lists some is refused with a
+  `TypeError`, as is a length that is not a whole number or an entry that is not an object. A list of more than
+  10 000 issues is refused with a `RangeError` before an entry is read.
+- **The class name of a rule's thrown Error is told by `util.types.isNativeError`.** An Error made in
+  another realm, such as a `vm` context, failed `instanceof Error`, so the issue said "a rule threw a value
+  that is not an Error" instead of naming its class.
+
+**Apply to a derived backend:** nothing to change unless it builds a `BymaxConfigValidationError` itself
+from a list that is not a plain array of issue objects; that now throws where it used to build an error
+with fewer issues than the list held.
+
 ## [1.2.22] - 2026-11-21
 
 ### Documentation
@@ -1124,8 +1142,9 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.16]: https://github.com/bymaxone/nest-config/compare/v1.2.15...v1.2.16
 [1.2.17]: https://github.com/bymaxone/nest-config/compare/v1.2.16...v1.2.17
 [1.2.18]: https://github.com/bymaxone/nest-config/compare/v1.2.17...v1.2.18
+[1.2.23]: https://github.com/bymaxone/nest-config/compare/v1.2.22...v1.2.23
 [1.2.22]: https://github.com/bymaxone/nest-config/compare/v1.2.21...v1.2.22
 [1.2.21]: https://github.com/bymaxone/nest-config/compare/v1.2.20...v1.2.21
 [1.2.20]: https://github.com/bymaxone/nest-config/compare/v1.2.19...v1.2.20
 [1.2.19]: https://github.com/bymaxone/nest-config/compare/v1.2.18...v1.2.19
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.22...HEAD
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.23...HEAD

@@ -11,6 +11,8 @@
  * @layer Service
  */
 
+import { types } from 'node:util'
+
 import type { z } from 'zod'
 
 import { ConfigErrorCode, isLibraryError, libraryError } from './errors'
@@ -482,7 +484,8 @@ const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/
 /**
  * The class name of a thrown Error, when it is plain code.
  *
- * Only an Error is named: a rule can throw data (the parsed received value, say), and a
+ * Only an Error is named, one that `util.types.isNativeError` recognises whichever realm made it (a
+ * rule run in a `vm` context throws an Error that fails `instanceof Error`): a rule can throw data (the parsed received value, say), and a
  * `constructor` property of data is input, not code. The name is read from the prototype, so
  * an own `constructor` property an Error was given is not consulted. Reading it runs whatever
  * the thrown value defines (a getter, a proxy trap), and that code can throw too, so a failed
@@ -494,7 +497,7 @@ const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/
  */
 function thrownClassName(thrown: unknown): string | undefined {
   try {
-    if (!(thrown instanceof Error)) return undefined
+    if (!types.isNativeError(thrown)) return undefined
     const name = (Object.getPrototypeOf(thrown) as { constructor: { name: unknown } }).constructor
       .name
     return typeof name === 'string' && IDENTIFIER.test(name) ? name : undefined

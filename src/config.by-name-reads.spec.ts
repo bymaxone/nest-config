@@ -57,6 +57,16 @@ describe('a declared source variable is read by name', () => {
     expect(createValidatedConfig({ schema, source: make() }).app?.name).toBe('hidden')
   })
 
+  it('finds a variable that only the get trap of a Proxy answers, which lists no key', () => {
+    /** The listing is empty, so only a read by name can supply the declared variable. */
+    const source = new Proxy(
+      {},
+      { get: (_target, key) => (key === 'APP_NAME' ? 'from-the-trap' : undefined) }
+    )
+
+    expect(createValidatedConfig({ schema, source }).app?.name).toBe('from-the-trap')
+  })
+
   it('reads an enumerable getter once', () => {
     let reads = 0
     const source = Object.defineProperty({}, 'APP_NAME', {

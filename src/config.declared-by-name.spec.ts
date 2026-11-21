@@ -163,6 +163,16 @@ describe('ConfigService reads no leaf of a namespace that is not an object, or i
     expect(service.get('app.name' as never)).toBe('n')
   })
 
+  it('reads the own field of a namespace that is a class instance', () => {
+    class Holder {
+      public readonly name = 'instance'
+    }
+    const service = new ConfigService({ app: new Holder() } as never)
+
+    expect(service.has('app.name' as never)).toBe(true)
+    expect(service.get('app.name' as never)).toBe('instance')
+  })
+
   it('does not see a configuration that only a get trap answers, which lists nothing', () => {
     /** BYMAX_CONFIG must be a plain object with own fields: the snapshot is taken by listing them. */
     const service = new ConfigService(getOnly({ app: { name: 'n' } }) as never)

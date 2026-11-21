@@ -66,28 +66,17 @@ function unplacedIssue(path: string, code: ConfigIssue['code'], message: string)
 }
 
 /**
- * The leaf an issue reports, as the pair of path and variable the issue carries.
- *
- * @param issue - An issue of a validation error.
- * @returns A key that tells two leaves apart even when their variable names alone read alike.
- */
-function identityOf(issue: ConfigIssue): string {
-  return JSON.stringify([issue.path, issue.variable])
-}
-
-/**
- * The identity a leaf's issues will carry. The error escapes and bounds the path and the variable, so
+ * A path as a validation error reports it. The error escapes and bounds the paths of its issues, so
  * the error builds that form and no second copy of the rule is kept.
  *
- * @param path - The leaf's `namespace.leaf` path.
- * @param variable - The source variable the leaf reads, as the schema declares it.
- * @returns The key {@link identityOf} gives an issue of this leaf.
+ * @param path - A namespace, or the `namespace.leaf` path of a leaf, as the schema declares it.
+ * @returns The same path, as the error's issues carry it.
  */
-function reportedIdentity(path: string, variable: string): string {
+function reportedPath(path: string): string {
   const [issue] = new BymaxConfigValidationError([
-    { path, variable, code: ConfigErrorCode.INVALID, message: path }
+    { path, variable: path, code: ConfigErrorCode.INVALID, message: path }
   ]).issues
-  return identityOf(issue as ConfigIssue)
+  return (issue as ConfigIssue).path
 }
 
 /**
@@ -165,7 +154,7 @@ function applyOverrides<TShape extends EnvShape>(
   schema: EnvSchema<TShape>,
   base: Record<string, string>,
   overrides: ConfigOverrides<TShape> | undefined,
-  leaves: Map<string, boolean>
+  nodes: Map<string, boolean | null>
 ): Record<string, string> {
   const bindings = resolveSourceNames(schema)
   const { flat, unplaced } = flattenOverrides(
@@ -174,12 +163,16 @@ function applyOverrides<TShape extends EnvShape>(
   )
   if (unplaced.length > 0) throw new BymaxConfigValidationError(unplaced)
   const entries = new Map(Object.entries(base))
+  // A node of the schema by the path its issues carry: false for a leaf the caller left alone, true for
+  // one it overrode, null for a namespace or for any path that two nodes report alike.
+  const note = (path: string, overridden: boolean | null): void => {
+    const key = reportedPath(path)
+    nodes.set(key, nodes.has(key) ? null : overridden)
+  }
+  for (const namespace of Object.keys(schema.shape)) note(namespace, null)
   for (const binding of bindings) {
     const value = flat.get(binding.path)
-    const identity = reportedIdentity(binding.path, binding.variable)
-    // Two leaves that read alike once reported cannot be told apart by their issues, so the identity
-    // counts as overridden when either was.
-    leaves.set(identity, (leaves.get(identity) ?? false) || value !== undefined)
+    note(binding.path, value !== undefined)
     if (value === undefined) continue
     entries.set(binding.variable, String(value))
   }
@@ -197,24 +190,26 @@ function applyOverrides<TShape extends EnvShape>(
  * them is not the caller's mistake: no sample fits what the schema asks, as with a regex
  * or a `refine` rule. The message says that and names the leaf to override; an issue on
  * a leaf the caller did override keeps its own description. So does an issue that names no
- * leaf (a rule on a namespace or on the whole schema, whose path has no `.`): there is no
- * leaf to point at, and the rule may as well have failed on a value the caller supplied. A leaf is
- * matched to its issue by the path and variable the issue carries. A name cut at the bound can lose the
- * dot of a path, and the issue is then indistinguishable from one on its namespace, so it keeps its own
- * description rather than be taken for a leaf it may not be.
+ * leaf (a rule on a namespace or on the whole schema): there is no leaf to point at, and the rule may
+ * as well have failed on a value the caller supplied.
+ *
+ * An issue is matched to its leaf by the path it carries, and only when exactly one node of the schema
+ * reports that path. A name cut at the bound, or escaped, can make a leaf, another leaf and a
+ * namespace read alike; such an issue keeps its own description, so the helper can be vague but never
+ * point at the wrong leaf.
  *
  * @param error - The validation error of the synthesized source.
- * @param leaves - Every leaf of the schema by the identity its issues carry, with whether the caller
- * supplied a value for it.
+ * @param nodes - The nodes of the schema by the path their issues carry: false for a leaf the caller
+ * left alone, true for one it overrode, null for a namespace or a path two nodes share.
  * @returns A validation error whose unsatisfied-leaf issues carry the guidance.
  */
 function explainUnsatisfiedLeaves(
   error: BymaxConfigValidationError,
-  leaves: ReadonlyMap<string, boolean>
+  nodes: ReadonlyMap<string, boolean | null>
 ): BymaxConfigValidationError {
   return new BymaxConfigValidationError(
     error.issues.map((issue) =>
-      !issue.path.includes('.') || leaves.get(identityOf(issue)) !== false
+      nodes.get(issue.path) !== false
         ? issue
         : {
             ...issue,
@@ -246,13 +241,13 @@ export function prepareTestConfig<TShape extends EnvShape>(
   assertDistinctVariables(bindings)
   const unusable = unusableOverrideIssues(schema, bindings)
   if (unusable.length > 0) throw new BymaxConfigValidationError(unusable)
-  const leaves = new Map<string, boolean>()
-  const source = applyOverrides(schema, synthesizePlaceholderSource(schema), overrides, leaves)
+  const nodes = new Map<string, boolean | null>()
+  const source = applyOverrides(schema, synthesizePlaceholderSource(schema), overrides, nodes)
   try {
     return { source, config: createValidatedConfig({ schema, source }) }
   } catch (error) {
     throw error instanceof BymaxConfigValidationError
-      ? explainUnsatisfiedLeaves(error, leaves)
+      ? explainUnsatisfiedLeaves(error, nodes)
       : error
   }
 }

@@ -75,6 +75,9 @@ function assertOptionsObject(options: unknown, method: string): void {
 /** The options of the options token, which `forRoot` and the factory of `forRootAsync` supply. */
 const MODULE_OPTION_KEYS: readonly string[] = ['schema', 'source', 'onValidationError', 'strict']
 
+/** What `forRoot` reads: the options of the token and the `isGlobal` extra. */
+const FOR_ROOT_OPTION_KEYS: readonly string[] = [...MODULE_OPTION_KEYS, 'isGlobal']
+
 /** The options `forRootAsync` itself reads, besides the ones its factory returns. */
 const ASYNC_OPTION_KEYS: readonly string[] = [
   'useFactory',
@@ -148,10 +151,10 @@ function assertHook(hook: unknown, where: string): void {
 function readModuleOptions(
   options: BymaxConfigModuleOptions,
   method: string,
-  extras: readonly string[] = []
+  known: readonly string[] = MODULE_OPTION_KEYS
 ): BymaxConfigModuleOptions {
   assertOptionsObject(options, method)
-  assertKnownOptions(options, [...MODULE_OPTION_KEYS, ...extras], method)
+  assertKnownOptions(options, known, method)
   const { schema, source, onValidationError, strict, keyed } = guarded(
     `reading the options of ${method}`,
     () => {
@@ -185,7 +188,7 @@ function readModuleOptions(
  * @returns A plain object the builder can copy.
  */
 function readRegistration(options: BymaxConfigForRootOptions): BymaxConfigForRootOptions {
-  const read = readModuleOptions(options, 'forRoot', ['isGlobal'])
+  const read = readModuleOptions(options, 'forRoot', FOR_ROOT_OPTION_KEYS)
   const isGlobal = guarded('reading isGlobal', () => options.isGlobal)
   assertBoolean(isGlobal, 'isGlobal', 'BymaxConfigModule.forRoot')
   return { ...read, ...withoutNullish({ isGlobal }) }

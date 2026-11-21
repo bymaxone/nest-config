@@ -50,6 +50,12 @@ describe('a registration option that the module does not read', () => {
 
     expect(error).toBeInstanceOf(BymaxConfigValidationError)
     expect(pathsOf(error)).toEqual(['stict', 'onValidationErorr'])
+    expect((error as BymaxConfigValidationError).issues[0]).toEqual({
+      path: 'stict',
+      variable: '(options)',
+      code: ConfigErrorCode.UNKNOWN_KEY,
+      message: 'is not an option of BymaxConfigModule.forRoot; a misspelled option is ignored'
+    })
     expect(
       (error as BymaxConfigValidationError).issues.every(
         (issue) => issue.code === ConfigErrorCode.UNKNOWN_KEY
@@ -67,6 +73,9 @@ describe('a registration option that the module does not read', () => {
     )
 
     expect(pathsOf(error)).toEqual(['injects'])
+    expect((error as BymaxConfigValidationError).issues[0]?.message).toBe(
+      'is not an option of BymaxConfigModule.forRootAsync; a misspelled option is ignored'
+    )
   })
 
   it.each([
@@ -105,6 +114,9 @@ describe('a registration option that the module does not read', () => {
 
     expect(error).toBeInstanceOf(BymaxConfigValidationError)
     expect((error as Error).cause).toBe(hostError)
+    expect((error as BymaxConfigValidationError).issues[0]?.message).toMatch(
+      /^reading the options of forRoot threw /
+    )
   })
 
   it.each([
@@ -232,8 +244,13 @@ describe('a source that is not an object of variables', () => {
     const error = thrownBy(() => createValidatedConfig({ schema, source: source as never }))
 
     expect(error).toBeInstanceOf(BymaxConfigValidationError)
-    expect((error as BymaxConfigValidationError).issues.map((issue) => issue.message)).toEqual([
-      `the source must be an object of variables, received ${kind}`
+    expect((error as BymaxConfigValidationError).issues).toEqual([
+      {
+        path: '',
+        variable: '(source)',
+        code: ConfigErrorCode.INVALID,
+        message: `the source must be an object of variables, received ${kind}`
+      }
     ])
   })
 

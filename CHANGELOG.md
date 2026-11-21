@@ -15,6 +15,17 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Documentation
+
+- The README names `libraryError` among the exports of `./internal` and says that code importing it can
+  forge the errors the guards pass through unchanged: the brand protects against an ordinary throw of the
+  public error class, not against a deliberate import of that subpath.
+- The README states three edges of the guarded reads: a hook that rethrows a library error from
+  another validation ends as the boot's own validation error with the hook's error as `cause`; a
+  library error that crosses the CommonJS and ESM copies of the package is wrapped, with the original as
+  `cause`; and `ConfigService.get` and `has` run `toString` on the path they are given, while `getAll()`
+  returns the object the service was given.
+
 ## [1.2.17] - 2026-11-21
 
 ### Fixed

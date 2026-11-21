@@ -27,11 +27,11 @@ as the GitHub Release body, so each released version needs a matching
 - **`onValidationError` that is set and is not a function is refused at registration** with a `TypeError`
   that names the type received. It was accepted, and on a validation failure became the `cause` of the error.
 - **A `source` that is not an object of variables is refused.** An array, a `Map`, a `Set`, a function and a
-  primitive give a `BymaxConfigValidationError` that names the kind received; an array was accepted.
+  primitive give a `BymaxConfigValidationError` that describes what was received; an array was accepted.
 - **A source variable named `__proto__` is taken only as a property of the source's own.** Read from a
   source whose prototype was not `Object.prototype`, it took that prototype object as its value.
-- **The shape of a schema and of each of its namespaces is read once per validation**, where `schema.shape`
-  was read six times, so the bindings, the prefixes and the refusals describe one schema.
+- **The shape of a schema and of each of its namespaces is read once per validation**, so the bindings,
+  the prefixes and the refusals describe one schema.
 
 #### Apply to a derived backend
 

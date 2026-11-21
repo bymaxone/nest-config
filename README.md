@@ -308,8 +308,9 @@ instance, works like a literal. `forRoot` and `forRootAsync` hand the `BYMAX_CON
 `useExisting` produced them. A plain object that lists any other key is refused with a
 `BymaxConfigValidationError` that names the key (code `BYMAX_CONFIG_UNKNOWN_KEY`), so a misspelled `strict`
 cannot leave validation laxer without a word; an instance of a class is not key-checked, because its own
-keys are its fields, but its `schema`, `source`, `onValidationError` and `strict` are still read by name and
-checked by kind like those of a literal. `onValidationError`, when it is not `undefined` or `null`, must be a function, or the
+keys are its fields, but its `schema`, `source`, `onValidationError` and `strict` are still read by name,
+and its `strict` and `onValidationError` are checked by kind like those of a literal.
+`onValidationError`, when it is not `undefined` or `null`, must be a function, or the
 registration throws a `TypeError` that names the type received.
 
 Code of yours that runs while the module reads these values is refused when it throws. That covers an
@@ -350,7 +351,7 @@ answers for a variable named like a member of `Object.prototype` (`toString` say
 the source; any other value held under such a name is validated, and a variable named `__proto__` is taken
 only as a property of the source's own, never as the prototype of the object. The `source` must be an
 object of variables: an array, a `Map`, a `Set`, a function or a primitive is refused with a
-`BymaxConfigValidationError` that names the kind received, never a value. The other keys of the `source`
+`BymaxConfigValidationError` that describes what was received, never a value. The other keys of the `source`
 are the ones it lists, which is what strict mode reports.
 
 A namespace or leaf may be named like a member of `Object.prototype` (`constructor`, `valueOf`); it takes its

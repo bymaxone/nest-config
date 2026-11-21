@@ -28,11 +28,9 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // when the artifact shrinks.
 //
 // Calibration history (newest first):
-//   - The internal subpath measures 6.78 KiB brotli: the engine below plus the refusal of a registration
-//     option the module does not read (its issues escaped and bounded), of a validation hook that is not
-//     a function and of a source that is not an object of variables, the one-read snapshot of the
-//     schema's shapes, and the own-property rule for a source variable named `__proto__`. The budget,
-//     6.80 KiB, is that measurement plus a few bytes.
+//   - The internal subpath measures 6.78 KiB brotli: the engine below plus the refusal of unknown options, of
+//     a hook that is no function and of a source that is no record of variables, and the one-read
+//     snapshot of the schema. The budget, 6.80 KiB, is that measurement plus a few bytes.
 //   - The internal subpath measures 6.29 KiB brotli: the engine below plus the parse candidate built from
 //     objects with no prototype, the refusal of a namespace or leaf named `__proto__`, and the source rule
 //     that ignores only what a plain object itself answers. The budget, 6.31 KiB, is that measurement plus

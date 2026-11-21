@@ -92,7 +92,7 @@ const ASYNC_OPTION_KEYS: readonly string[] = [
  * Such a key is dropped, so a misspelled `strict` would leave validation laxer without a word. Only a
  * plain object is examined, by the keys it lists: an instance of a class keeps its own fields, which
  * are not options, and its options are read by name from its accessors. The issues name each key,
- * which the error escapes and bounds, and never a value.
+ * never a value.
  *
  * @param options - What the host passed or its factory returned, already known to be an object.
  * @param known - The keys the entry point reads.
@@ -102,7 +102,7 @@ const ASYNC_OPTION_KEYS: readonly string[] = [
 function assertKnownOptions(options: object, known: readonly string[], method: string): void {
   const unknown = guarded(`reading the options of ${method}`, () => {
     const prototype = Object.getPrototypeOf(options) as object | null
-    // As for the overrides of the test helpers: no prototype, or one that ends the chain.
+    // Plain: no prototype, or one that ends the chain.
     const plain = prototype === null || Object.getPrototypeOf(prototype) === null
     return plain ? Object.keys(options).filter((key) => !known.includes(key)) : []
   })

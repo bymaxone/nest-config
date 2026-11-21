@@ -46,18 +46,22 @@ const prose = (() => {
     .join('\n')
 })()
 
-/** The inline code spans of the prose, joined: where a member has to be named. */
-const inlineCode = (prose.match(/`[^`\n]+`/g) ?? []).join('\n')
+/** The inline code spans of the prose, without their backticks: where a member has to be named. */
+const spans = (prose.match(/`[^`\n]+`/g) ?? []).map((span) => span.slice(1, -1))
 
 /** Text as a pattern that matches only itself: every character a pattern gives a meaning is escaped. */
 function literal(text: string): string {
   return text.replace(/[\\^$.*+?()[\]{}|/]/g, '\\$&')
 }
 
-/** Whether the README names `member` as inline code, on its own or inside a longer span. */
-function isNamed(member: string): boolean {
-  const escaped = literal(member)
-  return new RegExp(`\`[^\`\\n]*(?<![\\w$])${escaped}(?![\\w$])[^\`\\n]*\``).test(inlineCode)
+/**
+ * Whether one of `candidates` names `member`: the span is the member, or begins with it as a whole
+ * word (`get(path)`, `strict: boolean`). A span that only contains the word somewhere inside, such as
+ * `this.get` or `getAll()` for `get`, does not name it.
+ */
+function isNamed(member: string, candidates: readonly string[] = spans): boolean {
+  const start = new RegExp(`^${literal(member)}(?![\\w$])`)
+  return candidates.some((span) => start.test(span))
 }
 
 /** The registration options of the options token. */
@@ -119,6 +123,20 @@ describe('the escaping the README matches are built with', () => {
       expect(pattern.test(`${text}${text}`)).toBe(false)
     }
   )
+})
+
+describe('a member is named by a span that is or begins with it', () => {
+  it.each([
+    ['get', ['get'], true],
+    ['get', ['get(path)'], true],
+    ['strict', ['strict: boolean | null'], true],
+    ['get', ['getAll()'], false],
+    ['get', ['config.get(path)'], false],
+    ['has', ['the service has no leaf'], false],
+    ['path', ['subpath'], false]
+  ])('%s in %j: %s', (member, candidates, named) => {
+    expect(isNamed(member, candidates)).toBe(named)
+  })
 })
 
 describe('README names every member of the published contracts', () => {

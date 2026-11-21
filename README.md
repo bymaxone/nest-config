@@ -308,7 +308,7 @@ instance, works like a literal. `forRoot` and `forRootAsync` hand the `BYMAX_CON
 `useExisting` produced them. A plain object that lists a key its entry point does not read is refused with a
 `BymaxConfigValidationError` that names the key (code `BYMAX_CONFIG_UNKNOWN_KEY`), so a misspelled `strict`
 cannot leave validation laxer without a word; an instance of a class is not key-checked, because its own
-keys are its fields, but its `schema`, `source`, `onValidationError` and `strict` are still read by name,
+keys are its fields (so a misspelled own field of such an object is not reported), but its `schema`, `source`, `onValidationError` and `strict` are still read by name,
 and its `strict` and `onValidationError` are checked by kind like those of a literal.
 `onValidationError`, when it is not `undefined` or `null`, must be a function, or the
 registration throws a `TypeError` that names the type received.
@@ -923,8 +923,8 @@ error catalog below for every value.
 
 ### Reporting the failure
 
-`onValidationError` receives `ReadonlyArray<ConfigIssue>`: four string fields per issue,
-JSON-serializable, with no error to unwrap. Every description this package generates is
+`onValidationError` receives `ReadonlyArray<ConfigIssue>`: four string fields per issue (`path`,
+`variable`, `code` and `message`), JSON-serializable, with no error to unwrap. Every description this package generates is
 value-free, so it can go straight into a log as structured data; a `custom` message written by
 your own schema is printed as written, so reviewing it is the schema author's job.
 

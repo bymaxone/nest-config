@@ -369,7 +369,7 @@ describe('createTestConfig attributes an issue to a leaf only when one node repo
 
       const messages = issuesOf(() => createTestConfig(named)).map((issue) => issue.message)
 
-      expect(messages.length).toBeGreaterThan(0)
+      expect(messages).toContain('namespace rule')
       for (const message of messages) expect(message).not.toContain(GUIDED)
     }
   )

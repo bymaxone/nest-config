@@ -247,7 +247,7 @@ describe('createTestConfig with overrides that are not a plain object', () => {
 })
 
 /** A schema with one unsatisfiable leaf, whose placeholder cannot satisfy it, under the given names. */
-function unsatisfiable(namespace: string, leaf: string, env?: string) {
+function unsatisfiable(leaf: string, env?: string) {
   const port = z.coerce.number().int().min(10).max(5)
   return z.object({ [leaf]: env === undefined ? port : port.meta({ env }) })
 }
@@ -268,7 +268,7 @@ const GUIDED = 'no placeholder satisfies'
 
 describe('createTestConfig attributes an issue to a leaf only when one node reports its path', () => {
   it('guides a leaf nothing else reports alike', () => {
-    const named = defineEnv({ database: unsatisfiable('database', 'port') })
+    const named = defineEnv({ database: unsatisfiable('port') })
 
     expect(messagesOf(() => createTestConfig(named))['database.port']).toContain(GUIDED)
   })
@@ -362,7 +362,7 @@ describe('createTestConfig attributes an issue to a leaf only when one node repo
       /** Cut at the bound, the namespace and its leaf report one path: neither is guided. */
       const namespace = 'N'.repeat(205)
       const named = defineEnv({
-        [namespace]: unsatisfiable(namespace, 'port', env).superRefine((_value, ctx) =>
+        [namespace]: unsatisfiable('port', env).superRefine((_value, ctx) =>
           ctx.addIssue({ code: 'custom', message: 'namespace rule' })
         )
       })
@@ -377,7 +377,7 @@ describe('createTestConfig attributes an issue to a leaf only when one node repo
   it('keeps the description of a namespace issue when the cut namespace name holds a dot', () => {
     const namespace = 'N'.repeat(190) + '.' + 'N'.repeat(20)
     const named = defineEnv({
-      [namespace]: unsatisfiable(namespace, 'port', namespace.toUpperCase() + '_*').superRefine(
+      [namespace]: unsatisfiable('port', namespace.toUpperCase() + '_*').superRefine(
         (_value, ctx) => ctx.addIssue({ code: 'custom', message: 'namespace rule' })
       )
     })
@@ -406,18 +406,18 @@ describe('createTestConfig attributes an issue to a leaf only when one node repo
         Object.entries(database).map(([key, value]) => [key === 'first' ? `${leaf}a` : key, value])
       )
 
-      const messages = Object.values(
-        messagesOf(() => createTestConfig(named, { database: overrides } as never))
-      )
+      const messages = issuesOf(() =>
+        createTestConfig(named, { database: overrides } as never)
+      ).map((issue) => issue.message)
 
-      expect(messages.length).toBeGreaterThan(0)
+      expect(messages).toHaveLength(2)
       for (const message of messages) expect(message).not.toContain(GUIDED)
     }
   )
 
   it('guides a leaf whose path is exactly 200 characters, unchanged', () => {
     const leaf = 'x'.repeat(200 - 'database.'.length)
-    const named = defineEnv({ database: unsatisfiable('database', leaf) })
+    const named = defineEnv({ database: unsatisfiable(leaf) })
 
     const messages = messagesOf(() => createTestConfig(named))
 
@@ -427,7 +427,7 @@ describe('createTestConfig attributes an issue to a leaf only when one node repo
 
   it('guides a leaf whose path is 201 characters, as cut, when nothing else reports that path', () => {
     const leaf = 'x'.repeat(201 - 'database.'.length)
-    const named = defineEnv({ database: unsatisfiable('database', leaf) })
+    const named = defineEnv({ database: unsatisfiable(leaf) })
 
     const messages = messagesOf(() => createTestConfig(named))
 
@@ -437,7 +437,7 @@ describe('createTestConfig attributes an issue to a leaf only when one node repo
 
   it('guides a leaf whose name holds an escaped character, and keeps it out when overridden', () => {
     const leaf = 'bad' + '\u001b' + 'name'
-    const named = defineEnv({ database: unsatisfiable('database', leaf) })
+    const named = defineEnv({ database: unsatisfiable(leaf) })
     const escaped = `database.bad\\u001bname`
 
     expect(messagesOf(() => createTestConfig(named))[escaped]).toContain(GUIDED)

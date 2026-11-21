@@ -15,6 +15,8 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.17] - 2026-11-21
+
 ### Fixed
 
 - **A configuration that runs host code which throws no longer escapes `ConfigService` raw.** The
@@ -984,4 +986,5 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.14]: https://github.com/bymaxone/nest-config/compare/v1.2.13...v1.2.14
 [1.2.15]: https://github.com/bymaxone/nest-config/compare/v1.2.14...v1.2.15
 [1.2.16]: https://github.com/bymaxone/nest-config/compare/v1.2.15...v1.2.16
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.16...HEAD
+[1.2.17]: https://github.com/bymaxone/nest-config/compare/v1.2.16...v1.2.17
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.17...HEAD

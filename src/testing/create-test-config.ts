@@ -60,6 +60,21 @@ function isPlainObject(value: unknown): value is Readonly<Record<string, unknown
 }
 
 /**
+ * The own property names of an overrides object, enumerable or not. A non-enumerable function is left
+ * out: it is the serializer a validated configuration carries on its root, not a namespace or a leaf,
+ * and a configuration is a valid overrides object.
+ *
+ * @param value - An overrides object, or one of its namespaces.
+ * @returns The names to read.
+ */
+function ownNames(value: object): string[] {
+  return Object.getOwnPropertyNames(value).filter((name) => {
+    const descriptor = Object.getOwnPropertyDescriptor(value, name)
+    return descriptor?.enumerable !== false || typeof descriptor.value !== 'function'
+  })
+}
+
+/**
  * Describe an override that cannot be placed, under its path and with no variable.
  *
  * @param path - The path of the override that was not applied.
@@ -113,7 +128,7 @@ function flattenOverrides(
     )
     return { flat, unplaced }
   }
-  for (const namespace of Object.getOwnPropertyNames(overrides)) {
+  for (const namespace of ownNames(overrides)) {
     const leaves: unknown = Reflect.get(overrides, namespace)
     if (!isPlainObject(leaves)) {
       unplaced.push(
@@ -125,7 +140,7 @@ function flattenOverrides(
       )
       continue
     }
-    for (const leaf of Object.getOwnPropertyNames(leaves)) {
+    for (const leaf of ownNames(leaves)) {
       const value: unknown = Reflect.get(leaves, leaf)
       const path = `${namespace}.${leaf}`
       if (declared.has(path)) {

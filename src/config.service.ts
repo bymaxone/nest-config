@@ -62,6 +62,8 @@ export class ConfigService<TConfig> {
    */
   readonly #leaves: ReadonlyMap<string, unknown>
 
+  readonly #namespaces: readonly string[]
+
   /**
    * Bind the accessor to the frozen configuration object.
    *
@@ -74,17 +76,24 @@ export class ConfigService<TConfig> {
   public constructor(@Inject(BYMAX_CONFIG) config: Readonly<TConfig>) {
     this.#config = config
     // An injected object is the host's to supply, so reading it is refused like any other host read.
-    this.#leaves = guarded('reading the configuration', () => {
+    const snapshot = guarded('reading the configuration', () => {
       const leaves = new Map<string, unknown>()
+      const namespaces: string[] = []
       const root = config as Record<string, unknown>
       for (const namespace of Object.getOwnPropertyNames(root)) {
+        // The root carries its own serializer as a non-enumerable function; it is not a namespace.
+        const descriptor = Object.getOwnPropertyDescriptor(root, namespace)
+        if (descriptor?.enumerable === false && typeof descriptor.value === 'function') continue
+        namespaces.push(namespace)
         const value = Object(Reflect.get(root, namespace)) as Record<string, unknown>
         for (const leaf of Object.getOwnPropertyNames(value)) {
           leaves.set(`${namespace}.${leaf}`, Reflect.get(value, leaf))
         }
       }
-      return leaves
+      return { leaves, namespaces }
     })
+    this.#leaves = snapshot.leaves
+    this.#namespaces = snapshot.namespaces
   }
 
   /**
@@ -103,9 +112,7 @@ export class ConfigService<TConfig> {
   public toJSON(): { readonly service: string; readonly namespaces: readonly string[] } {
     return {
       service: 'ConfigService',
-      namespaces: guarded('reading the configuration', () =>
-        Object.getOwnPropertyNames(this.#config as Record<string, unknown>)
-      )
+      namespaces: [...this.#namespaces]
     }
   }
 

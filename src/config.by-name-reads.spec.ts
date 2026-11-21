@@ -225,3 +225,22 @@ describe('the shape of the values the service and the overrides accept', () => {
     )
   })
 })
+
+describe('a validated configuration, whose root carries its own serializer', () => {
+  const full = defineEnv({ app: z.object({ name: z.string().default('n') }) })
+
+  it('is read by the service as the namespaces it holds, without the serializer', () => {
+    const root = createValidatedConfig({ schema: full, source: {} })
+    const service = new ConfigService(root as never)
+
+    expect(service.toJSON().namespaces).toEqual(['app'])
+    expect(service.has('toJSON.length' as never)).toBe(false)
+    expect(service.get('app.name' as never)).toBe('n')
+  })
+
+  it('is accepted as the overrides of the test helpers, as it was before', () => {
+    const root = createValidatedConfig({ schema: full, source: {} })
+
+    expect(createTestConfig(full, root as never).app?.name).toBe('n')
+  })
+})

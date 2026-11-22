@@ -13,7 +13,7 @@
 import { z } from 'zod'
 
 import { defineEnv } from './define-env'
-import { BymaxConfigValidationError } from './errors'
+import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
 import {
   findCoercedBooleanLeaves,
   findUnusableEnvOverrides,
@@ -44,6 +44,27 @@ describe('resolveSourceNames on a chain of wrappers that is too deep', () => {
     const schema = defineEnv({ app: z.object({ value: leaf }) })
 
     expect(() => resolveSourceNames(schema as never)).toThrow(BymaxConfigValidationError)
+  })
+
+  it('names the schema in a single issue, without a variable of the host', () => {
+    let leaf: z.ZodType = z.string()
+    for (let wrapped = 0; wrapped < 70; wrapped += 1) leaf = leaf.optional()
+    const schema = defineEnv({ app: z.object({ value: leaf }) })
+    let failure: unknown
+    try {
+      resolveSourceNames(schema as never)
+    } catch (error) {
+      failure = error
+    }
+
+    expect((failure as BymaxConfigValidationError).issues).toEqual([
+      {
+        path: '',
+        variable: '(schema)',
+        code: ConfigErrorCode.INVALID,
+        message: 'a leaf schema nests wrappers deeper than 64'
+      }
+    ])
   })
 })
 

@@ -75,7 +75,7 @@
     "prepare": "husky",
     "prepublishOnly": "pnpm typecheck && pnpm lint && pnpm check:mutants && pnpm test:cov:all && pnpm build && pnpm size && pnpm check:published",
     "release": "npm publish --provenance --access public",
-    "size": "node scripts/check-size.mjs",
+    "size": "node scripts/check-dist-fresh.mjs && node scripts/check-size.mjs",
     "test": "jest",
     "test:cov": "jest --coverage",
     "test:cov:all": "jest --config jest.coverage.config.ts --coverage",

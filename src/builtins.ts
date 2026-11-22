@@ -62,6 +62,7 @@ const OWNERS: ReadonlyArray<readonly [string, object, readonly PropertyKey[]]> =
     'Array.prototype',
     Array.prototype,
     [
+      'entries',
       'every',
       'filter',
       'find',
@@ -69,11 +70,13 @@ const OWNERS: ReadonlyArray<readonly [string, object, readonly PropertyKey[]]> =
       'includes',
       'indexOf',
       'join',
+      'keys',
       'map',
       'push',
       'slice',
       'some',
       'sort',
+      'values',
       Symbol.iterator
     ]
   ],
@@ -94,9 +97,18 @@ const OWNERS: ReadonlyArray<readonly [string, object, readonly PropertyKey[]]> =
     ]
   ],
   ['Number.prototype', Number.prototype, ['toString']],
+  ['Object.prototype', Object.prototype, ['toString', 'valueOf']],
   ['RegExp.prototype', RegExp.prototype, ['exec', 'test']],
-  ['Set.prototype', Set.prototype, ['add', 'has', Symbol.iterator]],
-  ['Map.prototype', Map.prototype, ['get', 'has', 'set', Symbol.iterator]],
+  [
+    'Set.prototype',
+    Set.prototype,
+    ['add', 'delete', 'entries', 'has', 'keys', 'values', Symbol.iterator]
+  ],
+  [
+    'Map.prototype',
+    Map.prototype,
+    ['delete', 'entries', 'get', 'has', 'keys', 'set', 'values', Symbol.iterator]
+  ],
   ['WeakSet.prototype', WeakSet.prototype, ['add', 'has']],
   ['Function.prototype', Function.prototype, ['apply', 'bind', 'call']],
   [

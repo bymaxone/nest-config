@@ -30,8 +30,7 @@ as the GitHub Release body, so each released version needs a matching
 - **Only an array is a list of issues.** 1.2.23 read the list by index and accepted whatever answered a
   `length` and indices: an object such as `{ length: 1, 0: issue }`, an `arguments` object, an empty typed
   array and an empty string. Each is now a `TypeError` ("issues must be an array"). An array that claims no
-  entries is refused only when it holds an own array index, so an empty array that carries a named property is
-  empty.
+  entries is refused only when it holds an own array index; a named property alone does not make it non-empty.
 
 ### Documentation
 

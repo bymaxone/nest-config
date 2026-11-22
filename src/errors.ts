@@ -87,9 +87,6 @@ function isIndexKey(key: string): boolean {
   return index !== 4_294_967_295 && String(index) === key
 }
 
-/** The four fields an issue carries, in the order they are read. */
-const ISSUE_FIELDS = ['path', 'variable', 'code', 'message'] as const
-
 /**
  * Run a read of the host's list. What it throws is the host's own code failing, and its message can carry
  * the value, so it is refused with a message of the library's and kept as the cause.
@@ -119,7 +116,7 @@ function hostRead<TResult>(read: () => TResult): TResult {
  * @throws {TypeError} When a field is not a string.
  */
 function copyIssue(issue: object, index: number): ConfigIssue {
-  const fields = ISSUE_FIELDS.map((field) => {
+  const read = (field: keyof ConfigIssue): string => {
     const value = hostRead(() => Reflect.get(issue, field) as unknown)
     if (typeof value !== 'string') {
       throw new TypeError(
@@ -127,9 +124,14 @@ function copyIssue(issue: object, index: number): ConfigIssue {
       )
     }
     return printable(value)
+  }
+  // Each field by name: no iterator of the realm, which a host can replace, takes part in the copy.
+  return Object.freeze({
+    path: read('path'),
+    variable: read('variable'),
+    code: read('code') as ConfigIssue['code'],
+    message: read('message')
   })
-  const [path, variable, code, message] = fields as [string, string, string, string]
-  return Object.freeze({ path, variable, code: code as ConfigIssue['code'], message })
 }
 
 /**

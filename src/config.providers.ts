@@ -60,10 +60,12 @@ const REDACTED_ROOT = '[BymaxConfig: values redacted]'
  * @returns The same reference.
  */
 function redactRoot<T extends object>(root: T): T {
-  Object.defineProperty(root, inspect.custom, { value: () => REDACTED_ROOT })
-  Object.defineProperty(root, 'toJSON', {
-    value: () => ({ service: 'BymaxConfig', namespaces: Object.keys(root) })
-  })
+  Object.defineProperty(root, inspect.custom, bare({ value: () => REDACTED_ROOT }))
+  Object.defineProperty(
+    root,
+    'toJSON',
+    bare({ value: () => ({ service: 'BymaxConfig', namespaces: Object.keys(root) }) })
+  )
   return root
 }
 

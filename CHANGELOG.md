@@ -26,6 +26,7 @@ as the GitHub Release body, so each released version needs a matching
 - **The walks over a schema check the namespaces themselves.** `findUnusableEnvOverrides` and `findCoercedBooleanLeaves`, called directly, read a leaf placed where a namespace belongs; they now refuse it as the validator does.
 - **The search for a coercing boolean walks each node once.** A diamond of pipes made it take time that doubled with every level.
 - **The placeholder synthesizer reads a definition as a copy of what zod put in it,** so a name planted on `Object.prototype` is not taken for a format, a bound or a kind.
+- **The property descriptors the library defines are built with no prototype.** A `get`, `set` or `value` planted on `Object.prototype` was read from the descriptors of the error (`name`, `code`, `issues`, `cause`) and of the configuration's serializers, so it could make the constructor throw or change the value of `code` or `issues`; they are read from the descriptor itself now. What zod and Node define with their own descriptors is not covered.
 - **A `Symbol.toStringTag` planted on a root prototype no longer makes a plain source a refused kind.** The kinds that are no record of variables are told apart by the engine's tests.
 
 No declaration change: there is nothing to apply to a derived backend.

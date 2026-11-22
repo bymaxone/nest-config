@@ -17,7 +17,7 @@ import type { z } from 'zod'
 
 import { ConfigErrorCode, isLibraryError, libraryError } from './errors'
 import type { BymaxConfigValidationError, ConfigIssue } from './errors'
-import { readOption } from './option-read'
+import { bare, readOption } from './option-read'
 import {
   bindingsOf,
   findCoercedBooleanLeaves,
@@ -600,12 +600,11 @@ function refusalOf(subject: string, thrown: unknown): BymaxConfigValidationError
  * @returns The same error.
  */
 export function withCause<T extends Error>(error: T, cause: unknown): T {
-  Object.defineProperty(error, 'cause', {
-    value: cause,
-    enumerable: false,
-    writable: false,
-    configurable: false
-  })
+  Object.defineProperty(
+    error,
+    'cause',
+    bare({ value: cause, enumerable: false, writable: false, configurable: false })
+  )
   return error
 }
 

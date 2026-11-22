@@ -261,6 +261,26 @@ describe('the library is loaded while a built-in is replaced', () => {
   })
 })
 
+describe('the library is loaded while the built-in that finds the iterators is replaced', () => {
+  it.each([
+    ['returns nothing', () => undefined],
+    [
+      'throws',
+      () => {
+        throw new Error('replaced')
+      }
+    ]
+  ])('does not throw at import when Object.getPrototypeOf %s', (_name, replacement) => {
+    expect(() =>
+      withReplaced(Object, 'getPrototypeOf', replacement, () => {
+        jest.isolateModules(() => {
+          require('./builtins')
+        })
+      })
+    ).not.toThrow()
+  })
+})
+
 describe('the redaction of the configuration', () => {
   it('survives Object.defineProperty being replaced while the validation runs', () => {
     const hostile = defineEnv({

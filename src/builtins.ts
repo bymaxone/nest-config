@@ -140,20 +140,42 @@ const OWNERS: ReadonlyArray<readonly [string, object, readonly PropertyKey[]]> =
   ]
 ]
 
-/** The `next` of the iterators the library's loops and spreads run through, which their owners do not name. */
-const ITERATORS: ReadonlyArray<readonly [string, object]> = [
-  ['ArrayIterator.prototype', Object.getPrototypeOf([][Symbol.iterator]()) as object],
-  ['SetIterator.prototype', Object.getPrototypeOf(new Set()[Symbol.iterator]()) as object],
-  ['MapIterator.prototype', Object.getPrototypeOf(new Map()[Symbol.iterator]()) as object],
-  ['StringIterator.prototype', Object.getPrototypeOf(''[Symbol.iterator]()) as object]
+/**
+ * The `next` of the iterators the library's loops and spreads run through, which their owners do not name.
+ * Each owner is found by a thunk, so that a built-in replaced before the import leaves the entry out and
+ * does not make the module throw.
+ */
+const ITERATORS: ReadonlyArray<readonly [string, () => unknown]> = [
+  ['ArrayIterator.prototype', (): unknown => Object.getPrototypeOf([][Symbol.iterator]())],
+  ['SetIterator.prototype', (): unknown => Object.getPrototypeOf(new Set()[Symbol.iterator]())],
+  ['MapIterator.prototype', (): unknown => Object.getPrototypeOf(new Map()[Symbol.iterator]())],
+  ['StringIterator.prototype', (): unknown => Object.getPrototypeOf(''[Symbol.iterator]())]
 ]
+
+/**
+ * The baseline entry of an iterator prototype, or nothing when the prototype cannot be found.
+ *
+ * @param name - The name of the iterator prototype.
+ * @param find - Finds the prototype.
+ * @returns The entry for its `next`, or an empty list.
+ */
+function iteratorBaseline(name: string, find: () => unknown): Baseline[] {
+  try {
+    const owner = find()
+    return typeof owner === 'object' && owner !== null
+      ? [defineBaseline(`${name}.next`, owner, 'next')]
+      : []
+  } catch {
+    return []
+  }
+}
 
 /** Every built-in the library calls, as it was when the module loaded. */
 export const BASELINE: ReadonlyArray<Baseline> = [
   ...OWNERS.flatMap(([name, owner, keys]) =>
     keys.map((key) => defineBaseline(`${name}.${String(key)}`, owner, key))
   ),
-  ...ITERATORS.map(([name, owner]) => defineBaseline(`${name}.next`, owner, 'next'))
+  ...ITERATORS.flatMap(([name, find]) => iteratorBaseline(name, find))
 ]
 
 /**

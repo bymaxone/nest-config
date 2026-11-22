@@ -43,9 +43,12 @@ as the GitHub Release body, so each released version needs a matching
   place of `process.env`; the other names turned strictness on, supplied a hook, a schema or a factory,
   opened every namespace to unknown variables, renamed the variable of every leaf, or made the module
   non-global. An option is now read from the object itself, from a class instance (its own fields and the
-  accessors of its class), or from any prototype the host built; the realm's root prototype, whose own
-  `constructor.prototype` is itself and whose prototype is null, supplies none. The objects handed to the
-  module builder have no prototype, so the builder does not read a planted name either.
+  accessors of its class), or from any prototype that has a prototype of its own. A name is not read when the
+  first object that holds it, other than the options themselves, has no prototype: that is where the root
+  prototype of any realm sits, and it is found without reading a property of it, so overwriting
+  `Object.prototype.constructor` does not bring a planted name back. A name held only by a parent the host
+  built with `Object.create(null)` is not read either. The objects handed to the module builder have no
+  prototype, so the builder does not read a planted name either.
 
 ### Tooling
 

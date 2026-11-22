@@ -340,7 +340,10 @@ The library captures the built-ins it calls directly when it is imported: `Strin
 issues of an error. It does not defend its dependencies, or the built-ins it reads live, against a
 replacement made after the import: code that does that is already running with the process's authority.
 A name planted on `Object.prototype` is a different case and is handled: it is never taken for an option,
-nor for a `meta({ open })` or `meta({ env })` of a schema.
+nor for a `meta({ open })` or `meta({ env })` of a schema. The rule is: an option is read unless the first
+object that holds it, other than the options object itself, has no prototype. The trade-off is that an option
+held only by a parent you built with `Object.create(null)` is not read; put it on the options object, or on a
+parent that has a prototype.
 
 Three edges of the same rule. A hook that rethrows a library error it caught from another validation
 does not pass that error through: the boot fails with its own validation error, with the hook's error

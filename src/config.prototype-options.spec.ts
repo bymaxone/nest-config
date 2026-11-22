@@ -8,6 +8,8 @@
  * Mocks: none. The names are planted for the case and removed afterwards.
  */
 
+import { runInNewContext } from 'node:vm'
+
 import { z } from 'zod'
 
 import { BymaxConfigModule } from './config.module'
@@ -216,14 +218,14 @@ describe('the options held by the host are still read with the root prototype ca
     expect(optionsOf(registration)['strict']).toBe(true)
   })
 
-  it('does not take a prototype with no prototype for the root because its constructor is not a function', () => {
+  it('does not read a name that only a parent with no prototype holds', () => {
     const base = Object.create(null) as Record<string, unknown>
-    Object.assign(base, { strict: true, constructor: { prototype: base } })
+    base['strict'] = true
     const options = Object.assign(Object.create(base) as object, { schema })
 
     const registration = BymaxConfigModule.forRoot(options as never)
 
-    expect(optionsOf(registration)['strict']).toBe(true)
+    expect(optionsOf(registration)['strict']).toBeUndefined()
   })
 
   it('reads an option that a Proxy with no prototype answers by a get trap alone', () => {
@@ -277,5 +279,45 @@ describe("metadata names planted on Object.prototype are not the schema author's
     expect(() =>
       planted('env', 5, () => createValidatedConfig({ schema: described, source: {} }))
     ).not.toThrow()
+  })
+})
+
+describe('the root prototype is found without reading a property of it', () => {
+  it('still ignores a planted name when Object.prototype.constructor is overwritten', () => {
+    const registration = planted('constructor', 5, () =>
+      planted('strict', true, () => BymaxConfigModule.forRoot({ schema }))
+    )
+
+    expect(Object.keys(optionsOf(registration))).toEqual(['schema'])
+  })
+
+  it('still ignores a planted source when Object.prototype.constructor is overwritten', () => {
+    const config = planted('constructor', null, () =>
+      planted('source', { APP_NAME: 'planted' }, () => createValidatedConfig({ schema }))
+    )
+
+    expect(config.app.name).toBe('n')
+  })
+
+  it('ignores a name planted on the root prototype of another realm', () => {
+    const options = runInNewContext(
+      `Object.defineProperty(Object.prototype, 'constructor', { value: 5, configurable: true, writable: true });
+       Object.defineProperty(Object.prototype, 'strict', { value: true, configurable: true, writable: true });
+       ({})`
+    ) as Record<string, unknown>
+    options['schema'] = schema
+
+    const registration = BymaxConfigModule.forRoot(options as never)
+
+    expect(optionsOf(registration)['strict']).toBeUndefined()
+  })
+
+  it('still reads a name the other realm holds as an own property', () => {
+    const options = runInNewContext('({ strict: true })') as Record<string, unknown>
+    options['schema'] = schema
+
+    const registration = BymaxConfigModule.forRoot(options as never)
+
+    expect(optionsOf(registration)['strict']).toBe(true)
   })
 })

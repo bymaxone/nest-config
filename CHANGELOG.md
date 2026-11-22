@@ -23,6 +23,10 @@ as the GitHub Release body, so each released version needs a matching
   collected the fields of an issue into an array and destructured it, which asks the realm's
   `Array.prototype[Symbol.iterator]`; code that had replaced that iterator emptied the fields. Each field is
   now read by name.
+- **The escaping of a field no longer goes through the String iterator.** Each field of an issue is written
+  by `printable`, which walked the text with `for…of`; code that had replaced `String.prototype[Symbol.iterator]`
+  emptied the field. The text is now read by index with `codePointAt` and `fromCodePoint` taken when the module
+  loads, with the same escaping and bound.
 
 ### Tooling
 

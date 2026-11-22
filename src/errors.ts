@@ -38,6 +38,10 @@ export const ConfigErrorCode = Object.freeze({
 /** The longest text an issue carries in a field; the rest is cut and marked with an ellipsis. */
 const MAX_FIELD_LENGTH = 200
 
+/** The string methods `printable` reads with, taken at load so that a later replacement is not followed. */
+const codePointAt = String.prototype.codePointAt
+const fromCodePoint = String.fromCodePoint
+
 /**
  * Characters that change how text reads on a terminal or in a log line without being visible, by
  * Unicode category: the controls (`Cc`: C0, DEL, C1, so ESC, CR, LF and NEL), a lone surrogate (`Cs`), the format characters
@@ -57,8 +61,13 @@ const UNSAFE_CHARACTER = /[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]/u
  */
 function printable(text: string): string {
   let out = ''
-  for (const character of text) {
-    const hex = (character.codePointAt(0) as number).toString(16)
+  // By index, with `codePointAt` and `fromCodePoint` taken when the module loaded, so a host that replaced
+  // the String iterator or either method afterwards does not change which characters are read.
+  for (let at = 0; at < text.length;) {
+    const code = codePointAt.call(text, at) as number
+    const character = fromCodePoint(code)
+    at += character.length
+    const hex = code.toString(16)
     // A code point past U+FFFF is braced, so its escape cannot be read as a shorter one plus a digit.
     const piece = UNSAFE_CHARACTER.test(character)
       ? hex.length > 4

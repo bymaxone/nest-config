@@ -190,13 +190,30 @@ const ENTRIES: ReadonlyArray<readonly [string, (config: object) => unknown]> = [
   ['ConfigService', (config) => new ConfigService(config as never)]
 ]
 
+/** The list as a copy of the module that is loaded afresh holds it, so the code that builds it runs in the case. */
+function freshBaseline(): ReadonlyArray<{
+  name: string
+  original: PropertyDescriptor | undefined
+}> {
+  let loaded: ReadonlyArray<{ name: string; original: PropertyDescriptor | undefined }> = []
+  jest.isolateModules(() => {
+    loaded = (require('./builtins') as typeof import('./builtins')).BASELINE
+  })
+  return loaded
+}
+
 describe('the list of built-ins the library calls', () => {
   it('is the list the tests were written against', () => {
+    expect(
+      freshBaseline()
+        .map((entry) => entry.name)
+        .sort()
+    ).toEqual([...EXPECTED].sort())
     expect(BASELINE.map((entry) => entry.name).sort()).toEqual([...EXPECTED].sort())
   })
 
-  it('holds a function for every name except the ones that are constructors or tables', () => {
-    expect(BASELINE.every((entry) => entry.original !== undefined)).toBe(true)
+  it('holds the descriptor every built-in had when the module loaded', () => {
+    expect(freshBaseline().every((entry) => entry.original !== undefined)).toBe(true)
   })
 })
 

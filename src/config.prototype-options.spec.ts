@@ -216,6 +216,27 @@ describe('the options held by the host are still read with the root prototype ca
     expect(optionsOf(registration)['strict']).toBe(true)
   })
 
+  it('does not take a prototype with no prototype for the root because its constructor is not a function', () => {
+    const base = Object.create(null) as Record<string, unknown>
+    Object.assign(base, { strict: true, constructor: { prototype: base } })
+    const options = Object.assign(Object.create(base) as object, { schema })
+
+    const registration = BymaxConfigModule.forRoot(options as never)
+
+    expect(optionsOf(registration)['strict']).toBe(true)
+  })
+
+  it('reads an option that a Proxy with no prototype answers by a get trap alone', () => {
+    const answers: Record<string, unknown> = { schema, strict: true }
+    const options = new Proxy(Object.create(null) as object, {
+      get: (_target, key) => answers[key as string]
+    })
+
+    const registration = BymaxConfigModule.forRoot(options as never)
+
+    expect(optionsOf(registration)['strict']).toBe(true)
+  })
+
   it('reads an option of an object with no prototype', () => {
     const options = Object.assign(Object.create(null) as object, { schema, strict: true })
 

@@ -38,10 +38,8 @@ as the GitHub Release body, so each released version needs a matching
   character stops being escaped nor the copy stops being filled. Built-ins replaced after the import are
   not defended against beyond these: see the README.
 - **A name planted on `Object.prototype` is no longer an option.** `forRoot`, `forRootAsync` and
-  `createValidatedConfig` read `schema`, `source`, `strict`, `onValidationError`, `isGlobal`, `useFactory`,
-  `useClass`, `useExisting`, `inject`, `imports` and `provideInjectionTokensFrom` by name, which also
-  answers for the realm's root prototype, and the metadata of a schema was read for `open` and `env` the
-  same way. With `Object.prototype.source` set, `createValidatedConfig({ schema })` validated that object in
+  `createValidatedConfig` read their options by name, which also answers for the realm's root prototype,
+  and the metadata of a schema was read for `open` and `env` the same way. With `Object.prototype.source` set, `createValidatedConfig({ schema })` validated that object in
   place of `process.env`; the other names turned strictness on, supplied a hook, a schema or a factory,
   opened every namespace to unknown variables, renamed the variable of every leaf, or made the module
   non-global. An option is now read from the object itself, from a class instance (its own fields and the

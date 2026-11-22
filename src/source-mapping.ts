@@ -63,6 +63,32 @@ function toScreamingSnake(segment: string): string {
   )
 }
 
+/** The most wrappers one leaf schema may nest; a chain that goes deeper is refused instead of followed. */
+const MAX_WRAPPER_DEPTH = 64
+
+/**
+ * The node a wrapper holds inside it, read from the definition by the rule of the options so that a name
+ * planted on the root prototype is not taken for one.
+ *
+ * @param definition - The definition object of a schema node.
+ * @returns The wrapped node (`innerType`, or `in` for a pipe), or undefined when the node wraps none.
+ */
+function wrappedBy<TNode>(definition: object): TNode | undefined {
+  return (readOption(definition, 'innerType') ?? readOption(definition, 'in')) as TNode | undefined
+}
+
+/**
+ * Refuse a chain of wrappers that is deeper than any schema a person writes.
+ *
+ * @param depth - How many wrappers have been followed so far.
+ * @throws {TypeError} When the depth is past {@link MAX_WRAPPER_DEPTH}.
+ */
+function assertWrapperDepth(depth: number): void {
+  if (depth > MAX_WRAPPER_DEPTH) {
+    throw new TypeError(`a leaf schema nests wrappers deeper than ${MAX_WRAPPER_DEPTH}`)
+  }
+}
+
 /** A schema node as far as the override walk needs it: its metadata and what it wraps. */
 interface OverrideNode {
   meta(): { env?: unknown } | undefined
@@ -84,11 +110,13 @@ interface OverrideNode {
  * @returns The override variable name, or `undefined` to fall back to derivation.
  */
 function readEnvOverride(leaf: OverrideNode): string | undefined {
+  let depth = 0
   for (let node: OverrideNode | undefined = leaf; node !== undefined;) {
+    assertWrapperDepth((depth += 1))
     const meta = node.meta()
     const override = meta === undefined ? undefined : readOption(meta, 'env')
     if (typeof override === 'string' && override.length > 0) return override
-    node = node._zod.def.innerType ?? node._zod.def.in
+    node = wrappedBy<OverrideNode>(node._zod.def)
   }
   return undefined
 }
@@ -149,7 +177,10 @@ export function snapshotSchema<TShape extends EnvShape = EnvShape>(
     shape: Object.fromEntries(
       Object.entries(schema.shape).map(([key, namespace]) => [
         key,
-        { shape: namespace.shape, meta: () => namespace.meta() }
+        {
+          shape: readOption(namespace, 'shape') as typeof namespace.shape,
+          meta: () => namespace.meta()
+        }
       ])
     )
   }
@@ -172,7 +203,7 @@ export function assertNamespaces(schema: SchemaView): void {
     schema.shape as Record<string, { readonly shape?: unknown }>
   ).flatMap(([key, node]) => {
     const message =
-      typeof node.shape !== 'object'
+      typeof readOption(node, 'shape') !== 'object'
         ? 'is not a namespace; declare it inside a z.object({ ... }) namespace'
         : key === 'toJSON'
           ? 'is reserved: the configuration root serializes through this name; rename the namespace'
@@ -255,13 +286,15 @@ function describeUnusable(value: unknown): string {
  * or `undefined` when no layer has an unusable one.
  */
 function describeUnusableEnv(leaf: OverrideNode): string | undefined {
+  let depth = 0
   for (let node: OverrideNode | undefined = leaf; node !== undefined;) {
+    assertWrapperDepth((depth += 1))
     const meta = node.meta()
     if (meta !== undefined && hasOption(meta, 'env')) {
       const value = readOption(meta, 'env')
       if (typeof value !== 'string' || value.length === 0) return describeUnusable(value)
     }
-    node = node._zod.def.innerType ?? node._zod.def.in
+    node = wrappedBy<OverrideNode>(node._zod.def)
   }
   return undefined
 }
@@ -315,14 +348,13 @@ interface CoercionNode {
  * @param node - The schema node to inspect.
  * @returns True when a coercing boolean sits anywhere in the wrapped chain.
  */
-function wrapsCoercedBoolean(node: CoercionNode | undefined): boolean {
+function wrapsCoercedBoolean(node: CoercionNode | undefined, depth = 1): boolean {
   if (node === undefined) return false
+  assertWrapperDepth(depth)
   const def = node._zod.def
-  if (def.type === 'boolean' && def.coerce === true) return true
-  return (
-    wrapsCoercedBoolean(def.innerType) ||
-    wrapsCoercedBoolean(def.in) ||
-    wrapsCoercedBoolean(def.out)
+  if (readOption(def, 'type') === 'boolean' && readOption(def, 'coerce') === true) return true
+  return (['innerType', 'in', 'out'] as const).some((side) =>
+    wrapsCoercedBoolean(readOption(def, side) as CoercionNode | undefined, depth + 1)
   )
 }
 

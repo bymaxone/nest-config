@@ -38,10 +38,15 @@ export const ConfigErrorCode = Object.freeze({
 /** The longest text an issue carries in a field; the rest is cut and marked with an ellipsis. */
 const MAX_FIELD_LENGTH = 200
 
-/** The built-ins `printable` reads with (`codePointAt`, `fromCodePoint`, the regex `exec`), taken at load so that a later replacement is not followed. */
+/**
+ * The built-ins the copy and the escaping of an issue read with (`codePointAt`, `fromCodePoint`, the regex
+ * `exec`, `Reflect.get` and `Reflect.set`), taken at load so that a later replacement is not followed.
+ */
 const codePointAt = String.prototype.codePointAt
 const fromCodePoint = String.fromCodePoint
 const execUnsafe = RegExp.prototype.exec
+const reflectGet = Reflect.get
+const reflectSet = Reflect.set
 
 /**
  * Characters that change how text reads on a terminal or in a log line without being visible, by
@@ -128,7 +133,7 @@ function hostRead<TResult>(read: () => TResult): TResult {
  */
 function copyIssue(issue: object, index: number): ConfigIssue {
   const read = (field: keyof ConfigIssue): string => {
-    const value = hostRead(() => Reflect.get(issue, field) as unknown)
+    const value = hostRead(() => reflectGet(issue, field) as unknown)
     if (typeof value !== 'string') {
       throw new TypeError(
         `BymaxConfigValidationError: issue ${index} field ${field} must be a string`
@@ -178,11 +183,11 @@ function copyIssues(issues: ReadonlyArray<ConfigIssue>): ReadonlyArray<ConfigIss
   }
   const copy: ConfigIssue[] = []
   for (let index = 0; index < length; index += 1) {
-    const issue = hostRead(() => Reflect.get(issues, index) as unknown)
+    const issue = hostRead(() => reflectGet(issues, index) as unknown)
     if (typeof issue !== 'object' || issue === null) {
       throw new TypeError(`BymaxConfigValidationError: issue ${index} must be an object`)
     }
-    Reflect.set(copy, index, copyIssue(issue, index))
+    reflectSet(copy, index, copyIssue(issue, index))
   }
   return copy
 }

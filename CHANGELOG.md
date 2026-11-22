@@ -15,23 +15,6 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
-## [1.2.26] - 2026-11-22
-
-### Fixed
-
-- **A name planted on `Object.prototype` is no longer an option.** `forRoot`, `forRootAsync` and
-  `createValidatedConfig` read `schema`, `source`, `strict`, `onValidationError`, `isGlobal`, `useFactory`,
-  `useClass`, `useExisting`, `inject`, `imports` and `provideInjectionTokensFrom` by name, which also
-  answers for the realm's root prototype. With `Object.prototype.source` set, `createValidatedConfig({ schema })`
-  validated that object in place of `process.env`; the other names turned strictness on, supplied a hook, a
-  schema or a factory, or made the module non-global. An option is now read from the object itself, from a
-  class instance (its own fields and the accessors of its class), or from any prototype the host built; the
-  realm's root prototype, whose own `constructor.prototype` is itself and whose prototype is null, supplies
-  none. The objects handed to the module builder have no prototype, so the builder does not read a planted
-  name either.
-
-No declaration change: there is nothing to apply to a derived backend.
-
 ## [1.2.25] - 2026-11-21
 
 ### Fixed
@@ -48,10 +31,23 @@ No declaration change: there is nothing to apply to a derived backend.
   issue lines were computed with `for…of`, a spread and `map`; with `Array.prototype[Symbol.iterator]`
   replaced, the message lost its issue lines or a throwing iterator escaped from the constructor. The
   report is now built by index.
-- **The escaping and the copy no longer follow a replaced `RegExp.prototype.test`, `RegExp.prototype.exec`
-  or `Array.prototype.push`.** The unsafe-character check calls the `exec` taken when the module loaded, and
-  the copy of the issues assigns by index, so neither an unsafe character stops being escaped nor the copy
-  stops being filled.
+- **The escaping and the copy no longer follow a replaced `RegExp.prototype.test`, `RegExp.prototype.exec`,
+  `Array.prototype.push`, `Reflect.get` or `Reflect.set`.** The unsafe-character check calls the `exec`
+  taken when the module loaded, the copy of the issues assigns by index, and the copy and the report read
+  and write through the `Reflect.get` and `Reflect.set` taken when the module loaded, so neither an unsafe
+  character stops being escaped nor the copy stops being filled. Built-ins replaced after the import are
+  not defended against beyond these: see the README.
+- **A name planted on `Object.prototype` is no longer an option.** `forRoot`, `forRootAsync` and
+  `createValidatedConfig` read `schema`, `source`, `strict`, `onValidationError`, `isGlobal`, `useFactory`,
+  `useClass`, `useExisting`, `inject`, `imports` and `provideInjectionTokensFrom` by name, which also
+  answers for the realm's root prototype, and the metadata of a schema was read for `open` and `env` the
+  same way. With `Object.prototype.source` set, `createValidatedConfig({ schema })` validated that object in
+  place of `process.env`; the other names turned strictness on, supplied a hook, a schema or a factory,
+  opened every namespace to unknown variables, renamed the variable of every leaf, or made the module
+  non-global. An option is now read from the object itself, from a class instance (its own fields and the
+  accessors of its class), or from any prototype the host built; the realm's root prototype, whose own
+  `constructor.prototype` is itself and whose prototype is null, supplies none. The objects handed to the
+  module builder have no prototype, so the builder does not read a planted name either.
 
 ### Tooling
 

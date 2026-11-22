@@ -224,3 +224,37 @@ describe('the options held by the host are still read with the root prototype ca
     expect(optionsOf(registration)['strict']).toBe(true)
   })
 })
+
+describe("metadata names planted on Object.prototype are not the schema author's", () => {
+  const described = defineEnv({
+    app: z.object({ name: z.string().default('n').meta({ description: 'the name' }) }).meta({
+      description: 'the app'
+    })
+  })
+
+  it('does not open a namespace for a planted open', () => {
+    const source = { APP_STRAY: 'x' }
+
+    expect(() =>
+      planted('open', true, () =>
+        createValidatedConfig({ schema: described, source, strict: true })
+      )
+    ).toThrow('environment validation failed')
+  })
+
+  it('does not rename a variable for a planted env', () => {
+    const source = { APP_NAME: 'real', PLANTED_VARIABLE: 'planted' }
+
+    const config = planted('env', 'PLANTED_VARIABLE', () =>
+      createValidatedConfig({ schema: described, source })
+    )
+
+    expect(config.app.name).toBe('real')
+  })
+
+  it('does not call a planted env unusable', () => {
+    expect(() =>
+      planted('env', 5, () => createValidatedConfig({ schema: described, source: {} }))
+    ).not.toThrow()
+  })
+})

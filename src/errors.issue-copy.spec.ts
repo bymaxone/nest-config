@@ -427,7 +427,7 @@ describe('a list or an entry whose Symbol.iterator throws', () => {
 })
 
 describe('the copy of an issue, with the array iterator of the realm replaced', () => {
-  it('reads its own fields by index, so a replaced Array iterator cannot empty them', () => {
+  it('keeps the fields of an issue when the Array iterator of the realm yields nothing', () => {
     const original = Array.prototype[Symbol.iterator]
     Object.defineProperty(Array.prototype, Symbol.iterator, {
       configurable: true,

@@ -425,3 +425,26 @@ describe('a list or an entry whose Symbol.iterator throws', () => {
     expect(new BymaxConfigValidationError([entry] as never).issues).toEqual([issue])
   })
 })
+
+describe('the copy of an issue, with the array iterator of the realm replaced', () => {
+  it('reads its own fields by index, so a replaced Array iterator cannot empty them', () => {
+    const original = Array.prototype[Symbol.iterator]
+    Object.defineProperty(Array.prototype, Symbol.iterator, {
+      configurable: true,
+      writable: true,
+      value: () => original.call([])
+    })
+    let built: BymaxConfigValidationError | undefined
+    try {
+      built = new BymaxConfigValidationError([issue])
+    } finally {
+      Object.defineProperty(Array.prototype, Symbol.iterator, {
+        configurable: true,
+        writable: true,
+        value: original
+      })
+    }
+
+    expect(built.issues).toEqual([issue])
+  })
+})

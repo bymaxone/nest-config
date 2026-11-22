@@ -10,6 +10,7 @@
 
 import { Inject, Injectable } from '@nestjs/common'
 
+import { assertBuiltinsIntact } from './builtins'
 import { BYMAX_CONFIG } from './config.tokens'
 import { guarded } from './env-validator'
 import type { Path, PathValue } from './types'
@@ -78,6 +79,7 @@ export class ConfigService<TConfig> {
    * @param config - The validated, deep-frozen config injected via {@link BYMAX_CONFIG}.
    */
   public constructor(@Inject(BYMAX_CONFIG) config: Readonly<TConfig>) {
+    assertBuiltinsIntact()
     this.#config = config
     // An injected object is the host's to supply, so reading it is refused like any other host read.
     const snapshot = guarded('reading the configuration', () => {

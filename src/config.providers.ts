@@ -15,6 +15,7 @@ import { inspect } from 'node:util'
 import { Logger } from '@nestjs/common'
 import type { FactoryProvider } from '@nestjs/common'
 
+import { assertBuiltinsIntact } from './builtins'
 import type { BymaxConfigModuleOptions } from './config.options'
 import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { deepFreeze } from './deep-freeze'
@@ -60,14 +61,20 @@ const REDACTED_ROOT = '[BymaxConfig: values redacted]'
  * @returns The same reference.
  */
 function redactRoot<T extends object>(root: T): T {
-  Object.defineProperty(root, inspect.custom, bare({ value: () => REDACTED_ROOT }))
-  Object.defineProperty(
+  defineProperty(root, inspect.custom, bare({ value: () => REDACTED_ROOT }))
+  defineProperty(
     root,
     'toJSON',
     bare({ value: () => ({ service: 'BymaxConfig', namespaces: Object.keys(root) }) })
   )
   return root
 }
+
+/**
+ * `Object.defineProperty` as it was when the module loaded. The redaction of the root goes through it, so
+ * that a replacement made later cannot leave the configuration printing its values.
+ */
+const defineProperty = Object.defineProperty
 
 /**
  * Run the observability hook, wait for it, and keep its failure from changing the outcome.
@@ -138,6 +145,7 @@ export function createValidatedConfig<TShape extends EnvShape>(
     readonly schema: EnvSchema<TShape>
   }
 ): Readonly<EnvOutput<TShape>> {
+  assertBuiltinsIntact()
   const read = guarded('reading the options', () => {
     const schema = readOption(options, 'schema') as typeof options.schema
     const source = readOption(options, 'source') as typeof options.source

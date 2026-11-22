@@ -27,6 +27,14 @@ as the GitHub Release body, so each released version needs a matching
   by `printable`, which walked the text with `for…of`; code that had replaced `String.prototype[Symbol.iterator]`
   emptied the field. The text is now read by index with `codePointAt` and `fromCodePoint` taken when the module
   loads, with the same escaping and bound.
+- **The report no longer goes through the array iterator either.** The width of the variable column and the
+  issue lines were computed with `for…of`, a spread and `map`; with `Array.prototype[Symbol.iterator]`
+  replaced, the message lost its issue lines or a throwing iterator escaped from the constructor. The
+  report is now built by index.
+- **The escaping and the copy no longer follow a replaced `RegExp.prototype.test`, `RegExp.prototype.exec`
+  or `Array.prototype.push`.** The unsafe-character check calls the `exec` taken when the module loaded, and
+  the copy of the issues assigns by index, so neither an unsafe character stops being escaped nor the copy
+  stops being filled.
 
 ### Tooling
 

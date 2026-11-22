@@ -62,8 +62,9 @@ function computeColumnWidth(issues: ReadonlyArray<ReportableIssue>): number {
   // A per-element loop (not Math.max(...spread)) avoids a RangeError when the
   // issue list is very large, so a validation failure never becomes a crash.
   let longest = MIN_VARIABLE_COLUMN
-  for (const issue of issues) {
-    longest = Math.max(longest, nameOf(issue).length)
+  // By index, so a host that replaced the Array iterator does not change which issues are read.
+  for (let at = 0; at < issues.length; at += 1) {
+    longest = Math.max(longest, nameOf(Reflect.get(issues, at) as ReportableIssue).length)
   }
   return Math.min(longest, MAX_VARIABLE_COLUMN) + VARIABLE_GUTTER
 }
@@ -102,10 +103,16 @@ function formatIssueLine(issue: ReportableIssue, columnWidth: number): string {
  */
 export function formatIssueReport(issues: ReadonlyArray<ReportableIssue>): string {
   const columnWidth = computeColumnWidth(issues)
-  const lines = issues.map((issue) => formatIssueLine(issue, columnWidth))
-  const header = `${REPORT_HEADER} (${pluralizeIssues(issues.length)})`
+  // Built by index and by concatenation, with no iterator, spread or array method, so a host that replaced
+  // the Array iterator does not drop the issue lines.
+  let body = `${REPORT_HEADER} (${pluralizeIssues(issues.length)})\n\n`
+  let aboutOverrides = issues.length > 0
+  for (let at = 0; at < issues.length; at += 1) {
+    const issue = Reflect.get(issues, at) as ReportableIssue
+    body += `${formatIssueLine(issue, columnWidth)}\n`
+    if (issue.variable !== '') aboutOverrides = false
+  }
   // An issue with no variable comes from a test helper's overrides, and a report made only of
   // those asks for a fix in the test, not a restart of a process.
-  const aboutOverrides = issues.length > 0 && issues.every((issue) => issue.variable === '')
-  return [header, '', ...lines, '', aboutOverrides ? OVERRIDE_FOOTER : REPORT_FOOTER].join('\n')
+  return `${body}\n${aboutOverrides ? OVERRIDE_FOOTER : REPORT_FOOTER}`
 }

@@ -476,3 +476,86 @@ describe('the escaping of a field, with the String iterator of the realm replace
     expect(message.endsWith('…')).toBe(true)
   })
 })
+
+/** Runs `run` with `owner[key]` replaced by `value`, and puts the original back afterwards. */
+function withReplaced<T>(owner: object, key: PropertyKey, value: unknown, run: () => T): T {
+  const original = Object.getOwnPropertyDescriptor(owner, key) as PropertyDescriptor
+  Object.defineProperty(owner, key, { ...original, value })
+  try {
+    return run()
+  } finally {
+    Object.defineProperty(owner, key, original)
+  }
+}
+
+describe('the report and the escaping, with built-ins of the realm replaced', () => {
+  const reportOf = (): string => new BymaxConfigValidationError([issue]).message
+
+  it('lists the issue lines when the Array iterator yields nothing', () => {
+    const original = Array.prototype[Symbol.iterator]
+    const message = withReplaced(
+      Array.prototype,
+      Symbol.iterator,
+      () => original.call([]),
+      reportOf
+    )
+
+    expect(message).toContain(issue.message)
+    expect(message).toContain('(1 issue)')
+  })
+
+  it('does not let a throwing Array iterator escape the report', () => {
+    const message = withReplaced(
+      Array.prototype,
+      Symbol.iterator,
+      () => {
+        throw new Error('iterator')
+      },
+      reportOf
+    )
+
+    expect(message).toContain(issue.message)
+  })
+
+  it('keeps every issue of a longer list when the Array iterator yields nothing', () => {
+    const original = Array.prototype[Symbol.iterator]
+    const message = withReplaced(
+      Array.prototype,
+      Symbol.iterator,
+      () => original.call([]),
+      () => new BymaxConfigValidationError([issue, { ...issue, variable: 'OTHER_NAME' }]).message
+    )
+
+    expect(message).toContain('(2 issues)')
+    expect(message).toContain('OTHER_NAME')
+  })
+
+  it('keeps the issues when Array.prototype.push does nothing', () => {
+    const built = withReplaced(
+      Array.prototype,
+      'push',
+      () => 0,
+      () => new BymaxConfigValidationError([issue])
+    )
+
+    expect(built.issues).toEqual([issue])
+  })
+
+  it('still escapes an unsafe character when RegExp.prototype.test and exec are replaced', () => {
+    const unsafe: ConfigIssue = { ...issue, message: 'a\u001b[31mb' }
+    const built = withReplaced(
+      RegExp.prototype,
+      'test',
+      () => false,
+      () =>
+        withReplaced(
+          RegExp.prototype,
+          'exec',
+          () => null,
+          () => new BymaxConfigValidationError([unsafe])
+        )
+    )
+
+    expect(built.issues[0]?.message).toBe('a\\u001b[31mb')
+  })
+})

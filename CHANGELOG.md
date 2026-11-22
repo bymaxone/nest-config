@@ -51,6 +51,8 @@ as the GitHub Release body, so each released version needs a matching
 
 - **A variable that only the root prototype of another realm supplies is no longer a value of the source.** A source created in another realm (a `vm` context) whose `Object.prototype` carried a required variable satisfied it, under `strict` too, because the test for an inherited value compared the answer against an object of the main realm. A source value is now read by the structural rule of the options: it is the source's own, or held on a class or a prototype that has one of its own, and it is never what the first holder on the chain answers when that holder is not the source and has no prototype, in any realm. A value held only by a parent the host built with `Object.create(null)` is not read either.
 
+- **A name planted on `Object.prototype` is no longer taken for what a zod definition or schema holds.** The walks over a leaf schema followed `innerType` and `in` and read `type`, `coerce` and `shape` by name from the objects zod builds, which inherit from the root prototype. A planted `innerType` or `in` that pointed at a node whose own definition ended nowhere made the validation loop without end, and one carrying `meta({ env })` redirected a leaf to the variable it named; a planted `coerce` changed the refusal text of every boolean leaf, and a planted `shape` made a leaf pass for a namespace. These names are now read by the rule of the options, and a chain of wrappers past a fixed depth is refused with a `TypeError` that the validation reports as a read of the schema that threw.
+
 ### Tooling
 
 - **`pnpm size` refuses a report on a stale `dist/`.** The `check-dist-fresh` script runs ahead of the

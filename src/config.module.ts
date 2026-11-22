@@ -22,6 +22,7 @@ import { ConfigService } from './config.service'
 import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { guarded, guardedResolve } from './env-validator'
 import { ConfigErrorCode, libraryError } from './errors'
+import { hasOption, readOption } from './option-read'
 
 /**
  * Append items to a possibly-absent module-definition list.
@@ -40,6 +41,18 @@ function appendTo<TItem>(list: readonly TItem[] | undefined, ...items: TItem[]):
 }
 
 /**
+ * Copy the entries into an object with no prototype, so that what the builder reads from it by name
+ * answers for the keys it holds and never for a name that a prototype of the realm supplies.
+ *
+ * @typeParam TValues - The shape of the values.
+ * @param values - The entries to hold.
+ * @returns An object with no prototype holding the entries.
+ */
+function bare<TValues extends object>(values: TValues): TValues {
+  return Object.assign(Object.create(null) as TValues, values)
+}
+
+/**
  * Drop the entries whose value is undefined or null.
  *
  * An own option key set to undefined or null means "use the default", so the key must be absent
@@ -50,9 +63,11 @@ function appendTo<TItem>(list: readonly TItem[] | undefined, ...items: TItem[]):
  * @returns The same entries without the undefined and null ones.
  */
 function withoutNullish<TValues extends object>(values: TValues): Partial<TValues> {
-  return Object.fromEntries(
-    Object.entries(values).filter(([, value]) => value !== undefined && value !== null)
-  ) as Partial<TValues>
+  return bare(
+    Object.fromEntries(
+      Object.entries(values).filter(([, value]) => value !== undefined && value !== null)
+    ) as Partial<TValues>
+  )
 }
 
 /**
@@ -159,23 +174,26 @@ function readModuleOptions(
     `reading the options of ${method}`,
     () => {
       const held = {
-        schema: options.schema,
-        source: options.source,
-        onValidationError: options.onValidationError,
-        strict: options.strict
+        schema: readOption(options, 'schema') as BymaxConfigModuleOptions['schema'],
+        source: readOption(options, 'source') as BymaxConfigModuleOptions['source'],
+        onValidationError: readOption(
+          options,
+          'onValidationError'
+        ) as BymaxConfigModuleOptions['onValidationError'],
+        strict: readOption(options, 'strict') as BymaxConfigModuleOptions['strict']
       }
       // The value decides first: options held by a Proxy with only a get trap answer `in` with nothing.
       // The key is asked about only when its value is undefined, to tell a key set to undefined (refused)
       // from an absent one (the process environment).
-      return { ...held, keyed: held.source !== undefined || 'source' in options }
+      return { ...held, keyed: held.source !== undefined || hasOption(options, 'source') }
     }
   )
   assertBoolean(strict, 'strict', `BymaxConfigModule.${method}`)
   assertHook(onValidationError, `BymaxConfigModule.${method}`)
-  const read: BymaxConfigModuleOptions = {
+  const read: BymaxConfigModuleOptions = bare({
     schema,
     ...withoutNullish({ onValidationError, strict })
-  }
+  })
   if (keyed) Object.assign(read, { source })
   return read
 }
@@ -189,9 +207,12 @@ function readModuleOptions(
  */
 function readRegistration(options: BymaxConfigForRootOptions): BymaxConfigForRootOptions {
   const read = readModuleOptions(options, 'forRoot', FOR_ROOT_OPTION_KEYS)
-  const isGlobal = guarded('reading isGlobal', () => options.isGlobal)
+  const isGlobal = guarded(
+    'reading isGlobal',
+    () => readOption(options, 'isGlobal') as typeof options.isGlobal
+  )
   assertBoolean(isGlobal, 'isGlobal', 'BymaxConfigModule.forRoot')
-  return { ...read, ...withoutNullish({ isGlobal }) }
+  return bare({ ...read, ...withoutNullish({ isGlobal }) })
 }
 
 /**
@@ -236,13 +257,16 @@ function readAsyncRegistration(
     provideInjectionTokensFrom,
     isGlobal
   } = guarded('reading the options of forRootAsync', () => ({
-    useFactory: options.useFactory,
-    useClass: options.useClass,
-    useExisting: options.useExisting,
-    inject: options.inject,
-    imports: options.imports,
-    provideInjectionTokensFrom: options.provideInjectionTokensFrom,
-    isGlobal: options.isGlobal
+    useFactory: readOption(options, 'useFactory') as typeof options.useFactory,
+    useClass: readOption(options, 'useClass') as typeof options.useClass,
+    useExisting: readOption(options, 'useExisting') as typeof options.useExisting,
+    inject: readOption(options, 'inject') as typeof options.inject,
+    imports: readOption(options, 'imports') as typeof options.imports,
+    provideInjectionTokensFrom: readOption(
+      options,
+      'provideInjectionTokensFrom'
+    ) as typeof options.provideInjectionTokensFrom,
+    isGlobal: readOption(options, 'isGlobal') as typeof options.isGlobal
   }))
   assertBoolean(isGlobal, 'isGlobal', 'BymaxConfigModule.forRootAsync')
   return withoutNullish({

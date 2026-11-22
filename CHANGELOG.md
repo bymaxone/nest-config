@@ -31,10 +31,23 @@ as the GitHub Release body, so each released version needs a matching
   issue lines were computed with `for…of`, a spread and `map`; with `Array.prototype[Symbol.iterator]`
   replaced, the message lost its issue lines or a throwing iterator escaped from the constructor. The
   report is now built by index.
-- **The escaping and the copy no longer follow a replaced `RegExp.prototype.test`, `RegExp.prototype.exec`
-  or `Array.prototype.push`.** The unsafe-character check calls the `exec` taken when the module loaded, and
-  the copy of the issues assigns by index, so neither an unsafe character stops being escaped nor the copy
-  stops being filled.
+- **The escaping and the copy no longer follow a replaced `RegExp.prototype.test`, `RegExp.prototype.exec`,
+  `Array.prototype.push`, `Reflect.get` or `Reflect.set`.** The unsafe-character check calls the `exec`
+  taken when the module loaded, the copy of the issues assigns by index, and the copy and the report read
+  and write through the `Reflect.get` and `Reflect.set` taken when the module loaded, so neither an unsafe
+  character stops being escaped nor the copy stops being filled. Built-ins replaced after the import are
+  not defended against beyond these: see the README.
+- **A name planted on `Object.prototype` is no longer an option.** `forRoot`, `forRootAsync` and
+  `createValidatedConfig` read their options by name, which also answers for the realm's root prototype,
+  and the metadata of a schema was read for `open` and `env` the same way. With `Object.prototype.source` set, `createValidatedConfig({ schema })` validated that object in
+  place of `process.env`; the other names turned strictness on, supplied a hook, a schema or a factory,
+  opened every namespace to unknown variables, renamed the variable of every leaf, or made the module
+  non-global. An option is now read from the object itself, from a class instance (its own fields and the
+  accessors of its class), or from any prototype that has a prototype of its own. A name is not read when the
+  first object that holds it, other than the options themselves, has no prototype: that is where the root
+  prototype of any realm sits, and it is found without reading a property of it, so overwriting
+  `Object.prototype.constructor` does not bring a planted name back. A name held only by a parent the host
+  built with `Object.create(null)` is not read either.
 
 ### Tooling
 

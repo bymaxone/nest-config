@@ -17,6 +17,7 @@ import type { z } from 'zod'
 
 import { ConfigErrorCode, isLibraryError, libraryError } from './errors'
 import type { BymaxConfigValidationError, ConfigIssue } from './errors'
+import { readOption } from './option-read'
 import {
   bindingsOf,
   findCoercedBooleanLeaves,
@@ -726,7 +727,10 @@ export function validateEnv<TShape extends EnvShape>(
   // What the schema answers and what its issues hold are the host's code as well.
   return guarded('reading the schema', () => {
     const candidate = buildCandidate(namespaces, collectPresentLeaves(bindings, sourceMap))
-    const unknown = options?.strict === true ? detectUnknownKeys(prefixes, bindings, sourceMap) : []
+    const unknown =
+      (options ? readOption(options, 'strict') : undefined) === true
+        ? detectUnknownKeys(prefixes, bindings, sourceMap)
+        : []
     let result: ReturnType<typeof schema.safeParse>
     try {
       result = schema.safeParse(candidate)

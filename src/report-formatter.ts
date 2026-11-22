@@ -20,6 +20,9 @@ interface ReportableIssue {
   readonly message: string
 }
 
+/** `Reflect.get`, taken when the module loads, so a later replacement is not followed. */
+const reflectGet = Reflect.get
+
 const REPORT_INDENT = '  '
 const MIN_VARIABLE_COLUMN = 20
 const MAX_VARIABLE_COLUMN = 64
@@ -64,7 +67,7 @@ function computeColumnWidth(issues: ReadonlyArray<ReportableIssue>): number {
   let longest = MIN_VARIABLE_COLUMN
   // By index, so a host that replaced the Array iterator does not change which issues are read.
   for (let at = 0; at < issues.length; at += 1) {
-    longest = Math.max(longest, nameOf(Reflect.get(issues, at) as ReportableIssue).length)
+    longest = Math.max(longest, nameOf(reflectGet(issues, at) as ReportableIssue).length)
   }
   return Math.min(longest, MAX_VARIABLE_COLUMN) + VARIABLE_GUTTER
 }
@@ -108,7 +111,7 @@ export function formatIssueReport(issues: ReadonlyArray<ReportableIssue>): strin
   let body = `${REPORT_HEADER} (${pluralizeIssues(issues.length)})\n\n`
   let aboutOverrides = issues.length > 0
   for (let at = 0; at < issues.length; at += 1) {
-    const issue = Reflect.get(issues, at) as ReportableIssue
+    const issue = reflectGet(issues, at) as ReportableIssue
     body += `${formatIssueLine(issue, columnWidth)}\n`
     if (issue.variable !== '') aboutOverrides = false
   }

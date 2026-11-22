@@ -530,6 +530,24 @@ describe('the report and the escaping, with built-ins of the realm replaced', ()
     expect(message).toContain('OTHER_NAME')
   })
 
+  it('keeps the issues when Reflect.get and Reflect.set are replaced', () => {
+    const built = withReplaced(
+      Reflect,
+      'get',
+      () => undefined,
+      () =>
+        withReplaced(
+          Reflect,
+          'set',
+          () => false,
+          () => new BymaxConfigValidationError([issue])
+        )
+    )
+
+    expect(built.issues).toEqual([issue])
+    expect(built.message).toContain(issue.message)
+  })
+
   it('keeps the issues when Array.prototype.push does nothing', () => {
     const built = withReplaced(
       Array.prototype,

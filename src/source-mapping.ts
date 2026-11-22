@@ -12,6 +12,7 @@
  */
 
 import { ConfigErrorCode, libraryError } from './errors'
+import { hasOption, readOption } from './option-read'
 import type { EnvNamespace, EnvSchema, EnvShape } from './types'
 
 /**
@@ -84,7 +85,8 @@ interface OverrideNode {
  */
 function readEnvOverride(leaf: OverrideNode): string | undefined {
   for (let node: OverrideNode | undefined = leaf; node !== undefined;) {
-    const override = node.meta()?.env
+    const meta = node.meta()
+    const override = meta === undefined ? undefined : readOption(meta, 'env')
     if (typeof override === 'string' && override.length > 0) return override
     node = node._zod.def.innerType ?? node._zod.def.in
   }
@@ -103,7 +105,8 @@ function readEnvOverride(leaf: OverrideNode): string | undefined {
  * @returns True when the namespace waives strict unknown-key detection.
  */
 function readOpenFlag(namespace: NamespaceView): boolean {
-  return namespace.meta()?.open === true
+  const meta = namespace.meta()
+  return meta !== undefined && readOption(meta, 'open') === true
 }
 
 /**
@@ -254,8 +257,8 @@ function describeUnusable(value: unknown): string {
 function describeUnusableEnv(leaf: OverrideNode): string | undefined {
   for (let node: OverrideNode | undefined = leaf; node !== undefined;) {
     const meta = node.meta()
-    if (meta !== undefined && 'env' in meta) {
-      const value = meta.env
+    if (meta !== undefined && hasOption(meta, 'env')) {
+      const value = readOption(meta, 'env')
       if (typeof value !== 'string' || value.length === 0) return describeUnusable(value)
     }
     node = node._zod.def.innerType ?? node._zod.def.in

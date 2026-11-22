@@ -335,6 +335,16 @@ schema that throws is reported as one issue for the whole schema (`a rule threw 
 `cause`, on purpose: what a rule throws can quote the value it received, and the cause is printed with
 the error.
 
+The library captures the built-ins it calls directly when it is imported: `String.prototype.codePointAt`,
+`String.fromCodePoint`, `RegExp.prototype.exec`, `Reflect.get` and `Reflect.set`, which copy and escape the
+issues of an error. It does not defend its dependencies, or the built-ins it reads live, against a
+replacement made after the import: code that does that is already running with the process's authority.
+A name planted on `Object.prototype` is a different case and is handled: it is never taken for an option,
+nor for a `meta({ open })` or `meta({ env })` of a schema. The rule is: an option is read unless the first
+object that holds it, other than the options object itself, has no prototype. The trade-off is that an option
+held only by a parent you built with `Object.create(null)` is not read; put it on the options object, or on a
+parent that has a prototype.
+
 Three edges of the same rule. A hook that rethrows a library error it caught from another validation
 does not pass that error through: the boot fails with its own validation error, with the hook's error
 as `cause`, like any error of a hook. A library error that crosses the CommonJS and the ESM copies of

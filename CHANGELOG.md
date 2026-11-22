@@ -47,8 +47,7 @@ as the GitHub Release body, so each released version needs a matching
   first object that holds it, other than the options themselves, has no prototype: that is where the root
   prototype of any realm sits, and it is found without reading a property of it, so overwriting
   `Object.prototype.constructor` does not bring a planted name back. A name held only by a parent the host
-  built with `Object.create(null)` is not read either. The objects handed to the module builder have no
-  prototype, so the builder does not read a planted name either.
+  built with `Object.create(null)` is not read either.
 
 ### Tooling
 

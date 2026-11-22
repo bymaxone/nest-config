@@ -448,3 +448,31 @@ describe('the copy of an issue, with the array iterator of the realm replaced', 
     expect(built.issues).toEqual([issue])
   })
 })
+
+describe('the escaping of a field, with the String iterator of the realm replaced', () => {
+  it('keeps the text, escapes the unsafe characters and cuts at the bound', () => {
+    const original = String.prototype[Symbol.iterator]
+    Object.defineProperty(String.prototype, Symbol.iterator, {
+      configurable: true,
+      writable: true,
+      value: () => original.call('')
+    })
+    let built: BymaxConfigValidationError | undefined
+    try {
+      built = new BymaxConfigValidationError([
+        { ...issue, message: `a\nb\u{1f600}${'x'.repeat(300)}` }
+      ])
+    } finally {
+      Object.defineProperty(String.prototype, Symbol.iterator, {
+        configurable: true,
+        writable: true,
+        value: original
+      })
+    }
+
+    const message = (built.issues[0] as ConfigIssue).message
+    expect(message.startsWith('a\\u000ab\u{1f600}x')).toBe(true)
+    expect(message).toHaveLength(201)
+    expect(message.endsWith('…')).toBe(true)
+  })
+})

@@ -11,7 +11,7 @@
 import { z } from 'zod'
 
 import { BymaxConfigModule } from './config.module'
-import { createValidatedConfig } from './config.providers'
+import { bymaxConfigProvider, createValidatedConfig } from './config.providers'
 import { BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { defineEnv } from './define-env'
 import { validateEnv } from './env-validator'
@@ -70,6 +70,19 @@ describe('an option name planted on Object.prototype is not an option of forRoot
     const held = optionsOf(registration)
     expect(held['schema']).toBe(key === 'schema' ? undefined : schema)
     expect(Object.keys(held).filter((name) => name !== 'schema')).toEqual([])
+  })
+
+  it('does not run a hook planted as onValidationError when the validation fails', async () => {
+    const hook = jest.fn()
+    const failing = defineEnv({ app: z.object({ name: z.string() }) })
+    const held = optionsOf(BymaxConfigModule.forRoot({ schema: failing }))
+    const factory = bymaxConfigProvider.useFactory as (options: unknown) => Promise<unknown>
+
+    await expect(plantedAsync('onValidationError', hook, () => factory(held))).rejects.toThrow(
+      'environment validation failed'
+    )
+
+    expect(hook).not.toHaveBeenCalled()
   })
 
   it('does not read isGlobal, so the module stays global', () => {

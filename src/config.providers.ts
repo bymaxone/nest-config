@@ -194,7 +194,10 @@ async function provideValidatedConfig(
       } catch {
         // A faulty logger must never replace the failure it reports.
       }
-      await reportIssues(options.onValidationError, error)
+      await reportIssues(
+        readOption(options, 'onValidationError') as ProvidedOptions['onValidationError'],
+        error
+      )
     }
     throw error
   }

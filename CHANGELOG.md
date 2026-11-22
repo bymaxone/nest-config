@@ -20,14 +20,14 @@ as the GitHub Release body, so each released version needs a matching
 ### Fixed
 
 - **The copy of an issue no longer goes through the array iterator.** `new BymaxConfigValidationError(issues)`
-  collected the four fields of an issue into an array and destructured it, which asks the realm's
+  collected the fields of an issue into an array and destructured it, which asks the realm's
   `Array.prototype[Symbol.iterator]`; code that had replaced that iterator emptied the fields. Each field is
   now read by name.
 
 ### Tooling
 
-- **`pnpm size` refuses a report on a stale `dist/`.** The family `check-dist-fresh` script runs ahead of the
-  size budget and fails when `dist/` is older than `src/` or the build configuration. Nothing in the package
+- **`pnpm size` refuses a report on a stale `dist/`.** The `check-dist-fresh` script runs ahead of the
+  size budget and fails when `dist/` is older than the sources it was built from. Nothing in the package
   changes.
 
 No declaration change: there is nothing to apply to a derived backend.

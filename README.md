@@ -919,6 +919,14 @@ export interface ConfigIssue {
 }
 ```
 
+The constructor is public, so your own code can build one. `issues` must be an array of up to 10 000
+issues, each an object whose `path`, `variable`, `code` and `message` are strings. Anything else is refused
+before the error exists: a `TypeError` for a value that is not an array, an entry that is not an object, a
+field that is not a string, an array that claims no entries while it holds an index key, or a read of
+your list that threw (that error is the `cause`, and its message is withheld because it can carry the
+value), and a `RangeError` for more than 10 000 entries, none of which is read. The list is read by
+index, once, never through its iterator.
+
 `ConfigErrorCode` is the frozen catalog backing `ConfigValidationCode` (the
 error's own `code`) and `ConfigIssueCode` (each issue's `code`); see the
 error catalog below for every value.

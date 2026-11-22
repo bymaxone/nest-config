@@ -75,19 +75,81 @@ function printable(text: string): string {
 const MAX_ISSUES = 10_000
 
 /**
+ * Whether a property name is an array index, which is what makes an own key an entry the list holds: a
+ * canonical whole number below 2**32 - 1. Converting to an unsigned 32-bit integer and back leaves exactly
+ * those names unchanged, but for 2**32 - 1 itself, which is the length limit and not an index.
+ *
+ * @param key - An own property name of the list.
+ * @returns True when the name is an array index.
+ */
+function isIndexKey(key: string): boolean {
+  const index = Number(key) >>> 0
+  return index !== 4_294_967_295 && String(index) === key
+}
+
+/** The four fields an issue carries, in the order they are read. */
+const ISSUE_FIELDS = ['path', 'variable', 'code', 'message'] as const
+
+/**
+ * Run a read of the host's list. What it throws is the host's own code failing, and its message can carry
+ * the value, so it is refused with a message of the library's and kept as the cause.
+ *
+ * @typeParam TResult - What the read returns.
+ * @param read - The read of the list, of an entry or of a field.
+ * @returns What the read returned.
+ * @throws {TypeError} When the read threw, with the thrown value as the cause.
+ */
+function hostRead<TResult>(read: () => TResult): TResult {
+  try {
+    return read()
+  } catch (cause) {
+    throw new TypeError(
+      'BymaxConfigValidationError: reading the issues threw; its message is withheld because it can carry the value',
+      { cause }
+    )
+  }
+}
+
+/**
+ * Copy one issue: each field is read once, must be a string, and is written escaped and bounded.
+ *
+ * @param issue - The entry the host listed.
+ * @param index - Its position in the list, for the refusal.
+ * @returns The frozen copy with the four contract fields.
+ * @throws {TypeError} When a field is not a string.
+ */
+function copyIssue(issue: object, index: number): ConfigIssue {
+  const fields = ISSUE_FIELDS.map((field) => {
+    const value = hostRead(() => Reflect.get(issue, field) as unknown)
+    if (typeof value !== 'string') {
+      throw new TypeError(
+        `BymaxConfigValidationError: issue ${index} field ${field} must be a string`
+      )
+    }
+    return printable(value)
+  })
+  const [path, variable, code, message] = fields as [string, string, string, string]
+  return Object.freeze({ path, variable, code: code as ConfigIssue['code'], message })
+}
+
+/**
  * Copy a list of issues by index, the way no iterator the list answers can shorten it: the length is read
  * once and must be a whole number up to {@link MAX_ISSUES}, each index is read once, and each field of an
- * issue is read once. A list that claims no entries yet lists keys of its own is the empty copy of a
- * non-empty list, and is refused, as is an entry that is not an object.
+ * issue is read once. Only an array is a list. One that claims no entries yet holds an own index key is the
+ * empty copy of a non-empty list, and is refused, as is an entry that is not an object. A read of the host's that throws
+ * is refused with its cause.
  *
  * @param issues - The issues the host handed to the constructor.
  * @returns The issues, each a frozen object with the four contract fields, escaped and bounded.
- * @throws {TypeError} When the length is not a whole number, an entry is not an object, or the list is
- * claimed empty while it lists keys.
+ * @throws {TypeError} When the value is not an array, the length is not a whole number, an entry is not an
+ * object, a field is not a string, the list claims no entries while it holds an index key, or a read threw.
  * @throws {RangeError} When the list is longer than {@link MAX_ISSUES}.
  */
 function copyIssues(issues: ReadonlyArray<ConfigIssue>): ReadonlyArray<ConfigIssue> {
-  const length = issues.length as unknown
+  if (!hostRead(() => Array.isArray(issues))) {
+    throw new TypeError('BymaxConfigValidationError: issues must be an array')
+  }
+  const length = hostRead(() => issues.length as unknown)
   if (typeof length !== 'number' || !Number.isInteger(length) || length < 0) {
     throw new TypeError(
       'BymaxConfigValidationError: issues must be a list with a whole-number length'
@@ -98,24 +160,16 @@ function copyIssues(issues: ReadonlyArray<ConfigIssue>): ReadonlyArray<ConfigIss
       `BymaxConfigValidationError: at most ${MAX_ISSUES} issues, received ${length}`
     )
   }
-  if (length === 0 && Object.keys(issues).length > 0) {
+  if (length === 0 && hostRead(() => Object.keys(issues)).some(isIndexKey)) {
     throw new TypeError('BymaxConfigValidationError: issues claims no entries but lists some')
   }
   const copy: ConfigIssue[] = []
   for (let index = 0; index < length; index += 1) {
-    const issue = Reflect.get(issues, index) as unknown
+    const issue = hostRead(() => Reflect.get(issues, index) as unknown)
     if (typeof issue !== 'object' || issue === null) {
       throw new TypeError(`BymaxConfigValidationError: issue ${index} must be an object`)
     }
-    const { path, variable, code, message } = issue as ConfigIssue
-    copy.push(
-      Object.freeze({
-        path: printable(path),
-        variable: printable(variable),
-        code,
-        message: printable(message)
-      })
-    )
+    copy.push(copyIssue(issue, index))
   }
   return copy
 }
@@ -191,8 +245,12 @@ export class BymaxConfigValidationError extends Error {
   /**
    * Build the aggregated error from the collected issues.
    *
-   * @param issues - Every collected violation; copied and frozen so neither the
-   * caller nor consumer code can mutate the reported list.
+   * @param issues - Every collected violation, as an array of issues whose four fields are strings;
+   * copied and frozen so neither the caller nor consumer code can mutate the reported list.
+   * @throws {TypeError} When `issues` is not an array, an entry is not an object, a field is not a
+   * string, the array claims no entries while it holds an index key, or reading it threw (the host's
+   * error is the `cause` and its message is withheld).
+   * @throws {RangeError} When `issues` holds more than 10 000 entries; none is read.
    */
   constructor(issues: ReadonlyArray<ConfigIssue>) {
     // Copy each issue into a fresh, frozen object carrying only the four

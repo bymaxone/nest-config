@@ -346,18 +346,15 @@ held only by a parent you built with `Object.create(null)` is not read; put it o
 parent that has a prototype. The names the library reads from the objects zod builds for a schema
 follow the same rule; what zod itself reads from its own objects when it parses is zod's, and is not covered.
 
-At load the library records the built-ins it calls (the `Object`, `Reflect`, `Array`, `String`, `Set`, `Map`,
-`RegExp` and `node:util` `types` functions, the methods of their prototypes, and the iterators it loops
-through). Every entry point that starts a validation (`BymaxConfigModule.forRoot`, `forRootAsync` and its
-options factory, `createValidatedConfig`, `resolveSourceNames`, the `ConfigService` constructor, and the test
-helpers through them) compares each with the one it recorded, by identity. One that was replaced is refused
+At load the library records the built-ins it calls. Every entry point that starts a validation compares each
+with the one it recorded, by identity. One that was replaced is refused
 with a `BymaxConfigValidationError` that carries the number replaced and nothing else, and nothing throws at
 import. Load order matters: a polyfill that replaces a built-in after the library is imported is refused at
 boot, so load polyfills first. The reads of `ConfigService` do not check again after the boot, and the
 redaction of the configuration uses the `Object.defineProperty` taken at load, so a replacement made while the
 validation runs cannot leave its values printable.
 
-Three things are not defended against. What zod and Node define with their own descriptors; a schema leaf that
+Not defended against: what zod and Node define with their own descriptors; a schema leaf that
 a host replaces with an accessor or a read-only property; and a `then` planted on `Object.prototype`, which
 every promise in the process, Nest's own among them, adopts, and which the validated configuration, an
 ordinary object, does not escape.

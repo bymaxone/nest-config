@@ -16,6 +16,15 @@ import { guarded } from './env-validator'
 import type { Path, PathValue } from './types'
 
 /**
+ * The built-ins the reads of the service use, as they were when the module loaded, so a replacement made
+ * after the boot cannot change what `get`, `has` and `toJSON` answer.
+ */
+const apply = Reflect.apply
+const arraySlice = Array.prototype.slice
+const mapGet = Map.prototype.get
+const toText = String
+
+/**
  * Typed accessor over the validated, deep-frozen configuration object.
  *
  * Wraps the frozen config registered under {@link BYMAX_CONFIG} and exposes it
@@ -126,7 +135,7 @@ export class ConfigService<TConfig> {
   public toJSON(): { readonly service: string; readonly namespaces: readonly string[] } {
     return {
       service: 'ConfigService',
-      namespaces: [...this.#namespaces]
+      namespaces: apply(arraySlice, this.#namespaces, []) as string[]
     }
   }
 
@@ -195,6 +204,6 @@ export class ConfigService<TConfig> {
    * @returns The leaf value as `unknown`, or `undefined` when the leaf is unset.
    */
   private resolve(path: Path<TConfig>): unknown {
-    return this.#leaves.get(String(path))
+    return apply(mapGet, this.#leaves, [toText(path)])
   }
 }

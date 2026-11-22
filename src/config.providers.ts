@@ -65,7 +65,7 @@ function redactRoot<T extends object>(root: T): T {
   defineProperty(
     root,
     'toJSON',
-    bare({ value: () => ({ service: 'BymaxConfig', namespaces: Object.keys(root) }) })
+    bare({ value: () => ({ service: 'BymaxConfig', namespaces: keys(root) }) })
   )
   return root
 }
@@ -75,6 +75,9 @@ function redactRoot<T extends object>(root: T): T {
  * that a replacement made later cannot leave the configuration printing its values.
  */
 const defineProperty = Object.defineProperty
+
+/** `Object.keys` as it was when the module loaded, for the serializer of the root, which runs when a log line is written. */
+const keys = Object.keys
 
 /**
  * Run the observability hook, wait for it, and keep its failure from changing the outcome.

@@ -9,7 +9,7 @@
  * with the number that differ and nothing else. Nothing here throws at import.
  */
 
-import { types } from 'node:util'
+import nodeUtil, { types } from 'node:util'
 
 import { ConfigErrorCode, libraryError } from './errors'
 
@@ -19,7 +19,7 @@ interface Baseline {
   readonly name: string
   readonly owner: object
   readonly key: PropertyKey
-  readonly original: unknown
+  readonly original: PropertyDescriptor | undefined
 }
 
 const getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor
@@ -27,7 +27,7 @@ const defineBaseline = (name: string, owner: object, key: PropertyKey): Baseline
   name,
   owner,
   key,
-  original: getOwnPropertyDescriptor(owner, key)?.value as unknown
+  original: getOwnPropertyDescriptor(owner, key)
 })
 
 /** Owners whose methods the library calls, by the name a person writes for them. */
@@ -52,7 +52,7 @@ const OWNERS: ReadonlyArray<readonly [string, object, readonly PropertyKey[]]> =
       'values'
     ]
   ],
-  ['Reflect', Reflect, ['get', 'set']],
+  ['Reflect', Reflect, ['apply', 'get', 'set']],
   ['Array', Array, ['isArray']],
   ['ArrayBuffer', ArrayBuffer, ['isView']],
   ['Number', Number, ['isInteger']],
@@ -85,10 +85,13 @@ const OWNERS: ReadonlyArray<readonly [string, object, readonly PropertyKey[]]> =
     String.prototype,
     [
       'codePointAt',
+      'includes',
+      'indexOf',
       'padEnd',
       'padStart',
       'repeat',
       'replace',
+      'slice',
       'split',
       'startsWith',
       'toUpperCase',
@@ -98,7 +101,11 @@ const OWNERS: ReadonlyArray<readonly [string, object, readonly PropertyKey[]]> =
   ],
   ['Number.prototype', Number.prototype, ['toString']],
   ['Object.prototype', Object.prototype, ['toString', 'valueOf']],
-  ['RegExp.prototype', RegExp.prototype, ['exec', 'test']],
+  [
+    'RegExp.prototype',
+    RegExp.prototype,
+    ['exec', 'test', Symbol.match, Symbol.matchAll, Symbol.replace, Symbol.search, Symbol.split]
+  ],
   [
     'Set.prototype',
     Set.prototype,
@@ -114,8 +121,26 @@ const OWNERS: ReadonlyArray<readonly [string, object, readonly PropertyKey[]]> =
   [
     'globalThis',
     globalThis,
-    ['Map', 'Number', 'RangeError', 'Set', 'String', 'Symbol', 'TypeError', 'WeakSet']
+    [
+      'Array',
+      'ArrayBuffer',
+      'Error',
+      'Map',
+      'Math',
+      'Number',
+      'Object',
+      'RangeError',
+      'Reflect',
+      'RegExp',
+      'Set',
+      'String',
+      'Symbol',
+      'TypeError',
+      'WeakSet',
+      'process'
+    ]
   ],
+  ['node:util', nodeUtil, ['inspect', 'types']],
   [
     'node:util.types',
     types,
@@ -179,14 +204,32 @@ export const BASELINE: ReadonlyArray<Baseline> = [
 ]
 
 /**
+ * Whether two descriptors of a property hold the same value, getter and setter, by identity. A global that
+ * the runtime defines as an accessor is compared through its getter.
+ *
+ * @param now - The descriptor of the property now.
+ * @param then - The descriptor it had when the module loaded.
+ * @returns True when nothing a caller could observe differs.
+ */
+export function sameDescriptor(
+  now: PropertyDescriptor | undefined,
+  then: PropertyDescriptor | undefined
+): boolean {
+  if (now === undefined || then === undefined) return now === then
+  return now.value === then.value && now.get === then.get && now.set === then.set
+}
+
+/**
  * Count the built-ins that are no longer what they were when the module loaded.
  *
  * @returns How many differ by identity, a property that became an accessor included.
  */
 export function replacedBuiltins(): number {
+  // By index: a `for...of` would ask the Array iterator, which is one of the built-ins being checked.
   let replaced = 0
-  for (const { owner, key, original } of BASELINE) {
-    if (getOwnPropertyDescriptor(owner, key)?.value !== original) replaced += 1
+  for (let at = 0; at < BASELINE.length; at += 1) {
+    const { owner, key, original } = BASELINE[at] as Baseline
+    if (!sameDescriptor(getOwnPropertyDescriptor(owner, key), original)) replaced += 1
   }
   return replaced
 }

@@ -13,7 +13,7 @@
 import { inspect } from 'node:util'
 import { z } from 'zod'
 
-import { BASELINE, assertBuiltinsIntact, replacedBuiltins } from './builtins'
+import { BASELINE, assertBuiltinsIntact, replacedBuiltins, sameDescriptor } from './builtins'
 import { BymaxConfigModule } from './config.module'
 import { createValidatedConfig } from './config.providers'
 import { ConfigService } from './config.service'
@@ -41,6 +41,7 @@ const EXPECTED = [
   'Object.keys',
   'Object.setPrototypeOf',
   'Object.values',
+  'Reflect.apply',
   'Reflect.get',
   'Reflect.set',
   'Array.isArray',
@@ -68,10 +69,13 @@ const EXPECTED = [
   'Array.prototype.values',
   'Array.prototype.Symbol(Symbol.iterator)',
   'String.prototype.codePointAt',
+  'String.prototype.includes',
+  'String.prototype.indexOf',
   'String.prototype.padEnd',
   'String.prototype.padStart',
   'String.prototype.repeat',
   'String.prototype.replace',
+  'String.prototype.slice',
   'String.prototype.split',
   'String.prototype.startsWith',
   'String.prototype.toUpperCase',
@@ -82,6 +86,11 @@ const EXPECTED = [
   'Object.prototype.valueOf',
   'RegExp.prototype.exec',
   'RegExp.prototype.test',
+  'RegExp.prototype.Symbol(Symbol.match)',
+  'RegExp.prototype.Symbol(Symbol.matchAll)',
+  'RegExp.prototype.Symbol(Symbol.replace)',
+  'RegExp.prototype.Symbol(Symbol.search)',
+  'RegExp.prototype.Symbol(Symbol.split)',
   'Set.prototype.add',
   'Set.prototype.delete',
   'Set.prototype.entries',
@@ -102,14 +111,24 @@ const EXPECTED = [
   'Function.prototype.apply',
   'Function.prototype.bind',
   'Function.prototype.call',
+  'globalThis.Array',
+  'globalThis.ArrayBuffer',
+  'globalThis.Error',
   'globalThis.Map',
+  'globalThis.Math',
   'globalThis.Number',
+  'globalThis.Object',
   'globalThis.RangeError',
+  'globalThis.Reflect',
+  'globalThis.RegExp',
   'globalThis.Set',
   'globalThis.String',
   'globalThis.Symbol',
   'globalThis.TypeError',
   'globalThis.WeakSet',
+  'globalThis.process',
+  'node:util.inspect',
+  'node:util.types',
   'node:util.types.isAnyArrayBuffer',
   'node:util.types.isArgumentsObject',
   'node:util.types.isBoxedPrimitive',
@@ -137,7 +156,12 @@ const schema = defineEnv({ app: z.object({ name: z.string().default('n') }) })
 /** Replaces `key` of `owner` with `value`, runs `run`, and puts the original descriptor back. */
 function withReplaced<T>(owner: object, key: PropertyKey, value: unknown, run: () => T): T {
   const original = getDescriptor(owner, key) as PropertyDescriptor
-  defineProp(owner, key, { ...original, value })
+  defineProp(owner, key, {
+    value,
+    writable: true,
+    configurable: true,
+    enumerable: original.enumerable === true
+  })
   try {
     return run()
   } finally {
@@ -145,9 +169,12 @@ function withReplaced<T>(owner: object, key: PropertyKey, value: unknown, run: (
   }
 }
 
-/** A different function that behaves as `original` does, so only its identity differs. */
-function sameBehaviour(original: unknown): unknown {
-  return typeof original === 'function' ? new Proxy(original, {}) : original
+/** A different object that behaves as what the property holds does, so only its identity differs. */
+function sameBehaviour(owner: object, key: PropertyKey): unknown {
+  const held = Reflect.get(owner, key) as unknown
+  return typeof held === 'function' || (typeof held === 'object' && held !== null)
+    ? new Proxy(held, {})
+    : held
 }
 
 /** What each entry point that starts a validation does, with the same valid input. */
@@ -170,6 +197,36 @@ describe('the list of built-ins the library calls', () => {
 
   it('holds a function for every name except the ones that are constructors or tables', () => {
     expect(BASELINE.every((entry) => entry.original !== undefined)).toBe(true)
+  })
+})
+
+describe('the comparison of two descriptors', () => {
+  const fn = (): void => undefined
+  const other = (): void => undefined
+
+  it.each([
+    ['no descriptor on either side', undefined, undefined, true],
+    ['a descriptor that is gone now', undefined, { value: fn }, false],
+    ['a descriptor that was not there when the module loaded', { value: fn }, undefined, false],
+    ['the same value', { value: fn }, { value: fn }, true],
+    ['another value', { value: other }, { value: fn }, false],
+    ['the same getter', { get: fn }, { get: fn }, true],
+    ['another getter', { get: other }, { get: fn }, false],
+    ['another setter', { set: other }, { set: fn }, false]
+  ])('says %s: %s', (_name, now, then, same) => {
+    expect(sameDescriptor(now, then)).toBe(same)
+  })
+})
+
+describe('a built-in that was deleted', () => {
+  it('counts as replaced', () => {
+    const original = getDescriptor(Math, 'floor') as PropertyDescriptor
+    Reflect.deleteProperty(Math, 'floor')
+    try {
+      expect(replacedBuiltins()).toBe(1)
+    } finally {
+      defineProp(Math, 'floor', original)
+    }
   })
 })
 
@@ -196,7 +253,7 @@ describe.each(BASELINE.map((entry) => [entry.name, entry] as const))(
     it('is refused at every entry point with a count and nothing else', () => {
       const config = createValidatedConfig({ schema, source: {} })
 
-      withReplaced(entry.owner, entry.key, sameBehaviour(entry.original), () => {
+      withReplaced(entry.owner, entry.key, sameBehaviour(entry.owner, entry.key), () => {
         for (const [, start] of ENTRIES) {
           let failure: unknown
           try {
@@ -278,6 +335,62 @@ describe('the library is loaded while the built-in that finds the iterators is r
         })
       })
     ).not.toThrow()
+  })
+})
+
+describe('the check itself, with the iterators it could be blinded through replaced', () => {
+  it.each([
+    [
+      'the next of the Array iterator',
+      Object.getPrototypeOf([][Symbol.iterator]()) as object,
+      'next'
+    ],
+    ['Array.prototype[Symbol.iterator]', Array.prototype, Symbol.iterator]
+  ])(
+    'still counts a replacement when %s is replaced by a function that ends at once',
+    (_name, owner, key) => {
+      const ends =
+        key === 'next'
+          ? () => ({ done: true, value: undefined })
+          : () => ({ next: () => ({ done: true }) })
+
+      const counted = withReplaced(owner, key, ends, () => replacedBuiltins())
+
+      expect(counted).toBe(1)
+    }
+  )
+})
+
+describe('the reads of the service and the serializer of the root, after the boot', () => {
+  it('answer as they did when a built-in they use is replaced later', () => {
+    const config = createValidatedConfig({ schema, source: {} })
+    const service = new ConfigService(config as never)
+
+    const answers = withReplaced(
+      Map.prototype,
+      'get',
+      () => 'hacked',
+      () =>
+        withReplaced(
+          Object,
+          'keys',
+          () => ['hacked'],
+          () =>
+            withReplaced(
+              Array.prototype,
+              'slice',
+              () => ['hacked'],
+              () => ({
+                value: service.get('app.name' as never),
+                has: service.has('app.name' as never),
+                service: service.toJSON().namespaces,
+                root: (JSON.parse(JSON.stringify(config)) as { namespaces: string[] }).namespaces
+              })
+            )
+        )
+    )
+
+    expect(answers).toEqual({ value: 'n', has: true, service: ['app'], root: ['app'] })
   })
 })
 

@@ -12,6 +12,7 @@ import { ConfigurableModuleBuilder } from '@nestjs/common'
 
 import type { BymaxConfigModuleOptions } from './config.options'
 import { BYMAX_CONFIG_OPTIONS } from './config.tokens'
+import { bare } from './option-read'
 
 /**
  * Extra registration options that shape the module without being injected.
@@ -45,10 +46,12 @@ export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN, OPTIONS_TYPE, ASYN
     optionsInjectionToken: BYMAX_CONFIG_OPTIONS
   })
     .setClassMethodName('forRoot')
-    .setExtras<BymaxConfigModuleExtras>({ isGlobal: true }, (definition, extras) => ({
-      ...definition,
-      global: extras.isGlobal !== false
-    }))
+    .setExtras<BymaxConfigModuleExtras>({ isGlobal: true }, (definition, extras) =>
+      bare({
+        ...definition,
+        global: extras.isGlobal !== false
+      })
+    )
     .build()
 
 /** Parameter type of `BymaxConfigModule.forRoot`: the options plus the `isGlobal` extra. */

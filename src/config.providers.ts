@@ -21,7 +21,7 @@ import { deepFreeze } from './deep-freeze'
 import { guarded, toWithheldIssue, validateEnv, withCause } from './env-validator'
 import { isLibraryError, libraryError } from './errors'
 import type { BymaxConfigValidationError, ConfigIssue } from './errors'
-import { hasOption, readOption } from './option-read'
+import { bare, hasOption, readOption } from './option-read'
 import type { EnvOutput, EnvSchema, EnvShape } from './types'
 
 /** The stable event of the object message written when the validation fails. */
@@ -208,8 +208,8 @@ async function provideValidatedConfig(
  * {@link BYMAX_CONFIG}, injecting the resolved options via
  * {@link BYMAX_CONFIG_OPTIONS}.
  */
-export const bymaxConfigProvider: FactoryProvider = {
+export const bymaxConfigProvider: FactoryProvider = bare({
   provide: BYMAX_CONFIG,
   useFactory: provideValidatedConfig,
   inject: [BYMAX_CONFIG_OPTIONS]
-}
+})

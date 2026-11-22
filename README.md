@@ -337,7 +337,7 @@ the error.
 
 The library captures the built-ins it calls directly when it is imported: `String.prototype.codePointAt`,
 `String.fromCodePoint`, `RegExp.prototype.exec`, `Reflect.get` and `Reflect.set`, which copy and escape the
-issues of an error. It does not defend its dependencies, or the built-ins it reads live, against a
+issues of an error, and `Object.hasOwn` and `Object.getPrototypeOf`, which the option reader walks with. It does not defend its dependencies, or the built-ins it reads live, against a
 replacement made after the import: code that does that is already running with the process's authority.
 A name planted on `Object.prototype` is a different case and is handled: it is never taken for an option,
 nor for a `meta({ open })` or `meta({ env })` of a schema. The rule is: an option is read unless the first
@@ -345,6 +345,7 @@ object that holds it, other than the options object itself, has no prototype. Th
 held only by a parent you built with `Object.create(null)` is not read; put it on the options object, or on a
 parent that has a prototype. The names the library reads from the objects zod builds for a schema
 follow the same rule; what zod itself reads from its own objects when it parses is zod's, and is not covered.
+The module, the config provider and an options provider that carries a factory, which the library rebuilds, have no prototype; the providers you bring in, and the objects Nest builds inside its own builder, are left as they are and are not covered.
 
 Three edges of the same rule. A hook that rethrows a library error it caught from another validation
 does not pass that error through: the boot fails with its own validation error, with the hook's error

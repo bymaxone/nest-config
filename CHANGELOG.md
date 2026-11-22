@@ -15,6 +15,15 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.26] - 2026-11-22
+
+### Fixed
+
+- **The option reader keeps working when `Object.hasOwn`, `Object.getPrototypeOf` or `Reflect.get` is replaced after the import.** They are taken when the module loads.
+- **The module, the config provider and the options provider the library rebuilds around a factory have no prototype.** Nest reads keys such as `scope` and `useClass` from them by name, so a name planted on `Object.prototype` is not picked up from those objects. The providers a host brings in, and the objects Nest builds itself inside its builder, are left as they are and are not covered.
+
+No declaration change: there is nothing to apply to a derived backend.
+
 ## [1.2.25] - 2026-11-21
 
 ### Fixed

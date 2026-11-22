@@ -144,12 +144,11 @@ describe('a source variable named like a member of Object.prototype', () => {
   const shapes: ReadonlyArray<readonly [string, (value: unknown) => Record<string, unknown>]> = [
     ['a non-enumerable property', (value) => Object.defineProperty({}, 'toString', { value })],
     [
-      'an inherited property of a parent with no prototype',
-      (value) => Object.create(Object.assign(Object.create(null) as object, { toString: value }))
-    ],
-    [
       'a get-only Proxy',
-      (value) => new Proxy({}, { get: (_t, key) => (key === 'toString' ? value : undefined) })
+      (value) =>
+        new Proxy(Object.create(null) as object, {
+          get: (_t, key) => (key === 'toString' ? value : undefined)
+        })
     ]
   ]
 
@@ -174,6 +173,15 @@ describe('a source variable named like a member of Object.prototype', () => {
     })
   })
 
+  it('does not take a value that only a parent with no prototype holds, as it would the root prototype of a realm', () => {
+    const parent = Object.assign(Object.create(null) as object, { toString: 'inherited' })
+    const source = Object.create(parent) as Record<string, unknown>
+
+    expect(createValidatedConfig({ schema: named, source: source as never }).app?.name).toBe(
+      'default-name'
+    )
+  })
+
   it('uses the default when the source is plain and holds nothing under that name', () => {
     expect(createValidatedConfig({ schema: named, source: {} }).app?.name).toBe('default-name')
   })
@@ -191,6 +199,22 @@ describe('a source variable named __proto__', () => {
     ['a plain object', () => ({})]
   ])('is not the prototype of %s, so its default applies', (_name, make) => {
     expect(createValidatedConfig({ schema: named, source: make() }).app?.name).toBe('default-name')
+  })
+
+  it('is not taken from a parent that holds it as a property of its own, so the default applies', () => {
+    const parent = JSON.parse('{"__proto__":"inherited"}') as object
+    const source = Object.create(parent) as Record<string, string>
+
+    expect(createValidatedConfig({ schema: named, source }).app?.name).toBe('default-name')
+  })
+
+  it('is taken from a source that holds it as a property of its own that is not listed', () => {
+    const source = Object.defineProperty({}, '__proto__', { value: 'hidden' }) as Record<
+      string,
+      string
+    >
+
+    expect(createValidatedConfig({ schema: named, source }).app?.name).toBe('hidden')
   })
 
   it('is taken from a source that holds it as a property of its own', () => {

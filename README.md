@@ -361,10 +361,12 @@ The values the library finds are the ones it reads by name. A declared variable 
 by name, so one held as a non-enumerable or inherited property, or answered only by the `get` trap of a
 `Proxy`, is found instead of replaced by its default. Source values are strings (`process.env` holds
 nothing else), and a value that is not one is validated like any other: it is refused if it does not
-satisfy the schema, not replaced by the default. The one thing never taken is what a plain object itself
-answers for a variable named like a member of `Object.prototype` (`toString` say), which is not a value of
-the source; any other value held under such a name is validated, and a variable named `__proto__` is taken
-only as a property of the source's own, never as the prototype of the object. The `source` must be an
+satisfy the schema, not replaced by the default. The one thing never taken is what the root prototype of a
+realm supplies, in this realm or another (a variable named `toString`, say, or one planted on
+`Object.prototype`), which is not a value of the source: the first object on the chain that holds the name
+must be the source itself or have a prototype of its own, so a value held only by a parent you built with
+`Object.create(null)` is not read. Any other value held under such a name is validated, and a variable
+named `__proto__` is taken only as a property of the source's own, never as the prototype of the object. The `source` must be an
 object of variables: an array, a `Map`, a `Set`, a function or a primitive is refused with a
 `BymaxConfigValidationError` that describes what was received, never a value. The other keys of the `source`
 are the ones it lists, which is what strict mode reports.

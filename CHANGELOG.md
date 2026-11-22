@@ -49,6 +49,8 @@ as the GitHub Release body, so each released version needs a matching
   `Object.prototype.constructor` does not bring a planted name back. A name held only by a parent the host
   built with `Object.create(null)` is not read either.
 
+- **A variable that only the root prototype of another realm supplies is no longer a value of the source.** A source created in another realm (a `vm` context) whose `Object.prototype` carried a required variable satisfied it, under `strict` too, because the test for an inherited value compared the answer against an object of the main realm. A source value is now read by the structural rule of the options: it is the source's own, or held on a class or a prototype that has one of its own, and it is never what the first holder on the chain answers when that holder is not the source and has no prototype, in any realm. A value held only by a parent the host built with `Object.create(null)` is not read either.
+
 ### Tooling
 
 - **`pnpm size` refuses a report on a stale `dist/`.** The `check-dist-fresh` script runs ahead of the

@@ -21,21 +21,25 @@ as the GitHub Release body, so each released version needs a matching
 
 - **`new BymaxConfigValidationError(issues)` refuses a throwing read and a field that is no string.** A
   getter or a `Proxy` in the list that threw while the length, an entry or a field was read surfaced the host's
-  own error, whose message can carry a value. It is now a `TypeError` of the library with the message
-  withheld and the thrown value as its `cause`. Each of `path`, `variable`, `code` and `message` must be
-  a string, else a `TypeError` names the index and the field; `code` is written escaped and bounded like the
+  own error, whose message can carry a value. It is now a `TypeError` of the library whose own message does not
+  repeat the host's, with the thrown value kept as its `cause`: `util.inspect` and Node's uncaught-exception
+  report print a `cause`, so the host's message can still reach a log from there. Each of `path`, `variable`,
+  `code` and `message` must be a string, else a `TypeError` names the index and the field; a `code` that is no
+  string, which 1.2.23 copied as it was, is refused, and a string `code` is written escaped and bounded like the
   others.
-- **Only an array is a list of issues.** A function, a `String` object, or an object with a `length` was
-  accepted as an empty or a short list; each is now a `TypeError`. An array that claims no entries is
-  refused only when it holds an own index key, so an empty array that carries a named property is
-  empty.
+- **Only an array is a list of issues.** 1.2.23 read the list by index and accepted whatever answered a
+  `length` and indices: an object such as `{ length: 1, 0: issue }`, an `arguments` object, an empty typed
+  array and an empty string. Each is now a `TypeError` ("issues must be an array"). An array that claims no
+  entries is refused only when it holds an own array index; a named property alone does not make it non-empty.
 
 ### Documentation
 
 - **The README and the constructor documentation state the refusals** of `new BymaxConfigValidationError(issues)`.
 
-**Apply to a derived backend:** nothing to change unless it builds a `BymaxConfigValidationError` itself
-from a value that is not an array of issues whose fields are strings; that now throws.
+**Apply to a derived backend:** nothing to change unless it builds a `BymaxConfigValidationError` itself. Pass
+it a real array of issue objects whose `path`, `variable`, `code` and `message` are strings; an array-like, a
+typed array, an `arguments` object or a string, and an issue whose `code` is no string, now throw instead of
+building an error.
 
 ## [1.2.23] - 2026-11-21
 

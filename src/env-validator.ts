@@ -632,10 +632,11 @@ function refusedSourceKind(source: unknown): string | undefined {
  * Read the source into a map, each property once and by name: the keys come from the listing, and a
  * declared variable that is not in it is read too, so one held as a non-enumerable or inherited property,
  * or answered only by the get trap of a Proxy, is found. A value found by name is validated whatever its
- * type, as a listed one is. The one thing never taken is what a plain object itself answers for a name
- * that matches a member of Object.prototype (`toString`, `constructor`): that member is not a value of
- * the source. Any other value held under such a name is validated. `__proto__` is taken only as a
- * property of the source's own.
+ * type, as a listed one is. The one thing never taken is what the root prototype of a realm supplies: the
+ * first object on the chain that holds the name must be the source itself or have a prototype of its own,
+ * which finds that root in any realm without comparing against an object of this one, so `toString`,
+ * `constructor` and a name planted on `Object.prototype` are not values of the source. Any other value
+ * held under such a name is validated. `__proto__` is taken only as a property of the source's own.
  *
  * @param source - The record the host supplied.
  * @param bindings - Every leaf binding of the schema, whose variables are read by name.
@@ -663,15 +664,7 @@ function readSource(
     )
     for (const { variable } of bindings) {
       if (read.has(variable)) continue
-      const value = Reflect.get(source, variable) as string | undefined
-      // What a plain object answers for the name is the chain's member, not the host's value. Under
-      // `__proto__` the chain answers the prototype of whatever object it is, so only a property of
-      // the source's own is its value.
-      const inherited =
-        variable === '__proto__'
-          ? !Object.hasOwn(source, variable)
-          : value === Reflect.get({}, variable)
-      read.set(variable, inherited ? undefined : value)
+      read.set(variable, readOption(source, variable) as string | undefined)
     }
     return read
   })

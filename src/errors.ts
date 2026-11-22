@@ -8,6 +8,7 @@
  * @layer Error
  */
 
+import { bare } from './option-read'
 import { formatIssueReport } from './report-formatter'
 
 /**
@@ -280,20 +281,26 @@ export class BymaxConfigValidationError extends Error {
     // Keep `name` non-enumerable so JSON.stringify(error) surfaces only the
     // code and the collected issues, while it stays available for
     // String(error) and stack traces.
-    Object.defineProperty(this, 'name', {
-      value: 'BymaxConfigValidationError',
-      enumerable: false,
-      writable: false,
-      configurable: false
-    })
+    // Descriptors are built with no prototype, so a `get`, `set` or `value` planted on the root prototype
+    // is not read from them.
+    Object.defineProperty(
+      this,
+      'name',
+      bare({
+        value: 'BymaxConfigValidationError',
+        enumerable: false,
+        writable: false,
+        configurable: false
+      })
+    )
     this.issues = Object.freeze(normalized)
     // Restore the prototype chain so `instanceof` holds across transpilation
     // targets and ESM/CJS realm boundaries.
     Object.setPrototypeOf(this, BymaxConfigValidationError.prototype)
     // Lock the contract properties so the error is fully immutable at runtime,
     // matching the readonly type, the frozen issues, and the stable name.
-    Object.defineProperty(this, 'code', { writable: false, configurable: false })
-    Object.defineProperty(this, 'issues', { writable: false, configurable: false })
+    Object.defineProperty(this, 'code', bare({ writable: false, configurable: false }))
+    Object.defineProperty(this, 'issues', bare({ writable: false, configurable: false }))
   }
 }
 

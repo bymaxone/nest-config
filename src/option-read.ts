@@ -6,6 +6,24 @@
  * @layer Utility
  */
 
+/** The built-ins the reader walks with, taken when the module loads so a later replacement is not followed. */
+const hasOwn = Object.hasOwn
+const getPrototypeOf = Object.getPrototypeOf
+const reflectGet = Reflect.get
+
+/**
+ * Copy the entries into an object with no prototype, so that what Nest reads from it by name answers for
+ * the keys it holds and never for a name that a prototype of the realm supplies. The objects Nest builds
+ * itself, inside its builder, are not covered.
+ *
+ * @typeParam TValues - The shape of the values.
+ * @param values - The entries to hold.
+ * @returns An object with no prototype holding the entries.
+ */
+export function bare<TValues extends object>(values: TValues): TValues {
+  return Object.assign(Object.create(null) as TValues, values)
+}
+
 /**
  * Whether the first object on the chain that holds the name is a parent with no prototype of its own and
  * not the options argument itself. That is where a name planted on the root prototype of any realm sits,
@@ -17,9 +35,13 @@
  * @param key - The option name.
  * @returns True when the name would come from a parent with no prototype.
  */
-function comesFromBareParent(options: object, key: string): boolean {
-  for (let link: object | null = options; link !== null; link = Object.getPrototypeOf(link)) {
-    if (Object.hasOwn(link, key)) return link !== options && Object.getPrototypeOf(link) === null
+function comesFromBareParent(options: object, key: PropertyKey): boolean {
+  for (
+    let link: object | null = options;
+    link !== null;
+    link = getPrototypeOf(link) as object | null
+  ) {
+    if (hasOwn(link, key)) return link !== options && getPrototypeOf(link) === null
   }
   return false
 }
@@ -32,8 +54,8 @@ function comesFromBareParent(options: object, key: string): boolean {
  * @param key - The option name.
  * @returns The value of the option, or undefined when it is not the host's.
  */
-export function readOption(options: object, key: string): unknown {
-  return comesFromBareParent(options, key) ? undefined : Reflect.get(options, key)
+export function readOption(options: object, key: PropertyKey): unknown {
+  return comesFromBareParent(options, key) ? undefined : reflectGet(options, key)
 }
 
 /**
@@ -44,6 +66,6 @@ export function readOption(options: object, key: string): unknown {
  * @param key - The option name.
  * @returns True when the host's options have the name.
  */
-export function hasOption(options: object, key: string): boolean {
+export function hasOption(options: object, key: PropertyKey): boolean {
   return key in options && !comesFromBareParent(options, key)
 }

@@ -81,11 +81,18 @@ function wrappedBy<TNode>(definition: object): TNode | undefined {
  * Refuse a chain of wrappers that is deeper than any schema a person writes.
  *
  * @param depth - How many wrappers have been followed so far.
- * @throws {TypeError} When the depth is past {@link MAX_WRAPPER_DEPTH}.
+ * @throws {BymaxConfigValidationError} When the depth is past {@link MAX_WRAPPER_DEPTH}.
  */
 function assertWrapperDepth(depth: number): void {
   if (depth > MAX_WRAPPER_DEPTH) {
-    throw new TypeError(`a leaf schema nests wrappers deeper than ${MAX_WRAPPER_DEPTH}`)
+    throw libraryError([
+      {
+        path: '',
+        variable: '(schema)',
+        code: ConfigErrorCode.INVALID,
+        message: `a leaf schema nests wrappers deeper than ${MAX_WRAPPER_DEPTH}`
+      }
+    ])
   }
 }
 
@@ -313,6 +320,7 @@ function describeUnusableEnv(leaf: OverrideNode): string | undefined {
 export function findUnusableEnvOverrides(
   schema: SchemaView
 ): ReadonlyArray<{ readonly path: string; readonly found: string }> {
+  assertNamespaces(schema)
   const unusable: Array<{ readonly path: string; readonly found: string }> = []
   for (const [namespace, namespaceSchema] of Object.entries(schema.shape)) {
     for (const [leafKey, leafSchema] of Object.entries(namespaceSchema.shape)) {
@@ -348,13 +356,18 @@ interface CoercionNode {
  * @param node - The schema node to inspect.
  * @returns True when a coercing boolean sits anywhere in the wrapped chain.
  */
-function wrapsCoercedBoolean(node: CoercionNode | undefined, depth = 1): boolean {
-  if (node === undefined) return false
+function wrapsCoercedBoolean(
+  node: CoercionNode | undefined,
+  depth = 1,
+  seen: Set<CoercionNode> = new Set()
+): boolean {
+  if (node === undefined || seen.has(node)) return false
+  seen.add(node)
   assertWrapperDepth(depth)
   const def = node._zod.def
   if (readOption(def, 'type') === 'boolean' && readOption(def, 'coerce') === true) return true
   return (['innerType', 'in', 'out'] as const).some((side) =>
-    wrapsCoercedBoolean(readOption(def, side) as CoercionNode | undefined, depth + 1)
+    wrapsCoercedBoolean(readOption(def, side) as CoercionNode | undefined, depth + 1, seen)
   )
 }
 
@@ -369,6 +382,7 @@ function wrapsCoercedBoolean(node: CoercionNode | undefined, depth = 1): boolean
  * @returns The path of every affected leaf, in schema order.
  */
 export function findCoercedBooleanLeaves(schema: SchemaView): readonly string[] {
+  assertNamespaces(schema)
   return Object.entries(schema.shape).flatMap(([namespace, namespaceSchema]) =>
     Object.entries(namespaceSchema.shape)
       .filter(([, leafSchema]) => wrapsCoercedBoolean(leafSchema))

@@ -17,7 +17,7 @@ import type { z } from 'zod'
 
 import { ConfigErrorCode, isLibraryError, libraryError } from './errors'
 import type { BymaxConfigValidationError, ConfigIssue } from './errors'
-import { readOption } from './option-read'
+import { bare, readOption } from './option-read'
 import {
   bindingsOf,
   findCoercedBooleanLeaves,
@@ -600,14 +600,37 @@ function refusalOf(subject: string, thrown: unknown): BymaxConfigValidationError
  * @returns The same error.
  */
 export function withCause<T extends Error>(error: T, cause: unknown): T {
-  Object.defineProperty(error, 'cause', {
-    value: cause,
-    enumerable: false,
-    writable: false,
-    configurable: false
-  })
+  Object.defineProperty(
+    error,
+    'cause',
+    bare({ value: cause, enumerable: false, writable: false, configurable: false })
+  )
   return error
 }
+
+/**
+ * The built-in kinds that are no record of variables and carry no `Symbol.toStringTag`, told apart by the
+ * engine's own tests, since `Object.prototype.toString` answers with a tag that one planted on any root
+ * prototype changes.
+ */
+const NOT_A_RECORD: ReadonlyArray<(value: unknown) => boolean> = [
+  types.isMap,
+  types.isSet,
+  types.isWeakMap,
+  types.isWeakSet,
+  types.isDate,
+  types.isRegExp,
+  types.isTypedArray,
+  types.isAnyArrayBuffer,
+  types.isDataView,
+  types.isPromise,
+  types.isNativeError,
+  types.isArgumentsObject,
+  types.isBoxedPrimitive,
+  types.isGeneratorObject,
+  types.isMapIterator,
+  types.isSetIterator
+]
 
 /**
  * Describe a source that is not an object of variables, without quoting it.
@@ -623,9 +646,12 @@ function refusedSourceKind(source: unknown): string | undefined {
   if (source === undefined || source === null) return String(source)
   if (typeof source !== 'object') return `a ${typeof source}`
   if (Array.isArray(source)) return 'an array'
-  return Object.prototype.toString.call(source) === '[object Object]'
-    ? undefined
-    : 'an object that is not a record of variables'
+  // A tag the object or a prototype that has one of its own carries (Map, URL, URLSearchParams, WeakRef,
+  // Math, a class with a tag) says it is no record; one that only a root prototype supplies is not the host's.
+  const tagged = typeof readOption(source, Symbol.toStringTag) === 'string'
+  return tagged || NOT_A_RECORD.some((isKind) => isKind(source))
+    ? 'an object that is not a record of variables'
+    : undefined
 }
 
 /**

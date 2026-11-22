@@ -22,7 +22,7 @@ import { ConfigService } from './config.service'
 import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { guarded, guardedResolve } from './env-validator'
 import { ConfigErrorCode, libraryError } from './errors'
-import { hasOption, readOption } from './option-read'
+import { bare, hasOption, readOption } from './option-read'
 
 /**
  * Append items to a possibly-absent module-definition list.
@@ -38,18 +38,6 @@ import { hasOption, readOption } from './option-read'
  */
 function appendTo<TItem>(list: readonly TItem[] | undefined, ...items: TItem[]): TItem[] {
   return list === undefined ? [...items] : [...list, ...items]
-}
-
-/**
- * Copy the entries into an object with no prototype, so that what the builder reads from it by name
- * answers for the keys it holds and never for a name that a prototype of the realm supplies.
- *
- * @typeParam TValues - The shape of the values.
- * @param values - The entries to hold.
- * @returns An object with no prototype holding the entries.
- */
-function bare<TValues extends object>(values: TValues): TValues {
-  return Object.assign(Object.create(null) as TValues, values)
 }
 
 /**
@@ -226,7 +214,7 @@ function readOptionsOf(provider: Provider): Provider {
   if (Reflect.get(provider, 'provide') !== BYMAX_CONFIG_OPTIONS) return provider
   const factory = Reflect.get(provider, 'useFactory')
   if (typeof factory !== 'function') return provider
-  return {
+  return bare({
     ...provider,
     useFactory: async (...args: unknown[]) => {
       const { value } = await guardedResolve('reading what the options factory returned', () =>
@@ -234,7 +222,7 @@ function readOptionsOf(provider: Provider): Provider {
       )
       return readModuleOptions(value as BymaxConfigModuleOptions, 'forRootAsync')
     }
-  } as Provider
+  }) as Provider
 }
 
 /**
@@ -328,7 +316,7 @@ export class BymaxConfigModule extends ConfigurableModuleClass {
    * {@link ConfigService}.
    */
   private static withConfigProvider(definition: DynamicModule): DynamicModule {
-    return {
+    return bare({
       ...definition,
       providers: appendTo(
         definition.providers?.map(readOptionsOf),
@@ -336,6 +324,6 @@ export class BymaxConfigModule extends ConfigurableModuleClass {
         ConfigService
       ),
       exports: appendTo(definition.exports, BYMAX_CONFIG, ConfigService)
-    }
+    })
   }
 }

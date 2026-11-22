@@ -15,6 +15,22 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.26] - 2026-11-22
+
+### Fixed
+
+- **The option reader keeps working when `Object.hasOwn`, `Object.getPrototypeOf` or `Reflect.get` is replaced after the import.** They are taken when the module loads.
+- **The module, the config provider and the options provider the library rebuilds around a factory have no prototype.** Nest reads keys such as `scope` and `useClass` from them by name, so a name planted on `Object.prototype` is not picked up from those objects. The providers a host brings in, and the objects Nest builds itself inside its builder, are left as they are and are not covered.
+
+- **A chain of wrappers that is too deep is refused with the library's own error.** `resolveSourceNames`, which is public, raised a bare `TypeError` past the depth limit; it now raises a `BymaxConfigValidationError` that names the schema.
+- **The walks over a schema check the namespaces themselves.** `findUnusableEnvOverrides` and `findCoercedBooleanLeaves`, called directly, read a leaf placed where a namespace belongs; they now refuse it as the validator does.
+- **The search for a coercing boolean walks each node once.** A diamond of pipes made it take time that doubled with every level.
+- **The placeholder synthesizer reads a definition as a copy of what zod put in it,** so a name planted on `Object.prototype` is not taken for a format, a bound or a kind.
+- **The property descriptors the library defines are built with no prototype.** A `get`, `set` or `value` planted on `Object.prototype` was read from the descriptors of the error (`name`, `code`, `issues`, `cause`) and of the configuration's serializers, so it could make the constructor throw or change the value of `code` or `issues`; they are read from the descriptor itself now. What zod and Node define with their own descriptors is not covered.
+- **A `Symbol.toStringTag` planted on a root prototype no longer makes a plain source a refused kind.** A tag the source carries, or a prototype that is not a root prototype supplies, and the engine's tests for the kinds that carry none, tell the kinds that are no record of variables apart.
+
+No declaration change: there is nothing to apply to a derived backend.
+
 ## [1.2.25] - 2026-11-21
 
 ### Fixed
@@ -1214,6 +1230,7 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.16]: https://github.com/bymaxone/nest-config/compare/v1.2.15...v1.2.16
 [1.2.17]: https://github.com/bymaxone/nest-config/compare/v1.2.16...v1.2.17
 [1.2.18]: https://github.com/bymaxone/nest-config/compare/v1.2.17...v1.2.18
+[1.2.26]: https://github.com/bymaxone/nest-config/compare/v1.2.25...v1.2.26
 [1.2.25]: https://github.com/bymaxone/nest-config/compare/v1.2.24...v1.2.25
 [1.2.24]: https://github.com/bymaxone/nest-config/compare/v1.2.23...v1.2.24
 [1.2.23]: https://github.com/bymaxone/nest-config/compare/v1.2.22...v1.2.23
@@ -1221,4 +1238,4 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.21]: https://github.com/bymaxone/nest-config/compare/v1.2.20...v1.2.21
 [1.2.20]: https://github.com/bymaxone/nest-config/compare/v1.2.19...v1.2.20
 [1.2.19]: https://github.com/bymaxone/nest-config/compare/v1.2.18...v1.2.19
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.25...HEAD
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.26...HEAD

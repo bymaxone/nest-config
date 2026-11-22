@@ -15,6 +15,23 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.26] - 2026-11-22
+
+### Fixed
+
+- **A name planted on `Object.prototype` is no longer an option.** `forRoot`, `forRootAsync` and
+  `createValidatedConfig` read `schema`, `source`, `strict`, `onValidationError`, `isGlobal`, `useFactory`,
+  `useClass`, `useExisting`, `inject`, `imports` and `provideInjectionTokensFrom` by name, which also
+  answers for the realm's root prototype. With `Object.prototype.source` set, `createValidatedConfig({ schema })`
+  validated that object in place of `process.env`; the other names turned strictness on, supplied a hook, a
+  schema or a factory, or made the module non-global. An option is now read from the object itself, from a
+  class instance (its own fields and the accessors of its class), or from any prototype the host built; the
+  realm's root prototype, whose own `constructor.prototype` is itself and whose prototype is null, supplies
+  none. The objects handed to the module builder have no prototype, so the builder does not read a planted
+  name either.
+
+No declaration change: there is nothing to apply to a derived backend.
+
 ## [1.2.25] - 2026-11-21
 
 ### Fixed

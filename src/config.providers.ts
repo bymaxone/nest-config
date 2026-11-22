@@ -21,6 +21,7 @@ import { deepFreeze } from './deep-freeze'
 import { guarded, toWithheldIssue, validateEnv, withCause } from './env-validator'
 import { isLibraryError, libraryError } from './errors'
 import type { BymaxConfigValidationError, ConfigIssue } from './errors'
+import { hasOption, readOption } from './option-read'
 import type { EnvOutput, EnvSchema, EnvShape } from './types'
 
 /** The stable event of the object message written when the validation fails. */
@@ -136,12 +137,14 @@ export function createValidatedConfig<TShape extends EnvShape>(
   }
 ): Readonly<EnvOutput<TShape>> {
   const read = guarded('reading the options', () => {
-    const { schema, source, strict } = options
+    const schema = readOption(options, 'schema') as typeof options.schema
+    const source = readOption(options, 'source') as typeof options.source
+    const strict = readOption(options, 'strict') as typeof options.strict
     return {
       schema,
       source,
       strict,
-      refused: (source === undefined || source === null) && 'source' in options
+      refused: (source === undefined || source === null) && hasOption(options, 'source')
     }
   })
   assertBoolean(read.strict, 'strict', 'createValidatedConfig')

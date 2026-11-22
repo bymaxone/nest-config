@@ -367,6 +367,47 @@ describe('an empty array that carries more than entries', () => {
   })
 })
 
+describe('which own property names of an array that claims no entries are entries', () => {
+  /** A list that claims no entries and answers one own, enumerable property under `key`. */
+  const listing = (key: string): unknown =>
+    new Proxy([] as unknown[], {
+      get: (target, name, receiver) =>
+        name === 'length' ? 0 : (Reflect.get(target, name, receiver) as unknown),
+      ownKeys: () => ['length', key],
+      getOwnPropertyDescriptor: (target, name) =>
+        name === 'length'
+          ? Reflect.getOwnPropertyDescriptor(target, name)
+          : { value: issue, enumerable: true, configurable: true }
+    })
+
+  it.each(['0', '1', '10', '4294967294'])('refuses the index %s', (key) => {
+    const error = thrownBy(() => new BymaxConfigValidationError(listing(key) as never))
+
+    expect((error as Error).message).toBe(
+      'BymaxConfigValidationError: issues claims no entries but lists some'
+    )
+  })
+
+  it.each([
+    '4294967295',
+    '4294967296',
+    '99999999999',
+    '00',
+    '01',
+    '-1',
+    '1.5',
+    '1e3',
+    ' 1',
+    '0x1',
+    'Infinity',
+    'NaN',
+    '',
+    'note'
+  ])('accepts %j, which is no array index', (key) => {
+    expect(new BymaxConfigValidationError(listing(key) as never).issues).toEqual([])
+  })
+})
+
 describe('a list or an entry whose Symbol.iterator throws', () => {
   it('is read by index, so the iterator is never asked for', () => {
     const list = Object.defineProperty([issue], Symbol.iterator, {

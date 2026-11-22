@@ -38,9 +38,10 @@ export const ConfigErrorCode = Object.freeze({
 /** The longest text an issue carries in a field; the rest is cut and marked with an ellipsis. */
 const MAX_FIELD_LENGTH = 200
 
-/** The string methods `printable` reads with, taken at load so that a later replacement is not followed. */
+/** The built-ins `printable` reads with (`codePointAt`, `fromCodePoint`, the regex `exec`), taken at load so that a later replacement is not followed. */
 const codePointAt = String.prototype.codePointAt
 const fromCodePoint = String.fromCodePoint
+const execUnsafe = RegExp.prototype.exec
 
 /**
  * Characters that change how text reads on a terminal or in a log line without being visible, by
@@ -69,11 +70,12 @@ function printable(text: string): string {
     at += character.length
     const hex = code.toString(16)
     // A code point past U+FFFF is braced, so its escape cannot be read as a shorter one plus a digit.
-    const piece = UNSAFE_CHARACTER.test(character)
-      ? hex.length > 4
-        ? `\\u{${hex}}`
-        : `\\u${hex.padStart(4, '0')}`
-      : character
+    const piece =
+      execUnsafe.call(UNSAFE_CHARACTER, character) !== null
+        ? hex.length > 4
+          ? `\\u{${hex}}`
+          : `\\u${hex.padStart(4, '0')}`
+        : character
     if (out.length + piece.length > MAX_FIELD_LENGTH) return `${out}…`
     out += piece
   }
@@ -180,7 +182,7 @@ function copyIssues(issues: ReadonlyArray<ConfigIssue>): ReadonlyArray<ConfigIss
     if (typeof issue !== 'object' || issue === null) {
       throw new TypeError(`BymaxConfigValidationError: issue ${index} must be an object`)
     }
-    copy.push(copyIssue(issue, index))
+    Reflect.set(copy, index, copyIssue(issue, index))
   }
   return copy
 }

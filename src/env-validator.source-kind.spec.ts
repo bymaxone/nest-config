@@ -40,7 +40,20 @@ describe('a source with a tag planted on the root prototype', () => {
     ['a DataView', new DataView(new ArrayBuffer(1))],
     ['a Promise', Promise.resolve()],
     ['an Error', new Error('x')],
-    ['a boxed string', Object(' ')]
+    ['a boxed string', Object(' ')],
+    ['a URLSearchParams', new URLSearchParams('APP_NAME=real')],
+    ['a URL', new URL('https://example.com')],
+    ['a WeakRef', new WeakRef({})],
+    ['Math', Math],
+    ['JSON', JSON],
+    [
+      'a class instance with a tag',
+      new (class Tagged {
+        public get [Symbol.toStringTag](): string {
+          return 'Tagged'
+        }
+      })()
+    ]
   ])('still refuses %s', (_name, source) => {
     expect(() => createValidatedConfig({ schema, source: source as never })).toThrow(
       BymaxConfigValidationError

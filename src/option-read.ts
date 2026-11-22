@@ -35,7 +35,7 @@ export function bare<TValues extends object>(values: TValues): TValues {
  * @param key - The option name.
  * @returns True when the name would come from a parent with no prototype.
  */
-function comesFromBareParent(options: object, key: string): boolean {
+function comesFromBareParent(options: object, key: PropertyKey): boolean {
   for (
     let link: object | null = options;
     link !== null;
@@ -54,7 +54,7 @@ function comesFromBareParent(options: object, key: string): boolean {
  * @param key - The option name.
  * @returns The value of the option, or undefined when it is not the host's.
  */
-export function readOption(options: object, key: string): unknown {
+export function readOption(options: object, key: PropertyKey): unknown {
   return comesFromBareParent(options, key) ? undefined : reflectGet(options, key)
 }
 
@@ -66,6 +66,6 @@ export function readOption(options: object, key: string): unknown {
  * @param key - The option name.
  * @returns True when the host's options have the name.
  */
-export function hasOption(options: object, key: string): boolean {
+export function hasOption(options: object, key: PropertyKey): boolean {
   return key in options && !comesFromBareParent(options, key)
 }

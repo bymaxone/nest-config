@@ -609,8 +609,9 @@ export function withCause<T extends Error>(error: T, cause: unknown): T {
 }
 
 /**
- * The built-in kinds that are no record of variables, told apart by the engine's own tests and not by
- * `Object.prototype.toString`, whose answer a `Symbol.toStringTag` planted on any root prototype changes.
+ * The built-in kinds that are no record of variables and carry no `Symbol.toStringTag`, told apart by the
+ * engine's own tests, since `Object.prototype.toString` answers with a tag that one planted on any root
+ * prototype changes.
  */
 const NOT_A_RECORD: ReadonlyArray<(value: unknown) => boolean> = [
   types.isMap,
@@ -645,7 +646,10 @@ function refusedSourceKind(source: unknown): string | undefined {
   if (source === undefined || source === null) return String(source)
   if (typeof source !== 'object') return `a ${typeof source}`
   if (Array.isArray(source)) return 'an array'
-  return NOT_A_RECORD.some((isKind) => isKind(source))
+  // A tag the object or a prototype that has one of its own carries (Map, URL, URLSearchParams, WeakRef,
+  // Math, a class with a tag) says it is no record; one that only a root prototype supplies is not the host's.
+  const tagged = typeof readOption(source, Symbol.toStringTag) === 'string'
+  return tagged || NOT_A_RECORD.some((isKind) => isKind(source))
     ? 'an object that is not a record of variables'
     : undefined
 }

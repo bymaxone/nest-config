@@ -22,6 +22,12 @@ as the GitHub Release body, so each released version needs a matching
 - **The option reader keeps working when `Object.hasOwn`, `Object.getPrototypeOf` or `Reflect.get` is replaced after the import.** They are taken when the module loads.
 - **The module, the config provider and the options provider the library rebuilds around a factory have no prototype.** Nest reads keys such as `scope` and `useClass` from them by name, so a name planted on `Object.prototype` is not picked up from those objects. The providers a host brings in, and the objects Nest builds itself inside its builder, are left as they are and are not covered.
 
+- **A chain of wrappers that is too deep is refused with the library's own error.** `resolveSourceNames`, which is public, raised a bare `TypeError` past the depth limit; it now raises a `BymaxConfigValidationError` that names the schema.
+- **The walks over a schema check the namespaces themselves.** `findUnusableEnvOverrides` and `findCoercedBooleanLeaves`, called directly, read a leaf placed where a namespace belongs; they now refuse it as the validator does.
+- **The search for a coercing boolean walks each node once.** A diamond of pipes made it take time that doubled with every level.
+- **The placeholder synthesizer reads a definition as a copy of what zod put in it,** so a name planted on `Object.prototype` is not taken for a format, a bound or a kind.
+- **A `Symbol.toStringTag` planted on a root prototype no longer makes a plain source a refused kind.** The kinds that are no record of variables are told apart by the engine's tests.
+
 No declaration change: there is nothing to apply to a derived backend.
 
 ## [1.2.25] - 2026-11-21

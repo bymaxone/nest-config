@@ -139,7 +139,7 @@ describe('the depth that a chain of wrappers may reach', () => {
       issues: '',
       cause: ''
     })
-    expect(outcomeOf(chainOf(override, 65), { DEPTH_VARIABLE: 'x' }).cause).toContain(
+    expect(outcomeOf(chainOf(override, 65), { DEPTH_VARIABLE: 'x' }).issues).toContain(
       'nests wrappers deeper than'
     )
   })
@@ -149,7 +149,7 @@ describe('the depth that a chain of wrappers may reach', () => {
     const refused = outcomeOf(chainOf(coercing, 65), { APP_VALUE: 'true' })
 
     expect(allowed.issues).toContain('z.coerce.boolean()')
-    expect(refused.cause).toContain('nests wrappers deeper than')
+    expect(refused.issues).toContain('nests wrappers deeper than')
   })
 })
 
@@ -178,6 +178,6 @@ describe('a chain of wrappers that never ends', () => {
 
     const messages = issuesOf({}, cyclic)
 
-    expect(messages.join(' ')).toContain('TypeError')
+    expect(messages.join(' ')).toContain('nests wrappers deeper than')
   })
 })

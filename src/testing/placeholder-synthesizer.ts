@@ -92,6 +92,17 @@ interface LeafInternals {
 }
 
 /**
+ * Copy what a definition holds of its own into an object with no prototype, so a name planted on the root
+ * prototype is not taken for a field zod did not put there.
+ *
+ * @param definition - A definition object zod built.
+ * @returns A prototype-less copy of its own enumerable fields.
+ */
+function ownCopy<TDefinition extends object>(definition: TDefinition): TDefinition {
+  return Object.assign(Object.create(null) as TDefinition, definition)
+}
+
+/**
  * Read a leaf's Zod v4 definition object.
  *
  * Zod stores a schema's definition under the `_zod.def` internal, which is not
@@ -102,7 +113,18 @@ interface LeafInternals {
  * @returns The internal definition describing the leaf's type and constraints.
  */
 function readDef(leaf: EnvLeaf): LeafDefinition {
-  return (leaf as unknown as LeafInternals)._zod.def
+  return ownCopy((leaf as unknown as LeafInternals)._zod.def)
+}
+
+/**
+ * Read the definition of one check of a leaf, as a copy that holds only what zod put in it, so a name
+ * planted on the root prototype is not taken for a bound or a kind.
+ *
+ * @param wrapper - One check attached to a leaf.
+ * @returns The definition of the check.
+ */
+function readCheck(wrapper: CheckWrapper): CheckDefinition {
+  return ownCopy(wrapper._zod.def)
 }
 
 /**
@@ -130,7 +152,7 @@ function readStringLengths(def: LeafDefinition): { min: number; max: number; exa
   let max = Number.POSITIVE_INFINITY
   let exact: number | undefined
   for (const wrapper of checksOf(def)) {
-    const check = wrapper._zod.def
+    const check = readCheck(wrapper)
     if (check.check === 'min_length') min = check.minimum
     if (check.check === 'max_length') max = check.maximum
     if (check.check === 'length_equals') exact = check.length
@@ -247,7 +269,7 @@ function synthesizePlainString(lengths: { min: number; max: number; exact?: numb
  */
 function formatOf(def: LeafDefinition): string | undefined {
   const declared = checksOf(def)
-    .map((wrapper) => wrapper._zod.def)
+    .map(readCheck)
     .find((check) => check.check === 'string_format')
   return def.format ?? declared?.format
 }
@@ -329,7 +351,7 @@ function synthesizeNumber(def: LeafDefinition): string {
     integer: boolean
   }
   for (const wrapper of checksOf(def)) {
-    const check = wrapper._zod.def
+    const check = readCheck(wrapper)
     if (check.check === 'greater_than') {
       bounds.lower = check.value
       bounds.lowerExclusive = check.inclusive !== true

@@ -610,6 +610,29 @@ export function withCause<T extends Error>(error: T, cause: unknown): T {
 }
 
 /**
+ * The built-in kinds that are no record of variables, told apart by the engine's own tests and not by
+ * `Object.prototype.toString`, whose answer a `Symbol.toStringTag` planted on any root prototype changes.
+ */
+const NOT_A_RECORD: ReadonlyArray<(value: unknown) => boolean> = [
+  types.isMap,
+  types.isSet,
+  types.isWeakMap,
+  types.isWeakSet,
+  types.isDate,
+  types.isRegExp,
+  types.isTypedArray,
+  types.isAnyArrayBuffer,
+  types.isDataView,
+  types.isPromise,
+  types.isNativeError,
+  types.isArgumentsObject,
+  types.isBoxedPrimitive,
+  types.isGeneratorObject,
+  types.isMapIterator,
+  types.isSetIterator
+]
+
+/**
  * Describe a source that is not an object of variables, without quoting it.
  *
  * Variables are looked up by name, so anything but an object is refused, and so is an array, a Map or
@@ -623,9 +646,9 @@ function refusedSourceKind(source: unknown): string | undefined {
   if (source === undefined || source === null) return String(source)
   if (typeof source !== 'object') return `a ${typeof source}`
   if (Array.isArray(source)) return 'an array'
-  return Object.prototype.toString.call(source) === '[object Object]'
-    ? undefined
-    : 'an object that is not a record of variables'
+  return NOT_A_RECORD.some((isKind) => isKind(source))
+    ? 'an object that is not a record of variables'
+    : undefined
 }
 
 /**

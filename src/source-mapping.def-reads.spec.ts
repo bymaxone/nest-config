@@ -14,6 +14,12 @@ import { z } from 'zod'
 import { createValidatedConfig } from './config.providers'
 import { defineEnv } from './define-env'
 import { BymaxConfigValidationError } from './errors'
+import {
+  bindingsOf,
+  findCoercedBooleanLeaves,
+  findUnusableEnvOverrides,
+  snapshotSchema
+} from './source-mapping'
 
 const schema = defineEnv({ app: z.object({ name: z.string().default('n') }) })
 
@@ -94,6 +100,73 @@ describe('a name planted on the root prototype and read from a definition or a s
     const messages = planted('shape', {}, () => issuesOf({}, defineEnv(leafAtTop)))
 
     expect(messages.join(' ')).toContain('is not a namespace')
+  })
+})
+
+/** A leaf wrapped so that the chain from the outermost node to the innermost holds `nodes` nodes. */
+function chainOf(inner: z.ZodType, nodes: number): z.ZodType {
+  let leaf = inner
+  for (let wrapped = 1; wrapped < nodes; wrapped += 1) leaf = leaf.optional()
+  return leaf
+}
+
+/** What a validation of one leaf schema ends in: the issues it reports and the message of the cause. */
+function outcomeOf(
+  schemaOf: z.ZodType,
+  source: Record<string, string>
+): { issues: string; cause: string } {
+  try {
+    createValidatedConfig({
+      schema: defineEnv({ app: z.object({ value: schemaOf }) }) as never,
+      source
+    })
+    return { issues: '', cause: '' }
+  } catch (error) {
+    const failure = error as BymaxConfigValidationError
+    return {
+      issues: failure.issues.map((issue) => issue.message).join(' '),
+      cause: String((failure.cause as Error | undefined)?.message ?? '')
+    }
+  }
+}
+
+describe('the depth that a chain of wrappers may reach', () => {
+  const override = z.string().meta({ env: 'DEPTH_VARIABLE' })
+  const coercing = z.coerce.boolean()
+
+  it('reads an env override at the deepest allowed node and refuses one node deeper', () => {
+    expect(outcomeOf(chainOf(override, 64), { DEPTH_VARIABLE: 'x' })).toEqual({
+      issues: '',
+      cause: ''
+    })
+    expect(outcomeOf(chainOf(override, 65), { DEPTH_VARIABLE: 'x' }).cause).toContain(
+      'nests wrappers deeper than'
+    )
+  })
+
+  it('finds a coercing boolean at the deepest allowed node and refuses one node deeper', () => {
+    const allowed = outcomeOf(chainOf(coercing, 64), { APP_VALUE: 'true' })
+    const refused = outcomeOf(chainOf(coercing, 65), { APP_VALUE: 'true' })
+
+    expect(allowed.issues).toContain('z.coerce.boolean()')
+    expect(refused.cause).toContain('nests wrappers deeper than')
+  })
+})
+
+describe('each walk over a chain of wrappers has the same depth limit', () => {
+  const viewOf = (leaf: z.ZodType): ReturnType<typeof snapshotSchema> =>
+    snapshotSchema(defineEnv({ app: z.object({ value: leaf }) }) as never)
+  const walks: ReadonlyArray<readonly [string, (leaf: z.ZodType) => unknown]> = [
+    ['the override of a variable', (leaf) => bindingsOf(viewOf(leaf))],
+    ['the unusable overrides', (leaf) => findUnusableEnvOverrides(viewOf(leaf))],
+    ['the coercing booleans', (leaf) => findCoercedBooleanLeaves(viewOf(leaf))]
+  ]
+
+  it.each(walks)('%s walks 64 nodes and refuses 65', (_name, walk) => {
+    const inner = z.string().meta({ env: 'DEPTH_VARIABLE' })
+
+    expect(() => walk(chainOf(inner, 64))).not.toThrow()
+    expect(() => walk(chainOf(inner, 65))).toThrow('nests wrappers deeper than')
   })
 })
 

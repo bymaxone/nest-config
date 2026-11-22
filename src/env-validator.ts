@@ -629,6 +629,17 @@ function refusedSourceKind(source: unknown): string | undefined {
 }
 
 /**
+ * The value a source holds under a name as a property of its own.
+ *
+ * @param source - The record the host supplied.
+ * @param name - The variable name.
+ * @returns The own value, or undefined when the source holds none of its own.
+ */
+function ownValue(source: object, name: string): unknown {
+  return Object.hasOwn(source, name) ? Reflect.get(source, name) : undefined
+}
+
+/**
  * Read the source into a map, each property once and by name: the keys come from the listing, and a
  * declared variable that is not in it is read too, so one held as a non-enumerable or inherited property,
  * or answered only by the get trap of a Proxy, is found. A value found by name is validated whatever its
@@ -664,7 +675,10 @@ function readSource(
     )
     for (const { variable } of bindings) {
       if (read.has(variable)) continue
-      read.set(variable, readOption(source, variable) as string | undefined)
+      // `__proto__` is the source's own property or nothing: a parent that holds one is not the host's value.
+      const value =
+        variable === '__proto__' ? ownValue(source, variable) : readOption(source, variable)
+      read.set(variable, value as string | undefined)
     }
     return read
   })

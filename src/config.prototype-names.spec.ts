@@ -201,6 +201,13 @@ describe('a source variable named __proto__', () => {
     expect(createValidatedConfig({ schema: named, source: make() }).app?.name).toBe('default-name')
   })
 
+  it('is not taken from a parent that holds it as a property of its own, so the default applies', () => {
+    const parent = JSON.parse('{"__proto__":"inherited"}') as object
+    const source = Object.create(parent) as Record<string, string>
+
+    expect(createValidatedConfig({ schema: named, source }).app?.name).toBe('default-name')
+  })
+
   it('is taken from a source that holds it as a property of its own', () => {
     const source = JSON.parse('{"__proto__":"own"}') as Record<string, string>
 

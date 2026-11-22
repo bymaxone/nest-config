@@ -320,11 +320,37 @@ describe('a value that is not an array', () => {
 })
 
 describe('an empty array that carries more than entries', () => {
+  /** An empty Array subclass that keeps a field of its own, as a class of the host's can. */
+  class Tagged extends Array<unknown> {
+    public readonly tag = 'host'
+  }
+
   it.each([
     ['a named property', Object.assign([], { note: 'x' })],
+    ['an Array subclass with a field of its own', new Tagged()],
+    ['a name just past the last index, 4294967295', Object.assign([], { '4294967295': 'x' })],
+    ['a name far past the last index', Object.assign([], { '99999999999': 'x' })],
     ['a property whose name is not an index', Object.assign([], { '01': 'x', '-1': 'y' })]
   ])('is accepted as empty with %s', (_name, list) => {
     expect(new BymaxConfigValidationError(list as never).issues).toEqual([])
+  })
+
+  it('is refused for the last index, 4294967294, when it claims no entries', () => {
+    const claimed = new Proxy([] as unknown[], {
+      get: (target, key, receiver) =>
+        key === 'length' ? 0 : (Reflect.get(target, key, receiver) as unknown),
+      ownKeys: () => ['length', '4294967294'],
+      getOwnPropertyDescriptor: (target, key) =>
+        key === 'length'
+          ? Reflect.getOwnPropertyDescriptor(target, key)
+          : { value: issue, enumerable: true, configurable: true }
+    })
+
+    const error = thrownBy(() => new BymaxConfigValidationError(claimed as never))
+
+    expect((error as Error).message).toBe(
+      'BymaxConfigValidationError: issues claims no entries but lists some'
+    )
   })
 
   it('is refused only for an own index key, with its own reason', () => {

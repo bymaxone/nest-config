@@ -74,8 +74,18 @@ function printable(text: string): string {
 /** The most issues one error carries; a longer list is refused rather than copied. */
 const MAX_ISSUES = 10_000
 
-/** A property name that is an array index: only such an own key is an entry the list holds. */
-const INDEX_KEY = /^(?:0|[1-9]\d*)$/
+/**
+ * Whether a property name is an array index, which is what makes an own key an entry the list holds: a
+ * canonical whole number below 2**32 - 1. Converting to an unsigned 32-bit integer and back leaves exactly
+ * those names unchanged, but for 2**32 - 1 itself, which is the length limit and not an index.
+ *
+ * @param key - An own property name of the list.
+ * @returns True when the name is an array index.
+ */
+function isIndexKey(key: string): boolean {
+  const index = Number(key) >>> 0
+  return index !== 4_294_967_295 && String(index) === key
+}
 
 /** The four fields an issue carries, in the order they are read. */
 const ISSUE_FIELDS = ['path', 'variable', 'code', 'message'] as const
@@ -150,7 +160,7 @@ function copyIssues(issues: ReadonlyArray<ConfigIssue>): ReadonlyArray<ConfigIss
       `BymaxConfigValidationError: at most ${MAX_ISSUES} issues, received ${length}`
     )
   }
-  if (length === 0 && hostRead(() => Object.keys(issues)).some((key) => INDEX_KEY.test(key))) {
+  if (length === 0 && hostRead(() => Object.keys(issues)).some(isIndexKey)) {
     throw new TypeError('BymaxConfigValidationError: issues claims no entries but lists some')
   }
   const copy: ConfigIssue[] = []

@@ -515,18 +515,14 @@ describe('a built-in that cannot be read when the check runs', () => {
         }
       }
     )
-    const entries = BASELINE as unknown as unknown[]
-    entries.push({
-      name: 'unreadable',
-      owner: unreadable,
-      key: 'x',
-      original: undefined,
-      resolved: undefined
-    })
+    // The list is read-only in its type; the case appends one unreadable entry through the array's own methods.
+    Reflect.apply(Array.prototype.push, BASELINE, [
+      { name: 'unreadable', owner: unreadable, key: 'x', original: undefined, resolved: undefined }
+    ])
     try {
       expect(replacedBuiltins()).toBe(1)
     } finally {
-      entries.pop()
+      Reflect.apply(Array.prototype.pop, BASELINE, [])
     }
     expect(replacedBuiltins()).toBe(0)
   })

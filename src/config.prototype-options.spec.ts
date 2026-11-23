@@ -17,11 +17,20 @@ import { bymaxConfigProvider, createValidatedConfig } from './config.providers'
 import { BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { defineEnv } from './define-env'
 import { validateEnv } from './env-validator'
+import { BymaxConfigValidationError } from './errors'
+import { hasOption, readOption } from './option-read'
 
 const schema = defineEnv({ app: z.object({ name: z.string().default('n') }) })
 
-/** Runs `run` with `key` planted on the realm root as `value`, and removes it afterwards. */
+/** Puts a property of the realm root back as it was: its descriptor when it had one, nothing when it had none. */
+function restoreRoot(key: string, original: PropertyDescriptor | undefined): void {
+  if (original === undefined) Reflect.deleteProperty(Object.prototype, key)
+  else Object.defineProperty(Object.prototype, key, original)
+}
+
+/** Runs `run` with `key` planted on the realm root as `value`, and puts the root back afterwards. */
 function planted<T>(key: string, value: unknown, run: () => T): T {
+  const original = Object.getOwnPropertyDescriptor(Object.prototype, key)
   Object.defineProperty(Object.prototype, key, {
     value,
     configurable: true,
@@ -31,12 +40,13 @@ function planted<T>(key: string, value: unknown, run: () => T): T {
   try {
     return run()
   } finally {
-    Reflect.deleteProperty(Object.prototype, key)
+    restoreRoot(key, original)
   }
 }
 
 /** As {@link planted}, for a run that is asynchronous: the name stays until what it returns settles. */
 async function plantedAsync<T>(key: string, value: unknown, run: () => Promise<T>): Promise<T> {
+  const original = Object.getOwnPropertyDescriptor(Object.prototype, key)
   Object.defineProperty(Object.prototype, key, {
     value,
     configurable: true,
@@ -46,7 +56,7 @@ async function plantedAsync<T>(key: string, value: unknown, run: () => Promise<T
   try {
     return await run()
   } finally {
-    Reflect.deleteProperty(Object.prototype, key)
+    restoreRoot(key, original)
   }
 }
 
@@ -284,19 +294,32 @@ describe("metadata names planted on Object.prototype are not the schema author's
 
 describe('the root prototype is found without reading a property of it', () => {
   it('still ignores a planted name when Object.prototype.constructor is overwritten', () => {
-    const registration = planted('constructor', 5, () =>
-      planted('strict', true, () => BymaxConfigModule.forRoot({ schema }))
+    const read = planted('constructor', 5, () =>
+      planted('strict', true, () => [readOption({}, 'strict'), hasOption({}, 'strict')])
     )
 
-    expect(Object.keys(optionsOf(registration))).toEqual(['schema'])
+    expect(read).toEqual([undefined, false])
   })
 
   it('still ignores a planted source when Object.prototype.constructor is overwritten', () => {
-    const config = planted('constructor', null, () =>
-      planted('source', { APP_NAME: 'planted' }, () => createValidatedConfig({ schema }))
+    const read = planted('constructor', null, () =>
+      planted('source', { APP_NAME: 'planted' }, () => readOption({}, 'source'))
     )
 
-    expect(config.app.name).toBe('n')
+    expect(read).toBeUndefined()
+  })
+
+  it('has the entry points refuse an overwritten Object.prototype.constructor, which the baseline records', () => {
+    const failure = planted('constructor', 5, () => {
+      try {
+        BymaxConfigModule.forRoot({ schema })
+        return undefined
+      } catch (error) {
+        return error
+      }
+    })
+
+    expect(failure).toBeInstanceOf(BymaxConfigValidationError)
   })
 
   it('ignores a name planted on the root prototype of another realm', () => {

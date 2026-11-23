@@ -83,7 +83,7 @@ const OWNER_GROUPS: ReadonlyArray<() => Group> = [
     ]
   ],
   (): Group => ['Reflect', Reflect, ['apply', 'get', 'set']],
-  (): Group => ['Array', Array, ['isArray']],
+  (): Group => ['Array', Array, ['isArray', Symbol.species]],
   (): Group => ['ArrayBuffer', ArrayBuffer, ['isView']],
   (): Group => ['Number', Number, ['isInteger']],
   (): Group => ['Math', Math, ['ceil', 'floor', 'max', 'min']],
@@ -92,6 +92,7 @@ const OWNER_GROUPS: ReadonlyArray<() => Group> = [
     'Array.prototype',
     Array.prototype,
     [
+      'constructor',
       'entries',
       'every',
       'filter',
@@ -130,11 +131,35 @@ const OWNER_GROUPS: ReadonlyArray<() => Group> = [
     ]
   ],
   (): Group => ['Number.prototype', Number.prototype, ['toString']],
-  (): Group => ['Object.prototype', Object.prototype, ['toString', 'valueOf']],
+  (): Group => [
+    'Object.prototype',
+    Object.prototype,
+    ['constructor', 'toString', 'valueOf', Symbol.toPrimitive]
+  ],
+  (): Group => ['Date.prototype', Date.prototype, [Symbol.toPrimitive]],
+  (): Group => ['Symbol.prototype', Symbol.prototype, [Symbol.toPrimitive]],
   (): Group => [
     'RegExp.prototype',
     RegExp.prototype,
-    ['exec', 'test', Symbol.match, Symbol.matchAll, Symbol.replace, Symbol.search, Symbol.split]
+    [
+      'constructor',
+      'dotAll',
+      'exec',
+      'flags',
+      'global',
+      'hasIndices',
+      'ignoreCase',
+      'multiline',
+      'sticky',
+      'test',
+      'unicode',
+      'unicodeSets',
+      Symbol.match,
+      Symbol.matchAll,
+      Symbol.replace,
+      Symbol.search,
+      Symbol.split
+    ]
   ],
   (): Group => [
     'Set.prototype',

@@ -21,7 +21,7 @@ import {
   unchanged
 } from './builtins'
 import { BymaxConfigModule } from './config.module'
-import { createValidatedConfig } from './config.providers'
+import { bymaxConfigProvider, createValidatedConfig } from './config.providers'
 import { ConfigService } from './config.service'
 import { defineEnv } from './define-env'
 import { validateEnv } from './env-validator'
@@ -57,6 +57,7 @@ const EXPECTED = [
   'Reflect.get',
   'Reflect.set',
   'Array.isArray',
+  'Array.Symbol(Symbol.species)',
   'ArrayBuffer.isView',
   'Number.isInteger',
   'Math.ceil',
@@ -64,6 +65,7 @@ const EXPECTED = [
   'Math.max',
   'Math.min',
   'String.fromCodePoint',
+  'Array.prototype.constructor',
   'Array.prototype.entries',
   'Array.prototype.every',
   'Array.prototype.filter',
@@ -94,10 +96,24 @@ const EXPECTED = [
   'String.prototype.trim',
   'String.prototype.Symbol(Symbol.iterator)',
   'Number.prototype.toString',
+  'Object.prototype.constructor',
   'Object.prototype.toString',
   'Object.prototype.valueOf',
+  'Object.prototype.Symbol(Symbol.toPrimitive)',
+  'Date.prototype.Symbol(Symbol.toPrimitive)',
+  'Symbol.prototype.Symbol(Symbol.toPrimitive)',
+  'RegExp.prototype.constructor',
+  'RegExp.prototype.dotAll',
   'RegExp.prototype.exec',
+  'RegExp.prototype.flags',
+  'RegExp.prototype.global',
+  'RegExp.prototype.hasIndices',
+  'RegExp.prototype.ignoreCase',
+  'RegExp.prototype.multiline',
+  'RegExp.prototype.sticky',
   'RegExp.prototype.test',
+  'RegExp.prototype.unicode',
+  'RegExp.prototype.unicodeSets',
   'RegExp.prototype.Symbol(Symbol.match)',
   'RegExp.prototype.Symbol(Symbol.matchAll)',
   'RegExp.prototype.Symbol(Symbol.replace)',
@@ -167,17 +183,18 @@ const schema = defineEnv({ app: z.object({ name: z.string().default('n') }) })
 
 /** Replaces `key` of `owner` with `value`, runs `run`, and puts the original descriptor back. */
 function withReplaced<T>(owner: object, key: PropertyKey, value: unknown, run: () => T): T {
-  const original = getDescriptor(owner, key) as PropertyDescriptor
+  const original = getDescriptor(owner, key)
   defineProp(owner, key, {
     value,
     writable: true,
     configurable: true,
-    enumerable: original.enumerable === true
+    enumerable: original?.enumerable === true
   })
   try {
     return run()
   } finally {
-    defineProp(owner, key, original)
+    if (original === undefined) Reflect.deleteProperty(owner, key)
+    else defineProp(owner, key, original)
   }
 }
 
@@ -225,7 +242,12 @@ describe('the list of built-ins the library calls', () => {
   })
 
   it('holds the descriptor every built-in had when the module loaded', () => {
-    expect(freshBaseline().every((entry) => entry.original !== undefined)).toBe(true)
+    const absent = freshBaseline()
+      .filter((entry) => entry.original === undefined)
+      .map((entry) => entry.name)
+
+    // Only the conversion hook that Object.prototype does not define is recorded as absent.
+    expect(absent).toEqual(['Object.prototype.Symbol(Symbol.toPrimitive)'])
   })
 })
 
@@ -413,10 +435,10 @@ describe('the library is loaded while a built-in it builds its list with is repl
     expect(names).toContain('Object.keys')
     expect(names).not.toContain('Array.prototype.map')
     expect((refused as BymaxConfigValidationError).name).toBe('BymaxConfigValidationError')
-    // Five groups name a Symbol key and four iterators are found through one, and none of them can be
+    // Nine groups name a Symbol key and four iterators are found through one, and none of them can be
     // recorded; the Symbol entry itself differs from the one recorded once the global is back.
     expect((refused as BymaxConfigValidationError).issues[0]?.message).toBe(
-      '10 of the built-ins the library calls were replaced after it loaded'
+      '14 of the built-ins the library calls were replaced after it loaded'
     )
     expect(getDescriptor(globalThis, 'Symbol')).toEqual(symbol)
   })
@@ -764,5 +786,38 @@ describe('the errors module, loaded afresh', () => {
     ])
 
     expect(freshRefusal(7).message).toBe(reference.message)
+  })
+})
+
+describe('the provider that validates the environment, with a built-in replaced', () => {
+  it('rejects with the refusal and gives the hook of the host the structured issue', async () => {
+    const hook = jest.fn()
+    const factory = bymaxConfigProvider.useFactory as (options: unknown) => Promise<unknown>
+    let failure: unknown
+
+    await withReplaced(
+      Array.prototype,
+      'sort',
+      sameBehaviour(Array.prototype, 'sort'),
+      async () => {
+        try {
+          await factory({ schema, source: {}, onValidationError: hook })
+        } catch (error) {
+          failure = error
+        }
+      }
+    )
+
+    expect(failure).toBeInstanceOf(BymaxConfigValidationError)
+    expect(isLibraryError(failure)).toBe(true)
+    expect(hook).toHaveBeenCalledTimes(1)
+    expect(hook).toHaveBeenCalledWith([
+      {
+        path: '',
+        variable: '(runtime)',
+        code: ConfigErrorCode.INVALID,
+        message: '1 of the built-ins the library calls were replaced after it loaded'
+      }
+    ])
   })
 })

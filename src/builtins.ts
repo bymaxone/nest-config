@@ -26,6 +26,19 @@ interface Baseline {
 
 const getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor
 const apply = Reflect.apply
+const hasOwn = Object.hasOwn
+
+/**
+ * One field of a descriptor, read only when the descriptor holds it itself: a descriptor is an ordinary
+ * object, so a `get`, `set` or `value` planted on Object.prototype would otherwise be read from it.
+ *
+ * @param descriptor - The descriptor to read.
+ * @param field - Which field.
+ * @returns The own field, or undefined when the descriptor has none.
+ */
+function fieldOf(descriptor: PropertyDescriptor, field: 'get' | 'set' | 'value'): unknown {
+  return hasOwn(descriptor, field) ? descriptor[field] : undefined
+}
 
 // Stryker disable next-line ArrayDeclaration: a getter takes no arguments, so one extra argument is not observable and a getter that read it would be a different built-in
 const NO_ARGUMENTS: readonly unknown[] = []
@@ -44,13 +57,14 @@ let unrecorded = 0
 function record(into: Baseline[], name: string, owner: object, key: PropertyKey): void {
   try {
     const original = getOwnPropertyDescriptor(owner, key)
-    const getter = original === undefined ? undefined : original.get
+    const getter = original === undefined ? undefined : fieldOf(original, 'get')
     into[into.length] = {
       name,
       owner,
       key,
       original,
-      resolved: getter === undefined ? undefined : apply(getter, owner, NO_ARGUMENTS)
+      resolved:
+        getter === undefined ? undefined : apply(getter as () => unknown, owner, NO_ARGUMENTS)
     }
   } catch {
     unrecorded += 1
@@ -328,7 +342,11 @@ export function sameDescriptor(
   then: PropertyDescriptor | undefined
 ): boolean {
   if (now === undefined || then === undefined) return now === then
-  return now.value === then.value && now.get === then.get && now.set === then.set
+  return (
+    fieldOf(now, 'value') === fieldOf(then, 'value') &&
+    fieldOf(now, 'get') === fieldOf(then, 'get') &&
+    fieldOf(now, 'set') === fieldOf(then, 'set')
+  )
 }
 
 /**
@@ -347,10 +365,9 @@ export function unchanged(
   entry: { readonly original: PropertyDescriptor | undefined; readonly resolved: unknown }
 ): boolean {
   if (!sameDescriptor(now, entry.original)) return false
+  const getter = now === undefined ? undefined : fieldOf(now, 'get')
   return (
-    now === undefined ||
-    now.get === undefined ||
-    apply(now.get, owner, NO_ARGUMENTS) === entry.resolved
+    getter === undefined || apply(getter as () => unknown, owner, NO_ARGUMENTS) === entry.resolved
   )
 }
 

@@ -540,6 +540,28 @@ describe('a built-in that was deleted', () => {
   })
 })
 
+describe('descriptor fields planted on Object.prototype after the import', () => {
+  // The planting wraps plain-object owners only: a planted `get` makes the descriptor of a property of the
+  // test sandbox's global invalid for the engine itself, which no read of the library can prevent.
+  it.each(['get', 'set', 'value'] as const)(
+    'does not read an inherited %s from the descriptor of a data property or of an accessor',
+    (field) => {
+      const floor = getDescriptor(Math, 'floor') as PropertyDescriptor
+      const flags = getDescriptor(RegExp.prototype, 'flags') as PropertyDescriptor
+      const planted = jest.fn(() => 1)
+      defineProp(Object.prototype, field, { value: planted, configurable: true, writable: true })
+      try {
+        expect(unchanged(Math, floor, { original: floor, resolved: undefined })).toBe(true)
+        expect(unchanged(RegExp.prototype, flags, { original: flags, resolved: '' })).toBe(true)
+        expect(sameDescriptor(floor, floor)).toBe(true)
+        expect(planted).not.toHaveBeenCalled()
+      } finally {
+        Reflect.deleteProperty(Object.prototype, field)
+      }
+    }
+  )
+})
+
 describe('nothing is replaced', () => {
   it('counts no replaced built-in and does not refuse', () => {
     expect(replacedBuiltins()).toBe(0)

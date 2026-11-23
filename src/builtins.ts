@@ -11,7 +11,7 @@
 
 import nodeUtil, { types } from 'node:util'
 
-import { ConfigErrorCode, libraryError } from './errors'
+import { runtimeRefusal } from './errors'
 
 /** One built-in the library calls: where it lives, what it is called, and what it was at load. */
 interface Baseline {
@@ -20,19 +20,47 @@ interface Baseline {
   readonly owner: object
   readonly key: PropertyKey
   readonly original: PropertyDescriptor | undefined
+  /** What an accessor answered when the module loaded, so a replaced value behind an unchanged getter shows. */
+  readonly resolved: unknown
 }
 
 const getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor
-const defineBaseline = (name: string, owner: object, key: PropertyKey): Baseline => ({
-  name,
-  owner,
-  key,
-  original: getOwnPropertyDescriptor(owner, key)
-})
+const apply = Reflect.apply
+
+/** How many built-ins could not be recorded at load, which counts as replaced when the check runs. */
+let unrecorded = 0
+
+/**
+ * Record one built-in, or count it as unrecorded when reading it throws.
+ *
+ * @param into - The list being built.
+ * @param name - The name a person writes for it.
+ * @param owner - Where it lives.
+ * @param key - What it is called there.
+ */
+function record(into: Baseline[], name: string, owner: object, key: PropertyKey): void {
+  try {
+    const original = getOwnPropertyDescriptor(owner, key)
+    const getter = original === undefined ? undefined : original.get
+    into[into.length] = {
+      name,
+      owner,
+      key,
+      original,
+      resolved: getter === undefined ? undefined : apply(getter, owner, [])
+    }
+  } catch {
+    unrecorded += 1
+  }
+}
 
 /** Owners whose methods the library calls, by the name a person writes for them. */
-const OWNERS: ReadonlyArray<readonly [string, object, readonly PropertyKey[]]> = [
-  [
+/** A group of built-ins: the name a person writes for the owner, the owner, and the keys the library calls. */
+type Group = readonly [string, object, readonly PropertyKey[]]
+
+/** Each group is found by a thunk, so that one that cannot be built leaves out only itself. */
+const OWNER_GROUPS: ReadonlyArray<() => Group> = [
+  (): Group => [
     'Object',
     Object,
     [
@@ -52,13 +80,13 @@ const OWNERS: ReadonlyArray<readonly [string, object, readonly PropertyKey[]]> =
       'values'
     ]
   ],
-  ['Reflect', Reflect, ['apply', 'get', 'set']],
-  ['Array', Array, ['isArray']],
-  ['ArrayBuffer', ArrayBuffer, ['isView']],
-  ['Number', Number, ['isInteger']],
-  ['Math', Math, ['ceil', 'floor', 'max', 'min']],
-  ['String', String, ['fromCodePoint']],
-  [
+  (): Group => ['Reflect', Reflect, ['apply', 'get', 'set']],
+  (): Group => ['Array', Array, ['isArray']],
+  (): Group => ['ArrayBuffer', ArrayBuffer, ['isView']],
+  (): Group => ['Number', Number, ['isInteger']],
+  (): Group => ['Math', Math, ['ceil', 'floor', 'max', 'min']],
+  (): Group => ['String', String, ['fromCodePoint']],
+  (): Group => [
     'Array.prototype',
     Array.prototype,
     [
@@ -80,7 +108,7 @@ const OWNERS: ReadonlyArray<readonly [string, object, readonly PropertyKey[]]> =
       Symbol.iterator
     ]
   ],
-  [
+  (): Group => [
     'String.prototype',
     String.prototype,
     [
@@ -99,26 +127,26 @@ const OWNERS: ReadonlyArray<readonly [string, object, readonly PropertyKey[]]> =
       Symbol.iterator
     ]
   ],
-  ['Number.prototype', Number.prototype, ['toString']],
-  ['Object.prototype', Object.prototype, ['toString', 'valueOf']],
-  [
+  (): Group => ['Number.prototype', Number.prototype, ['toString']],
+  (): Group => ['Object.prototype', Object.prototype, ['toString', 'valueOf']],
+  (): Group => [
     'RegExp.prototype',
     RegExp.prototype,
     ['exec', 'test', Symbol.match, Symbol.matchAll, Symbol.replace, Symbol.search, Symbol.split]
   ],
-  [
+  (): Group => [
     'Set.prototype',
     Set.prototype,
     ['add', 'delete', 'entries', 'has', 'keys', 'values', Symbol.iterator]
   ],
-  [
+  (): Group => [
     'Map.prototype',
     Map.prototype,
     ['delete', 'entries', 'get', 'has', 'keys', 'set', 'values', Symbol.iterator]
   ],
-  ['WeakSet.prototype', WeakSet.prototype, ['add', 'has']],
-  ['Function.prototype', Function.prototype, ['apply', 'bind', 'call']],
-  [
+  (): Group => ['WeakSet.prototype', WeakSet.prototype, ['add', 'has']],
+  (): Group => ['Function.prototype', Function.prototype, ['apply', 'bind', 'call']],
+  (): Group => [
     'globalThis',
     globalThis,
     [
@@ -140,8 +168,8 @@ const OWNERS: ReadonlyArray<readonly [string, object, readonly PropertyKey[]]> =
       'process'
     ]
   ],
-  ['node:util', nodeUtil, ['inspect', 'types']],
-  [
+  (): Group => ['node:util', nodeUtil, ['inspect', 'types']],
+  (): Group => [
     'node:util.types',
     types,
     [
@@ -183,30 +211,51 @@ const ITERATORS: ReadonlyArray<readonly [string, () => unknown]> = [
 ]
 
 /**
- * The baseline entry of an iterator prototype, or nothing when the prototype cannot be found.
+ * Record the `next` of an iterator prototype, or count it as unrecorded when the prototype cannot be found.
  *
+ * @param into - The list being built.
  * @param name - The name of the iterator prototype.
  * @param find - Finds the prototype.
- * @returns The entry for its `next`, or an empty list.
  */
-function iteratorBaseline(name: string, find: () => unknown): Baseline[] {
+function recordIterator(into: Baseline[], name: string, find: () => unknown): void {
   try {
     const owner = find()
-    return typeof owner === 'object' && owner !== null
-      ? [defineBaseline(`${name}.next`, owner, 'next')]
-      : []
+    if (typeof owner === 'object' && owner !== null) record(into, `${name}.next`, owner, 'next')
+    else unrecorded += 1
   } catch {
-    return []
+    unrecorded += 1
   }
 }
 
+/**
+ * Build the list with index loops and a guard around each step, so that a built-in replaced before the
+ * module loads cannot make loading throw: whatever cannot be recorded is counted as unrecorded.
+ *
+ * @returns The built-ins recorded.
+ */
+function buildBaseline(): Baseline[] {
+  const into: Baseline[] = []
+  for (let group = 0; group < OWNER_GROUPS.length; group += 1) {
+    try {
+      // By index: destructuring would ask the Array iterator, which one of the entries is about.
+      const found = (OWNER_GROUPS[group] as () => Group)()
+      const keys = found[2]
+      for (let key = 0; key < keys.length; key += 1) {
+        record(into, `${found[0]}.${String(keys[key])}`, found[1], keys[key] as PropertyKey)
+      }
+    } catch {
+      unrecorded += 1
+    }
+  }
+  for (let at = 0; at < ITERATORS.length; at += 1) {
+    const iterator = ITERATORS[at] as readonly [string, () => unknown]
+    recordIterator(into, iterator[0], iterator[1])
+  }
+  return into
+}
+
 /** Every built-in the library calls, as it was when the module loaded. */
-export const BASELINE: ReadonlyArray<Baseline> = [
-  ...OWNERS.flatMap(([name, owner, keys]) =>
-    keys.map((key) => defineBaseline(`${name}.${String(key)}`, owner, key))
-  ),
-  ...ITERATORS.flatMap(([name, find]) => iteratorBaseline(name, find))
-]
+export const BASELINE: ReadonlyArray<Baseline> = buildBaseline()
 
 /**
  * Whether two descriptors of a property hold the same value, getter and setter, by identity. A global that
@@ -225,16 +274,41 @@ export function sameDescriptor(
 }
 
 /**
- * Count the built-ins that are no longer what they were when the module loaded.
+ * Whether a built-in is what it was when the module loaded: the same descriptor, and for an accessor the
+ * same value behind the same getter, since a replaced global can change what its getter answers without
+ * changing the getter.
  *
- * @returns How many differ by identity, a property that became an accessor included.
+ * @param owner - Where the built-in lives.
+ * @param now - The descriptor of the property now.
+ * @param entry - What was recorded at load: the descriptor and what an accessor answered.
+ * @returns True when nothing a caller could observe differs.
+ */
+export function unchanged(
+  owner: object,
+  now: PropertyDescriptor | undefined,
+  entry: { readonly original: PropertyDescriptor | undefined; readonly resolved: unknown }
+): boolean {
+  if (!sameDescriptor(now, entry.original)) return false
+  return now === undefined || now.get === undefined || apply(now.get, owner, []) === entry.resolved
+}
+
+/**
+ * Count the built-ins that are no longer what they were when the module loaded, and those that could not
+ * be recorded then. One that cannot be read now counts as replaced.
+ *
+ * @returns How many differ or were never recorded.
  */
 export function replacedBuiltins(): number {
   // By index: a `for...of` would ask the Array iterator, which is one of the built-ins being checked.
-  let replaced = 0
+  let replaced = unrecorded
   for (let at = 0; at < BASELINE.length; at += 1) {
-    const { owner, key, original } = BASELINE[at] as Baseline
-    if (!sameDescriptor(getOwnPropertyDescriptor(owner, key), original)) replaced += 1
+    const entry = BASELINE[at] as Baseline
+    try {
+      if (!unchanged(entry.owner, getOwnPropertyDescriptor(entry.owner, entry.key), entry))
+        replaced += 1
+    } catch {
+      replaced += 1
+    }
   }
   return replaced
 }
@@ -247,12 +321,5 @@ export function replacedBuiltins(): number {
 export function assertBuiltinsIntact(): void {
   const replaced = replacedBuiltins()
   if (replaced === 0) return
-  throw libraryError([
-    {
-      path: '',
-      variable: '(runtime)',
-      code: ConfigErrorCode.INVALID,
-      message: `${replaced} of the built-ins the library calls were replaced after it loaded`
-    }
-  ])
+  throw runtimeRefusal(replaced)
 }

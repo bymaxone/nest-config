@@ -13,13 +13,25 @@
 import { inspect } from 'node:util'
 import { z } from 'zod'
 
-import { BASELINE, assertBuiltinsIntact, replacedBuiltins, sameDescriptor } from './builtins'
+import {
+  BASELINE,
+  assertBuiltinsIntact,
+  replacedBuiltins,
+  sameDescriptor,
+  unchanged
+} from './builtins'
 import { BymaxConfigModule } from './config.module'
 import { createValidatedConfig } from './config.providers'
 import { ConfigService } from './config.service'
 import { defineEnv } from './define-env'
 import { validateEnv } from './env-validator'
-import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
+import {
+  BymaxConfigValidationError,
+  ConfigErrorCode,
+  isLibraryError,
+  libraryError,
+  runtimeRefusal
+} from './errors'
 import { resolveSourceNames } from './source-mapping'
 
 const getDescriptor = Object.getOwnPropertyDescriptor
@@ -232,6 +244,253 @@ describe('the comparison of two descriptors', () => {
     ['another setter', { set: other }, { set: fn }, false]
   ])('says %s: %s', (_name, now, then, same) => {
     expect(sameDescriptor(now, then)).toBe(same)
+  })
+})
+
+describe('the comparison of a built-in with what was recorded, accessors included', () => {
+  const owner = {}
+  const getter = (): number => 1
+  const recorded = { original: { get: getter }, resolved: 1 }
+
+  it.each([
+    [
+      'nothing there then and nothing now',
+      undefined,
+      { original: undefined, resolved: undefined },
+      true
+    ],
+    [
+      'a data property that is the same',
+      { value: 1 },
+      { original: { value: 1 }, resolved: undefined },
+      true
+    ],
+    ['an accessor that answers what it answered', { get: getter }, recorded, true],
+    [
+      'an accessor whose getter answers another value',
+      { get: getter },
+      { ...recorded, resolved: 2 },
+      false
+    ],
+    [
+      'a descriptor that differs',
+      { value: 2 },
+      { original: { value: 1 }, resolved: undefined },
+      false
+    ]
+  ])('says %s: %s', (_name, now, entry, same) => {
+    expect(unchanged(owner, now, entry)).toBe(same)
+  })
+
+  it('counts a global assigned another value behind an unchanged accessor', () => {
+    const descriptor = getDescriptor(globalThis, 'process') as PropertyDescriptor
+    const fake = { env: { APP_NAME: 'replacement' } }
+    ;(globalThis as { process: unknown }).process = fake
+    try {
+      expect(replacedBuiltins()).toBe(1)
+    } finally {
+      defineProp(globalThis, 'process', descriptor)
+    }
+    expect(replacedBuiltins()).toBe(0)
+  })
+})
+
+describe('the refusal for a replaced built-in', () => {
+  const stripped = (error: BymaxConfigValidationError): unknown => ({
+    message: error.message,
+    name: error.name,
+    code: error.code,
+    issues: error.issues,
+    own: Object.getOwnPropertyNames(error).sort(),
+    nameDescriptor: { ...Object.getOwnPropertyDescriptor(error, 'name') },
+    codeDescriptor: { ...Object.getOwnPropertyDescriptor(error, 'code') },
+    issuesDescriptor: { ...Object.getOwnPropertyDescriptor(error, 'issues'), value: undefined }
+  })
+
+  it('has the shape libraryError gives, and is marked as the library own', () => {
+    const made = runtimeRefusal(1)
+    const reference = libraryError([
+      {
+        path: '',
+        variable: '(runtime)',
+        code: ConfigErrorCode.INVALID,
+        message: '1 of the built-ins the library calls were replaced after it loaded'
+      }
+    ])
+
+    expect(made).toBeInstanceOf(BymaxConfigValidationError)
+    expect(stripped(made)).toEqual(stripped(reference))
+    expect(isLibraryError(made)).toBe(true)
+    expect(Object.isFrozen(made.issues)).toBe(true)
+    expect(Object.isFrozen(made.issues[0])).toBe(true)
+  })
+
+  const wrongAnswers: ReadonlyArray<readonly [string, object, PropertyKey, () => unknown]> = [
+    ['Array.isArray', Array, 'isArray', () => false],
+    ['Number.isInteger', Number, 'isInteger', () => false],
+    ['Object.keys', Object, 'keys', () => []],
+    ['Object.freeze', Object, 'freeze', () => undefined],
+    ['Object.setPrototypeOf', Object, 'setPrototypeOf', () => undefined],
+    ['Object.defineProperty', Object, 'defineProperty', () => undefined],
+    ['Reflect.get', Reflect, 'get', () => undefined],
+    ['Reflect.set', Reflect, 'set', () => false],
+    ['String.fromCodePoint', String, 'fromCodePoint', () => ''],
+    ['Array.prototype.some', Array.prototype, 'some', () => false],
+    ['Object.assign', Object, 'assign', () => undefined]
+  ]
+
+  it.each(wrongAnswers)(
+    'is still the structured error when %s answers wrongly',
+    (_name, owner, key, wrong) => {
+      let failure: unknown
+      withReplaced(owner, key, wrong, () => {
+        try {
+          assertBuiltinsIntact()
+        } catch (error) {
+          failure = error
+        }
+      })
+
+      expect(failure).toBeInstanceOf(BymaxConfigValidationError)
+      expect((failure as BymaxConfigValidationError).code).toBe(ConfigErrorCode.VALIDATION)
+      expect((failure as BymaxConfigValidationError).issues).toEqual([
+        {
+          path: '',
+          variable: '(runtime)',
+          code: ConfigErrorCode.INVALID,
+          message: '1 of the built-ins the library calls were replaced after it loaded'
+        }
+      ])
+    }
+  )
+})
+
+/** The parts of a loaded copy of the module the cases below use. */
+interface Loaded {
+  readonly BASELINE: ReadonlyArray<{ name: string }>
+  assertBuiltinsIntact(): void
+}
+
+describe('the library is loaded while a built-in it builds its list with is replaced', () => {
+  /** The list of a copy of the module that is loaded while `run` holds the replacement, and what it then refuses. */
+  function loadedUnder(
+    owner: object,
+    key: PropertyKey,
+    value: unknown
+  ): { names: string[]; refused: unknown } {
+    const holder: { loaded?: Loaded } = {}
+    withReplaced(owner, key, value, () => {
+      jest.isolateModules(() => {
+        holder.loaded = require('./builtins') as Loaded
+      })
+    })
+    const loaded = holder.loaded as Loaded
+    let refused: unknown
+    try {
+      loaded.assertBuiltinsIntact()
+    } catch (error) {
+      refused = error
+    }
+    return { names: loaded.BASELINE.map((entry) => entry.name).sort(), refused }
+  }
+
+  it('records the whole list and does not throw when Array.prototype.flatMap returns nothing', () => {
+    const { names } = loadedUnder(Array.prototype, 'flatMap', () => undefined)
+
+    expect(names).toEqual([...EXPECTED].sort())
+  })
+
+  it('does not throw at import when Object.getOwnPropertyDescriptor answers nothing', () => {
+    const { names } = loadedUnder(Object, 'getOwnPropertyDescriptor', () => undefined)
+
+    expect(names).toEqual([...EXPECTED].sort())
+  })
+
+  it('does not throw at import and refuses at use when the Symbol global is gone, and keeps the rest', () => {
+    const symbol = getDescriptor(globalThis, 'Symbol') as PropertyDescriptor
+    const { names, refused } = loadedUnder(globalThis, 'Symbol', undefined)
+
+    expect(names).toContain('Object.keys')
+    expect(names).not.toContain('Array.prototype.map')
+    expect((refused as BymaxConfigValidationError).name).toBe('BymaxConfigValidationError')
+    expect((refused as BymaxConfigValidationError).issues[0]?.message).toMatch(
+      /^\d+ of the built-ins the library calls were replaced after it loaded$/u
+    )
+    expect(getDescriptor(globalThis, 'Symbol')).toEqual(symbol)
+  })
+
+  it('counts a built-in whose getter throws while the module loads as unrecorded and leaves the rest', () => {
+    const original = getDescriptor(globalThis, 'ArrayBuffer') as PropertyDescriptor
+    const holder: { loaded?: Loaded } = {}
+    defineProp(globalThis, 'ArrayBuffer', {
+      get: () => {
+        throw new Error('replaced')
+      },
+      configurable: true
+    })
+    try {
+      jest.isolateModules(() => {
+        holder.loaded = require('./builtins') as Loaded
+      })
+    } finally {
+      defineProp(globalThis, 'ArrayBuffer', original)
+    }
+    const loaded = holder.loaded as Loaded
+    let refused: unknown
+    try {
+      loaded.assertBuiltinsIntact()
+    } catch (error) {
+      refused = error
+    }
+
+    expect(loaded.BASELINE.map((entry) => entry.name).sort()).toEqual(
+      [...EXPECTED]
+        .filter((name) => name !== 'globalThis.ArrayBuffer' && name !== 'ArrayBuffer.isView')
+        .sort()
+    )
+    // The group that names the global and the entry that records its accessor each fail to be recorded.
+    expect((refused as BymaxConfigValidationError).issues[0]?.message).toBe(
+      '2 of the built-ins the library calls were replaced after it loaded'
+    )
+  })
+
+  it('counts an iterator prototype that cannot be found as unrecorded', () => {
+    const { names, refused } = loadedUnder(Object, 'getPrototypeOf', () => undefined)
+
+    expect(names).toEqual(
+      [...EXPECTED].filter((name) => !name.endsWith('Iterator.prototype.next')).sort()
+    )
+    expect((refused as BymaxConfigValidationError).issues[0]?.message).toBe(
+      // The four iterators that could not be found, and Object.getPrototypeOf itself, which differs from what was recorded.
+      '5 of the built-ins the library calls were replaced after it loaded'
+    )
+  })
+})
+
+describe('a built-in that cannot be read when the check runs', () => {
+  it('counts as replaced', () => {
+    const unreadable = new Proxy(
+      {},
+      {
+        getOwnPropertyDescriptor: () => {
+          throw new Error('unreadable')
+        }
+      }
+    )
+    const entries = BASELINE as unknown as unknown[]
+    entries.push({
+      name: 'unreadable',
+      owner: unreadable,
+      key: 'x',
+      original: undefined,
+      resolved: undefined
+    })
+    try {
+      expect(replacedBuiltins()).toBe(1)
+    } finally {
+      entries.pop()
+    }
+    expect(replacedBuiltins()).toBe(0)
   })
 })
 

@@ -180,6 +180,32 @@ describe('ConfigService serialization', () => {
     expect(JSON.parse(JSON.stringify(service))).toEqual(service.toJSON())
   })
 
+  it('serializes after Array[Symbol.species] was replaced by a constructor that throws', () => {
+    /**
+     * The namespace names are copied without asking the realm for a species constructor, so a
+     * host that replaced it after bootstrap cannot make an incidental JSON.stringify throw.
+     */
+    const service = buildServiceWithSecret()
+    const original = Object.getOwnPropertyDescriptor(Array, Symbol.species) as PropertyDescriptor
+    Object.defineProperty(Array, Symbol.species, {
+      configurable: true,
+      get: () => {
+        throw new Error('species replaced')
+      }
+    })
+    let text: string
+    try {
+      text = JSON.stringify(service)
+    } finally {
+      Object.defineProperty(Array, Symbol.species, original)
+    }
+
+    expect(JSON.parse(text)).toEqual({
+      service: 'ConfigService',
+      namespaces: ['server', 'database', 'log', 'feature']
+    })
+  })
+
   it('still resolves values through the accessors it is meant to be read with', () => {
     /**
      * No-regression guard.

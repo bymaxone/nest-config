@@ -20,7 +20,6 @@ import type { Path, PathValue } from './types'
  * after the boot cannot change what `get`, `has` and `toJSON` answer.
  */
 const apply = Reflect.apply
-const arraySlice = Array.prototype.slice
 const mapGet = Map.prototype.get
 const toText = String
 
@@ -133,10 +132,13 @@ export class ConfigService<TConfig> {
    * ```
    */
   public toJSON(): { readonly service: string; readonly namespaces: readonly string[] } {
-    return {
-      service: 'ConfigService',
-      namespaces: apply(arraySlice, this.#namespaces, []) as string[]
+    // Copied by index into a fresh array: Array.prototype.slice would ask Array[Symbol.species]
+    // for the result's constructor, which a host may have replaced after bootstrap.
+    const namespaces: string[] = []
+    for (let at = 0; at < this.#namespaces.length; at += 1) {
+      namespaces[at] = this.#namespaces[at] as string
     }
+    return { service: 'ConfigService', namespaces }
   }
 
   /**

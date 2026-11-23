@@ -170,11 +170,16 @@ const OWNERS: ReadonlyArray<readonly [string, object, readonly PropertyKey[]]> =
  * Each owner is found by a thunk, so that a built-in replaced before the import leaves the entry out and
  * does not make the module throw.
  */
+// Stryker disable next-line ArrayDeclaration: every array iterates with the same prototype, so the content of this one is not observable; the case that replaces the next of the Array iterator shows the entry works
+const SOME_ARRAY: readonly unknown[] = []
+// Stryker disable next-line StringLiteral: every string iterates with the same prototype, so the content of this one is not observable; the case that replaces the next of the String iterator shows the entry works
+const SOME_STRING = ''
+
 const ITERATORS: ReadonlyArray<readonly [string, () => unknown]> = [
-  ['ArrayIterator.prototype', (): unknown => Object.getPrototypeOf([][Symbol.iterator]())],
+  ['ArrayIterator.prototype', (): unknown => Object.getPrototypeOf(SOME_ARRAY[Symbol.iterator]())],
   ['SetIterator.prototype', (): unknown => Object.getPrototypeOf(new Set()[Symbol.iterator]())],
   ['MapIterator.prototype', (): unknown => Object.getPrototypeOf(new Map()[Symbol.iterator]())],
-  ['StringIterator.prototype', (): unknown => Object.getPrototypeOf(''[Symbol.iterator]())]
+  ['StringIterator.prototype', (): unknown => Object.getPrototypeOf(SOME_STRING[Symbol.iterator]())]
 ]
 
 /**

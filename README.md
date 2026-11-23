@@ -643,9 +643,7 @@ elements, so a base64-decoded key stays writable. The object that holds it is fr
 
 ### What a planted property can still reach
 
-The built-ins that decide something during a validation (the strict-mode prefix test, the sort of the
-report, the lookups of declared names and issues, the layout of the report, the marks that tell an
-error of the library from another) are taken when the module loads, so host code that replaces one while
+The built-ins that decide something during a validation are taken when the module loads, so host code that replaces one while
 a validation runs, from a getter of the source for example, cannot change the decision. What the library
 reads through Zod is Zod's: a read-only property defined on the root prototype under the name of a declared
 leaf, with no variable set for it, can end up as that leaf's value, because the parsed object is assembled

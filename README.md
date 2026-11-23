@@ -350,7 +350,7 @@ At load the library records the built-ins it calls. Every entry point that start
 with the one it recorded, by identity. One that was replaced is refused
 with a `BymaxConfigValidationError` that carries the number replaced and nothing else, and nothing throws at
 import. Load order matters: a polyfill that replaces a built-in after the library is imported is refused at
-boot, so load polyfills first. The reads of `ConfigService` do not check again after the boot, and the
+boot, so load polyfills first. A replacement made before the import is outside what the library can check: if `Object.getOwnPropertyDescriptor` throws before the package is imported, the compiled import helper of the package fails before any code of the library runs. The reads of `ConfigService` do not check again after the boot, and the
 redaction of the configuration uses the `Object.defineProperty` taken at load, so a replacement made while the
 validation runs cannot leave its values printable.
 

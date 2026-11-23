@@ -27,6 +27,9 @@ interface Baseline {
 const getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor
 const apply = Reflect.apply
 
+// Stryker disable next-line ArrayDeclaration: a getter takes no arguments, so one extra argument is not observable and a getter that read it would be a different built-in
+const NO_ARGUMENTS: readonly unknown[] = []
+
 /** How many built-ins could not be recorded at load, which counts as replaced when the check runs. */
 let unrecorded = 0
 
@@ -47,14 +50,13 @@ function record(into: Baseline[], name: string, owner: object, key: PropertyKey)
       owner,
       key,
       original,
-      resolved: getter === undefined ? undefined : apply(getter, owner, [])
+      resolved: getter === undefined ? undefined : apply(getter, owner, NO_ARGUMENTS)
     }
   } catch {
     unrecorded += 1
   }
 }
 
-/** Owners whose methods the library calls, by the name a person writes for them. */
 /** A group of built-ins: the name a person writes for the owner, the owner, and the keys the library calls. */
 type Group = readonly [string, object, readonly PropertyKey[]]
 
@@ -289,7 +291,11 @@ export function unchanged(
   entry: { readonly original: PropertyDescriptor | undefined; readonly resolved: unknown }
 ): boolean {
   if (!sameDescriptor(now, entry.original)) return false
-  return now === undefined || now.get === undefined || apply(now.get, owner, []) === entry.resolved
+  return (
+    now === undefined ||
+    now.get === undefined ||
+    apply(now.get, owner, NO_ARGUMENTS) === entry.resolved
+  )
 }
 
 /**

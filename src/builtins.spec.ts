@@ -413,8 +413,10 @@ describe('the library is loaded while a built-in it builds its list with is repl
     expect(names).toContain('Object.keys')
     expect(names).not.toContain('Array.prototype.map')
     expect((refused as BymaxConfigValidationError).name).toBe('BymaxConfigValidationError')
-    expect((refused as BymaxConfigValidationError).issues[0]?.message).toMatch(
-      /^\d+ of the built-ins the library calls were replaced after it loaded$/u
+    // Five groups name a Symbol key and four iterators are found through one, and none of them can be
+    // recorded; the Symbol entry itself differs from the one recorded once the global is back.
+    expect((refused as BymaxConfigValidationError).issues[0]?.message).toBe(
+      '10 of the built-ins the library calls were replaced after it loaded'
     )
     expect(getDescriptor(globalThis, 'Symbol')).toEqual(symbol)
   })
@@ -721,5 +723,46 @@ describe('the own-property read of a variable named __proto__', () => {
     }
 
     expect(name).toBe('hidden')
+  })
+})
+
+/** A copy of the errors module that is loaded afresh, so the code that builds its constants runs in the case. */
+function freshErrors(): typeof import('./errors') {
+  let loaded: typeof import('./errors') | undefined
+  jest.isolateModules(() => {
+    loaded = require('./errors') as typeof import('./errors')
+  })
+  return loaded as typeof import('./errors')
+}
+
+describe('the errors module, loaded afresh', () => {
+  it.each([
+    ['a control character', '\u0001', '\\u0001'],
+    ['a format character', '\u200e', '\\u200e'],
+    ['a lone surrogate', '\ud800', '\\ud800'],
+    ['a line separator', '\u2028', '\\u2028'],
+    ['a paragraph separator', '\u2029', '\\u2029']
+  ])('writes %s as an escape and leaves a plain character alone', (_name, character, escaped) => {
+    const { BymaxConfigValidationError: Fresh } = freshErrors()
+
+    const error = new Fresh([
+      { path: 'a', variable: 'V', code: ConfigErrorCode.INVALID, message: `x${character}y` }
+    ])
+
+    expect(error.issues[0]?.message).toBe(`x${escaped}y`)
+  })
+
+  it('gives the refusal the report the formatter lays out', () => {
+    const { libraryError: freshLibraryError, runtimeRefusal: freshRefusal } = freshErrors()
+    const reference = freshLibraryError([
+      {
+        path: '',
+        variable: '(runtime)',
+        code: ConfigErrorCode.INVALID,
+        message: '7 of the built-ins the library calls were replaced after it loaded'
+      }
+    ])
+
+    expect(freshRefusal(7).message).toBe(reference.message)
   })
 })

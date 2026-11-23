@@ -28,13 +28,13 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // when the artifact shrinks.
 //
 // Calibration history (newest first):
-//   - The internal subpath measures 9.37 KiB brotli (9599 bytes): the engine below plus the one reader of an
+//   - The internal subpath measures 9.37 KiB brotli (9604 bytes): the engine below plus the one reader of an
 //     option by name, which finds the first holder of a name without reading a property of the root prototype,
 //     the metadata, source and schema-definition reads that go through it, the depth bound of the wrapper walks,
 //     the own-property read of `__proto__`, the built-ins of the reader and `Reflect.get` and `Reflect.set` taken at load,
 //     the objects handed to Nest with no prototype, the refusal of a wrapper chain that is too deep as a library error, the
 //     visited set of the coercion walk the tag of a source read through the option reader, the engine tests that tell the kinds of a source apart, and the baseline of the built-ins the library calls with the check that compares it at every entry. The
-//     budget, 9629 bytes (9.40 KiB), is that measurement plus 30 bytes.
+//     budget, 9634 bytes (9.41 KiB), is that measurement plus 30 bytes.
 //   - The internal subpath measures 7.27 KiB brotli (7442 bytes): the engine below plus the report built by
 //     index and the unsafe-character check through the `exec` taken at load. The budget, 7.30 KiB, is that
 //     measurement plus a few bytes.
@@ -92,7 +92,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 //     real public API lands and the built artifact stabilizes.
 const BUDGETS = [
   { name: 'root (schema, module, service)', path: 'dist/index.mjs', brotli: 5.25 * 1024 },
-  { name: 'internal (validation engine)', path: 'dist/internal/index.mjs', brotli: 9629 },
+  { name: 'internal (validation engine)', path: 'dist/internal/index.mjs', brotli: 9634 },
   { name: 'testing (test doubles)', path: 'dist/testing/index.mjs', brotli: 7 * 1024 }
 ]
 

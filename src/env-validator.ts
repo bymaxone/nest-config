@@ -19,6 +19,7 @@ import { assertBuiltinsIntact } from './builtins'
 import {
   mapGet,
   mapHas,
+  mapKeys,
   mapOf,
   mapSet,
   setHas,
@@ -360,7 +361,7 @@ function detectUnknownKeys(
 ): ConfigIssue[] {
   const declared = setOf(bindings.map((binding) => binding.variable))
   const issues: ConfigIssue[] = []
-  for (const key of source.keys()) {
+  for (const key of mapKeys(source)) {
     if (setHas(declared, key)) continue
     // A key mapped to undefined represents an absent variable, not a stray one.
     if (source.get(key) === undefined) continue

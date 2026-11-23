@@ -21,6 +21,7 @@ as the GitHub Release body, so each released version needs a matching
 - **`new BymaxConfigValidationError(issues)` formats with the built-ins taken at load**, as the library's own errors do.
 - **A read-only or accessor `code` or `issues` planted on `Object.prototype` no longer makes the error constructor throw or hand its list to a setter.** Both are own fields written by definition.
 - **The built-in baseline reads descriptor fields only from own properties**, so a `get`, `set` or `value` planted on `Object.prototype` is not taken for a field of a descriptor.
+- **The baseline of built-ins records `String.prototype[Symbol.match]`, `[Symbol.replace]`, `[Symbol.search]` and `[Symbol.split]` as absent**, so a hook planted on them after the import, which `split` and `replace` would call in place of their own, is refused as a replacement.
 
 ## [1.2.26] - 2026-11-22
 

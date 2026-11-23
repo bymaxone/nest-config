@@ -19,7 +19,7 @@ const schema = defineEnv({ app: z.object({ port: z.string() }) })
 interface Target {
   readonly name: string
   readonly owner: object
-  readonly key: string
+  readonly key: string | symbol
   readonly hostile: unknown
 }
 
@@ -27,11 +27,18 @@ const TARGETS: readonly Target[] = [
   { name: 'startsWith', owner: String.prototype, key: 'startsWith', hostile: () => false },
   { name: 'sort', owner: Array.prototype, key: 'sort', hostile: () => [] },
   { name: 'Set.has', owner: Set.prototype, key: 'has', hostile: () => true },
-  { name: 'Map.set', owner: Map.prototype, key: 'set', hostile: () => undefined }
+  { name: 'Map.set', owner: Map.prototype, key: 'set', hostile: () => undefined },
+  { name: 'Map.keys', owner: Map.prototype, key: 'keys', hostile: () => [][Symbol.iterator]() },
+  {
+    name: 'Map iterator next',
+    owner: Object.getPrototypeOf(new Map().keys()),
+    key: 'next',
+    hostile: () => ({ done: true })
+  }
 ]
 
 /** Replaces `key` of `owner`, returns the way back. */
-function replace(owner: object, key: string, value: unknown): () => void {
+function replace(owner: object, key: string | symbol, value: unknown): () => void {
   const original = Object.getOwnPropertyDescriptor(owner, key) as PropertyDescriptor
   Object.defineProperty(owner, key, { ...original, value })
   return () => Object.defineProperty(owner, key, original)

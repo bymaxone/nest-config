@@ -19,6 +19,11 @@ const setHasOf = Set.prototype.has
 const mapSetOf = Map.prototype.set
 const mapGetOf = Map.prototype.get
 const mapHasOf = Map.prototype.has
+const mapKeysOf = Map.prototype.keys
+// Read from an iterator itself, not through `Object.getPrototypeOf`, so a replaced `getPrototypeOf` at load cannot stop the import.
+const mapIteratorNextOf = (
+  new Map<string, string>().keys() as { next: () => IteratorResult<unknown> }
+).next
 const weakSetAddOf = WeakSet.prototype.add
 const weakSetHasOf = WeakSet.prototype.has
 
@@ -203,4 +208,20 @@ export function weakSetAdd(set: WeakSet<object>, item: object): void {
  */
 export function weakSetHas(set: WeakSet<object>, item: unknown): boolean {
   return apply(weakSetHasOf, set, [item]) as boolean
+}
+
+/**
+ * The keys of a map, in insertion order, read without the live `keys` or iterator `next`.
+ *
+ * @param map - The map.
+ * @returns A new array of the keys.
+ */
+export function mapKeys<TKey, TValue>(map: ReadonlyMap<TKey, TValue>): TKey[] {
+  const iterator = apply(mapKeysOf, map, []) as object
+  const keys: TKey[] = []
+  for (;;) {
+    const step = apply(mapIteratorNextOf, iterator, []) as IteratorResult<TKey>
+    if (step.done === true) return keys
+    keys[keys.length] = step.value
+  }
 }

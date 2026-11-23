@@ -225,3 +225,34 @@ export function mapKeys<TKey, TValue>(map: ReadonlyMap<TKey, TValue>): TKey[] {
     keys[keys.length] = step.value
   }
 }
+
+/**
+ * Join lists by index, so the result does not depend on the live array iterator or on `push`.
+ *
+ * @param lists - The lists, in order.
+ * @returns One new list holding every item of every list.
+ */
+export function concatenated<T>(lists: ReadonlyArray<readonly T[]>): T[] {
+  const all: T[] = []
+  for (let at = 0; at < lists.length; at += 1) {
+    const list = lists[at] as readonly T[]
+    for (let inner = 0; inner < list.length; inner += 1) all[all.length] = list[inner] as T
+  }
+  return all
+}
+
+/**
+ * A set of what `pick` returns for each item, built by index with the `add` taken at load.
+ *
+ * @param items - The items.
+ * @param pick - What to put in the set for an item.
+ * @returns The new set.
+ */
+export function setOfBy<TItem, TValue>(
+  items: readonly TItem[],
+  pick: (item: TItem) => TValue
+): Set<TValue> {
+  const set = setOf<TValue>([])
+  for (let at = 0; at < items.length; at += 1) setAdd(set, pick(items[at] as TItem))
+  return set
+}

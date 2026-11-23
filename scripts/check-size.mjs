@@ -28,11 +28,11 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // when the artifact shrinks.
 //
 // Calibration history (newest first):
-//   - The internal subpath measures 10.07 KiB brotli (10313 bytes): the engine below plus `captured.ts`, the
+//   - The internal subpath measures 10.18 KiB brotli (10427 bytes): the engine below plus `captured.ts`, the
 //     built-ins that decide a strict-mode refusal, an issue lookup, the layout of a report or the mark of a
 //     library error, taken when the module loads and called through a captured `Reflect.apply`, the own-field
-//     definition of `code` and `issues` on the error, the keys of the source read through a captured `keys` and iterator `next`, and the four absent
-//     `String.prototype` hooks in the baseline. The budget, 10348 bytes (10.11 KiB), is that measurement plus 35 bytes.
+//     definition of `code` and `issues` on the error, the keys of the source and the unknown-key report built by index, with `keys` and the iterator `next` captured, and the four absent
+//     `String.prototype` hooks in the baseline. The budget, 10462 bytes (10.22 KiB), is that measurement plus 35 bytes.
 //   - The internal subpath measures 9.37 KiB brotli (9753 bytes): the engine below plus the one reader of an
 //     option by name, which finds the first holder of a name without reading a property of the root prototype,
 //     the metadata, source and schema-definition reads that go through it, the depth bound of the wrapper walks,
@@ -97,7 +97,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 //     real public API lands and the built artifact stabilizes.
 const BUDGETS = [
   { name: 'root (schema, module, service)', path: 'dist/index.mjs', brotli: 5.25 * 1024 },
-  { name: 'internal (validation engine)', path: 'dist/internal/index.mjs', brotli: 10348 },
+  { name: 'internal (validation engine)', path: 'dist/internal/index.mjs', brotli: 10462 },
   { name: 'testing (test doubles)', path: 'dist/testing/index.mjs', brotli: 7 * 1024 }
 ]
 

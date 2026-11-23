@@ -28,6 +28,14 @@ const TARGETS: readonly Target[] = [
   { name: 'sort', owner: Array.prototype, key: 'sort', hostile: () => [] },
   { name: 'Set.has', owner: Set.prototype, key: 'has', hostile: () => true },
   { name: 'Map.set', owner: Map.prototype, key: 'set', hostile: () => undefined },
+  { name: 'Map.get', owner: Map.prototype, key: 'get', hostile: () => undefined },
+  { name: 'Array.push', owner: Array.prototype, key: 'push', hostile: () => 0 },
+  {
+    name: 'Array iterator',
+    owner: Array.prototype,
+    key: Symbol.iterator,
+    hostile: () => ({ next: () => ({ done: true }) })
+  },
   { name: 'Map.keys', owner: Map.prototype, key: 'keys', hostile: () => [][Symbol.iterator]() },
   {
     name: 'Map iterator next',
@@ -80,6 +88,37 @@ describe('a built-in replaced inside the validation', () => {
           ({ variable, code }) => variable === 'APP_STRAY' && code === ConfigErrorCode.UNKNOWN_KEY
         )
       ).toBe(true)
+    }
+  )
+
+  it.each(['Array iterator', 'Array.push'])(
+    'refuses a plain undeclared variable when %s is replaced by a getter of a declared one',
+    (name) => {
+      /**
+       * Scenario: the replacement is installed while a declared variable is read, and the undeclared
+       * one is an ordinary value.
+       * Expectation: the undeclared variable is still listed as an unknown key.
+       */
+      const hostile = name === 'Array iterator' ? { next: () => ({ done: true }) } : 0
+      const key = name === 'Array iterator' ? Symbol.iterator : 'push'
+      let restore: (() => void) | undefined
+      const source = {
+        get APP_PORT(): string {
+          restore = replace(Array.prototype, key, () => hostile)
+          return '1'
+        },
+        APP_STRAY: 'x'
+      }
+      let error: BymaxConfigValidationError | undefined
+      try {
+        validateEnv(schema, source, { strict: true })
+      } catch (thrown) {
+        error = thrown as BymaxConfigValidationError
+      } finally {
+        restore?.()
+      }
+
+      expect(error?.issues.map(({ variable }) => variable)).toEqual(['APP_STRAY'])
     }
   )
 

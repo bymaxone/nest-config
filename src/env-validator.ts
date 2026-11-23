@@ -17,6 +17,7 @@ import type { z } from 'zod'
 
 import { assertBuiltinsIntact } from './builtins'
 import {
+  concatenated,
   mapGet,
   mapHas,
   mapKeys,
@@ -24,6 +25,7 @@ import {
   mapSet,
   setHas,
   setOf,
+  setOfBy,
   some,
   sortInPlace,
   startsWith
@@ -327,7 +329,8 @@ function longestMatchingPrefix(
   key: string
 ): NamespacePrefix | undefined {
   let match: NamespacePrefix | undefined
-  for (const entry of prefixes) {
+  for (let at = 0; at < prefixes.length; at += 1) {
+    const entry = prefixes[at] as NamespacePrefix
     if (!startsWith(key, entry.prefix)) continue
     // Stryker disable next-line EqualityOperator: equivalent — `>` and `>=` differ only when two declared namespaces produce equal-length prefixes that both prefix the same source key. Equal-length prefixes can only be identical prefixes, which also collides their leaf variable names — a degenerate schema outside the supported two-level convention. Within the convention the tie is never taken.
     if (match === undefined || entry.prefix.length > match.prefix.length) {
@@ -340,14 +343,9 @@ function longestMatchingPrefix(
 /**
  * Detect source variables that match a namespace prefix but no declared leaf.
  *
- * The namespace-prefix gate is mandatory: unrelated process variables (such as
- * `PATH` or `HOME`) never match a declared prefix and are therefore ignored, so
- * strict mode reports only variables that look like configuration. A namespace
- * that declared `meta({ open: true })` waives the check for the remainder of
- * its prefix, which is how a schema shares a prefix with a library that reads
- * its own variables. Its declared leaves stay bound and validated: the waiver is
- * applied only after a declared name has already been excluded, so it can reach
- * an undeclared variable and nothing else.
+ * Only a variable that starts with a declared prefix is looked at, so `PATH` or `HOME` are ignored. A
+ * namespace that declared `meta({ open: true })` waives the check for the rest of its prefix; its declared
+ * leaves stay bound and validated, because the waiver applies only after a declared name is excluded.
  *
  * @param prefixes - The declared namespace prefixes and their open flags.
  * @param bindings - The leaf-to-variable bindings, used to skip declared names.
@@ -359,24 +357,26 @@ function detectUnknownKeys(
   bindings: readonly SourceBinding[],
   source: ReadonlyMap<string, string | undefined>
 ): ConfigIssue[] {
-  const declared = setOf(bindings.map((binding) => binding.variable))
+  // Captured calls and index reads only: a live `push` or iterator replaced by a getter could hide a key.
+  const declared = setOfBy(bindings, (binding) => binding.variable)
   const issues: ConfigIssue[] = []
-  for (const key of mapKeys(source)) {
+  const keys = mapKeys(source)
+  for (let at = 0; at < keys.length; at += 1) {
+    const key = keys[at] as string
     if (setHas(declared, key)) continue
-    // A key mapped to undefined represents an absent variable, not a stray one.
-    if (source.get(key) === undefined) continue
+    if (mapGet(source, key) === undefined) continue // absent, not stray
     const match = longestMatchingPrefix(prefixes, key)
     if (match === undefined) continue
     // The namespace declared itself open: the rest of its prefix belongs to a
     // library or tool that reads those variables natively, so an undeclared one
     // is not evidence of an operator mistake.
     if (match.open) continue
-    issues.push({
+    issues[issues.length] = {
       path: match.namespace,
       variable: key,
       code: ConfigErrorCode.UNKNOWN_KEY,
       message: UNKNOWN_KEY_MESSAGE
-    })
+    }
   }
   // Sort by variable in code-point order (locale-independent) so the aggregated
   // report is stable across platforms regardless of the source key-enumeration
@@ -788,13 +788,13 @@ export function validateEnv<TShape extends EnvShape>(
     try {
       result = schema.safeParse(candidate)
     } catch (thrown) {
-      throw libraryError([...overrides, toWithheldIssue('a rule', thrown), ...unknown])
+      throw libraryError(concatenated([overrides, [toWithheldIssue('a rule', thrown)], unknown]))
     }
     if (result.success) {
       if (unknown.length === 0 && overrides.length === 0) return result.data
-      throw libraryError([...overrides, ...unknown])
+      throw libraryError(concatenated([overrides, unknown]))
     }
     const issues = translateIssues(result.error.issues, bindings, prefixes, sourceMap)
-    throw libraryError([...overrides, ...issues, ...unknown])
+    throw libraryError(concatenated([overrides, issues, unknown]))
   })
 }

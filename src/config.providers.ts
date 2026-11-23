@@ -61,7 +61,7 @@ const REDACTED_ROOT = '[BymaxConfig: values redacted]'
  * @returns The same reference.
  */
 function redactRoot<T extends object>(root: T): T {
-  defineProperty(root, inspect.custom, bare({ value: () => REDACTED_ROOT }))
+  defineProperty(root, inspectCustom, bare({ value: () => REDACTED_ROOT }))
   defineProperty(
     root,
     'toJSON',
@@ -75,6 +75,9 @@ function redactRoot<T extends object>(root: T): T {
  * that a replacement made later cannot leave the configuration printing its values.
  */
 const defineProperty = Object.defineProperty
+
+/** The symbol Node's `util.inspect` looks for, as it was when the module loaded, so that reassigning it later cannot leave the root printable. */
+const inspectCustom = inspect.custom
 
 /** `Object.keys` as it was when the module loaded, for the serializer of the root, which runs when a log line is written. */
 const keys = Object.keys

@@ -157,6 +157,7 @@ const EXPECTED = [
   'globalThis.process',
   'node:util.inspect',
   'node:util.types',
+  'node:util.inspect.custom',
   'node:util.types.isAnyArrayBuffer',
   'node:util.types.isArgumentsObject',
   'node:util.types.isBoxedPrimitive',
@@ -176,7 +177,8 @@ const EXPECTED = [
   'ArrayIterator.prototype.next',
   'SetIterator.prototype.next',
   'MapIterator.prototype.next',
-  'StringIterator.prototype.next'
+  'StringIterator.prototype.next',
+  'IteratorPrototype.Symbol(Symbol.iterator)'
 ]
 
 const schema = defineEnv({ app: z.object({ name: z.string().default('n') }) })
@@ -201,6 +203,7 @@ function withReplaced<T>(owner: object, key: PropertyKey, value: unknown, run: (
 /** A different object that behaves as what the property holds does, so only its identity differs. */
 function sameBehaviour(owner: object, key: PropertyKey): unknown {
   const held = Reflect.get(owner, key) as unknown
+  if (typeof held === 'symbol') return Symbol('replacement')
   return typeof held === 'function' || (typeof held === 'object' && held !== null)
     ? new Proxy(held, {})
     : held
@@ -358,7 +361,13 @@ describe('the refusal for a replaced built-in', () => {
     ['Reflect.set', Reflect, 'set', () => false],
     ['String.fromCodePoint', String, 'fromCodePoint', () => ''],
     ['Array.prototype.some', Array.prototype, 'some', () => false],
-    ['Object.assign', Object, 'assign', () => undefined]
+    ['Object.assign', Object, 'assign', () => undefined],
+    [
+      'the Symbol.iterator the iterators inherit',
+      Object.getPrototypeOf(Object.getPrototypeOf([][Symbol.iterator]())) as object,
+      Symbol.iterator,
+      () => ({ next: () => ({ done: true, value: undefined }) })
+    ]
   ]
 
   it.each(wrongAnswers)(
@@ -435,10 +444,10 @@ describe('the library is loaded while a built-in it builds its list with is repl
     expect(names).toContain('Object.keys')
     expect(names).not.toContain('Array.prototype.map')
     expect((refused as BymaxConfigValidationError).name).toBe('BymaxConfigValidationError')
-    // Nine groups name a Symbol key and four iterators are found through one, and none of them can be
+    // Nine groups name a Symbol key and five iterator prototypes are found through one, and none of them can be
     // recorded; the Symbol entry itself differs from the one recorded once the global is back.
     expect((refused as BymaxConfigValidationError).issues[0]?.message).toBe(
-      '14 of the built-ins the library calls were replaced after it loaded'
+      '15 of the built-ins the library calls were replaced after it loaded'
     )
     expect(getDescriptor(globalThis, 'Symbol')).toEqual(symbol)
   })
@@ -482,11 +491,16 @@ describe('the library is loaded while a built-in it builds its list with is repl
     const { names, refused } = loadedUnder(Object, 'getPrototypeOf', () => undefined)
 
     expect(names).toEqual(
-      [...EXPECTED].filter((name) => !name.endsWith('Iterator.prototype.next')).sort()
+      [...EXPECTED]
+        .filter(
+          (name) =>
+            !name.endsWith('Iterator.prototype.next') && !name.startsWith('IteratorPrototype')
+        )
+        .sort()
     )
     expect((refused as BymaxConfigValidationError).issues[0]?.message).toBe(
-      // The four iterators that could not be found, and Object.getPrototypeOf itself, which differs from what was recorded.
-      '5 of the built-ins the library calls were replaced after it loaded'
+      // The five iterator prototypes that could not be found, and Object.getPrototypeOf itself, which differs from what was recorded.
+      '6 of the built-ins the library calls were replaced after it loaded'
     )
   })
 })
@@ -691,6 +705,31 @@ describe('the reads of the service and the serializer of the root, after the boo
     )
 
     expect(answers).toEqual({ value: 'n', has: true, service: ['app'], root: ['app'] })
+  })
+})
+
+describe('the symbol the redaction is installed under', () => {
+  it('survives util.inspect.custom being reassigned while the validation runs', () => {
+    const hostile = defineEnv({
+      app: z.object({
+        secret: z.string().refine(() => {
+          Reflect.set(inspect, 'custom', Symbol('replacement'))
+          return true
+        })
+      })
+    })
+    const original = getDescriptor(inspect, 'custom') as PropertyDescriptor
+    let config: object
+    try {
+      config = createValidatedConfig({
+        schema: hostile,
+        source: { APP_SECRET: 'the-secret-value' }
+      })
+    } finally {
+      defineProp(inspect, 'custom', original)
+    }
+
+    expect(inspect(config)).not.toContain('the-secret-value')
   })
 })
 

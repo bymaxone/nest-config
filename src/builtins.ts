@@ -196,6 +196,7 @@ const OWNER_GROUPS: ReadonlyArray<() => Group> = [
     ]
   ],
   (): Group => ['node:util', nodeUtil, ['inspect', 'types']],
+  (): Group => ['node:util.inspect', nodeUtil.inspect, ['custom']],
   (): Group => [
     'node:util.types',
     types,
@@ -230,24 +231,54 @@ const SOME_STRING = ''
  * Each owner is found by a thunk, so that a built-in replaced before the import leaves the entry out and
  * does not make the module throw.
  */
-const ITERATORS: ReadonlyArray<readonly [string, () => unknown]> = [
-  ['ArrayIterator.prototype', (): unknown => Object.getPrototypeOf(SOME_ARRAY[Symbol.iterator]())],
-  ['SetIterator.prototype', (): unknown => Object.getPrototypeOf(new Set()[Symbol.iterator]())],
-  ['MapIterator.prototype', (): unknown => Object.getPrototypeOf(new Map()[Symbol.iterator]())],
-  ['StringIterator.prototype', (): unknown => Object.getPrototypeOf(SOME_STRING[Symbol.iterator]())]
+const ITERATORS: ReadonlyArray<readonly [string, () => unknown, () => PropertyKey]> = [
+  [
+    'ArrayIterator.prototype',
+    (): unknown => Object.getPrototypeOf(SOME_ARRAY[Symbol.iterator]()),
+    (): PropertyKey => 'next'
+  ],
+  [
+    'SetIterator.prototype',
+    (): unknown => Object.getPrototypeOf(new Set()[Symbol.iterator]()),
+    (): PropertyKey => 'next'
+  ],
+  [
+    'MapIterator.prototype',
+    (): unknown => Object.getPrototypeOf(new Map()[Symbol.iterator]()),
+    (): PropertyKey => 'next'
+  ],
+  [
+    'StringIterator.prototype',
+    (): unknown => Object.getPrototypeOf(SOME_STRING[Symbol.iterator]()),
+    (): PropertyKey => 'next'
+  ],
+  [
+    'IteratorPrototype',
+    (): unknown => Object.getPrototypeOf(Object.getPrototypeOf(SOME_ARRAY[Symbol.iterator]())),
+    (): PropertyKey => Symbol.iterator
+  ]
 ]
 
 /**
- * Record the `next` of an iterator prototype, or count it as unrecorded when the prototype cannot be found.
+ * Record a method of an iterator prototype (`next`, or the `Symbol.iterator` the iterators inherit), or count it
+ * as unrecorded when the prototype cannot be found.
  *
  * @param into - The list being built.
  * @param name - The name of the iterator prototype.
  * @param find - Finds the prototype.
+ * @param keyOf - Finds the method to record.
  */
-function recordIterator(into: Baseline[], name: string, find: () => unknown): void {
+function recordIterator(
+  into: Baseline[],
+  name: string,
+  find: () => unknown,
+  keyOf: () => PropertyKey
+): void {
   try {
     const owner = find()
-    if (typeof owner === 'object' && owner !== null) record(into, `${name}.next`, owner, 'next')
+    const key = keyOf()
+    if (typeof owner === 'object' && owner !== null)
+      record(into, `${name}.${String(key)}`, owner, key)
     else unrecorded += 1
   } catch {
     unrecorded += 1
@@ -275,8 +306,8 @@ function buildBaseline(): Baseline[] {
     }
   }
   for (let at = 0; at < ITERATORS.length; at += 1) {
-    const iterator = ITERATORS[at] as readonly [string, () => unknown]
-    recordIterator(into, iterator[0], iterator[1])
+    const iterator = ITERATORS[at] as readonly [string, () => unknown, () => PropertyKey]
+    recordIterator(into, iterator[0], iterator[1], iterator[2])
   }
   return into
 }

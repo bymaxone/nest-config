@@ -10,9 +10,18 @@
 
 import { Inject, Injectable } from '@nestjs/common'
 
+import { assertBuiltinsIntact } from './builtins'
 import { BYMAX_CONFIG } from './config.tokens'
 import { guarded } from './env-validator'
 import type { Path, PathValue } from './types'
+
+/**
+ * The built-ins the reads of the service use, as they were when the module loaded, so a replacement made
+ * after the boot cannot change what `get`, `has` and `toJSON` answer.
+ */
+const apply = Reflect.apply
+const mapGet = Map.prototype.get
+const toText = String
 
 /**
  * Typed accessor over the validated, deep-frozen configuration object.
@@ -78,6 +87,7 @@ export class ConfigService<TConfig> {
    * @param config - The validated, deep-frozen config injected via {@link BYMAX_CONFIG}.
    */
   public constructor(@Inject(BYMAX_CONFIG) config: Readonly<TConfig>) {
+    assertBuiltinsIntact()
     this.#config = config
     // An injected object is the host's to supply, so reading it is refused like any other host read.
     const snapshot = guarded('reading the configuration', () => {
@@ -122,10 +132,13 @@ export class ConfigService<TConfig> {
    * ```
    */
   public toJSON(): { readonly service: string; readonly namespaces: readonly string[] } {
-    return {
-      service: 'ConfigService',
-      namespaces: [...this.#namespaces]
+    // Copied by index into a fresh array: Array.prototype.slice would ask Array[Symbol.species]
+    // for the result's constructor, which a host may have replaced after bootstrap.
+    const namespaces: string[] = []
+    for (let at = 0; at < this.#namespaces.length; at += 1) {
+      namespaces[at] = this.#namespaces[at] as string
     }
+    return { service: 'ConfigService', namespaces }
   }
 
   /**
@@ -193,6 +206,6 @@ export class ConfigService<TConfig> {
    * @returns The leaf value as `unknown`, or `undefined` when the leaf is unset.
    */
   private resolve(path: Path<TConfig>): unknown {
-    return this.#leaves.get(String(path))
+    return apply(mapGet, this.#leaves, [toText(path)])
   }
 }

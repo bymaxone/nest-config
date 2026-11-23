@@ -344,7 +344,21 @@ nor for a `meta({ open })` or `meta({ env })` of a schema. The rule is: an optio
 object that holds it, other than the options object itself, has no prototype. The trade-off is that an option
 held only by a parent you built with `Object.create(null)` is not read; put it on the options object, or on a
 parent that has a prototype. The names the library reads from the objects zod builds for a schema
-follow the same rule; what zod itself reads from its own objects when it parses is zod's, and is not covered. A `then` planted on `Object.prototype` is not defended against either: every promise in the process, Nest's own among them, adopts it, and the validated configuration the provider resolves with is an ordinary object.
+follow the same rule; what zod itself reads from its own objects when it parses is zod's, and is not covered.
+
+At load the library records the built-ins it calls. Every entry point that starts a validation compares each
+with the one it recorded, by identity. One that was replaced is refused
+with a `BymaxConfigValidationError` that carries the number replaced and nothing else, and nothing throws at
+import. Load order matters: a polyfill that replaces a built-in after the library is imported is refused at
+boot, so load polyfills first. A replacement made before the import is outside what the library can check: if `Object.getOwnPropertyDescriptor` throws before the package is imported, the compiled import helper of the package fails before any code of the library runs. The reads of `ConfigService` do not check again after the boot, and the
+redaction of the configuration uses the `Object.defineProperty` taken at load, so a replacement made while the
+validation runs cannot leave its values printable.
+
+Not defended against: what zod and Node define with their own descriptors; a schema leaf that
+a host replaces with an accessor or a read-only property; and a `then` planted on `Object.prototype`, which
+every promise in the process, Nest's own among them, adopts, and which the validated configuration, an
+ordinary object, does not escape.
+
 The module, the config provider and an options provider that carries a factory, which the library rebuilds, have no prototype; the providers you bring in, and the objects Nest builds inside its own builder, are left as they are and are not covered.
 
 Three edges of the same rule. A hook that rethrows a library error it caught from another validation

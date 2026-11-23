@@ -15,6 +15,7 @@ import { types } from 'node:util'
 
 import type { z } from 'zod'
 
+import { assertBuiltinsIntact } from './builtins'
 import { ConfigErrorCode, isLibraryError, libraryError } from './errors'
 import type { BymaxConfigValidationError, ConfigIssue } from './errors'
 import { bare, readOption } from './option-read'
@@ -654,6 +655,9 @@ function refusedSourceKind(source: unknown): string | undefined {
     : undefined
 }
 
+/** `Object.hasOwn` as it was when the module loaded. */
+const hasOwn = Object.hasOwn
+
 /**
  * The value a source holds under a name as a property of its own.
  *
@@ -662,7 +666,7 @@ function refusedSourceKind(source: unknown): string | undefined {
  * @returns The own value, or undefined when the source holds none of its own.
  */
 function ownValue(source: object, name: string): unknown {
-  return Object.hasOwn(source, name) ? Reflect.get(source, name) : undefined
+  return hasOwn(source, name) ? Reflect.get(source, name) : undefined
 }
 
 /**
@@ -739,6 +743,7 @@ export function validateEnv<TShape extends EnvShape>(
   source: EnvSource,
   options?: EnvValidationOptions
 ): EnvOutput<TShape> {
+  assertBuiltinsIntact()
   // The schema is the host's too: a Proxy or a getter in it runs while its structure is read.
   const { bindings, namespaces, prefixes, overrides } = guarded('reading the schema', () => {
     // The shapes are read once, so the bindings, the prefixes and the refusals describe one schema.

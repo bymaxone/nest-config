@@ -11,6 +11,7 @@
 import { Module } from '@nestjs/common'
 import type { DynamicModule, Provider } from '@nestjs/common'
 
+import { assertBuiltinsIntact } from './builtins'
 import { ConfigurableModuleClass } from './config.module-definition'
 import type {
   BymaxConfigForRootAsyncOptions,
@@ -194,6 +195,7 @@ function readModuleOptions(
  * @returns A plain object the builder can copy.
  */
 function readRegistration(options: BymaxConfigForRootOptions): BymaxConfigForRootOptions {
+  assertBuiltinsIntact()
   const read = readModuleOptions(options, 'forRoot', FOR_ROOT_OPTION_KEYS)
   const isGlobal = guarded(
     'reading isGlobal',
@@ -217,6 +219,7 @@ function readOptionsOf(provider: Provider): Provider {
   return bare({
     ...provider,
     useFactory: async (...args: unknown[]) => {
+      assertBuiltinsIntact()
       const { value } = await guardedResolve('reading what the options factory returned', () =>
         factory(...args)
       )
@@ -234,6 +237,7 @@ function readOptionsOf(provider: Provider): Provider {
 function readAsyncRegistration(
   options: BymaxConfigForRootAsyncOptions
 ): BymaxConfigForRootAsyncOptions {
+  assertBuiltinsIntact()
   assertOptionsObject(options, 'forRootAsync')
   assertKnownOptions(options, ASYNC_OPTION_KEYS, 'forRootAsync')
   const {

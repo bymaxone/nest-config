@@ -322,6 +322,66 @@ export function libraryError(issues: ReadonlyArray<ConfigIssue>): BymaxConfigVal
 }
 
 /**
+ * The built-ins that build the refusal for a replaced built-in, as they were when the module loaded, so
+ * that the refusal does not depend on what it reports.
+ */
+const nativeConstruct = Reflect.construct
+const nativeApply = Reflect.apply
+const nativeDefineProperty = Object.defineProperty
+const nativeFreeze = Object.freeze
+const nativeCreate = Object.create
+const nativeError = Error
+const setAdd = WeakSet.prototype.add
+
+/** The text of the report that precedes the count, and the text that follows it, as the formatter lays them out. */
+const REFUSAL_BEFORE = 'environment validation failed (1 issue)\n\n  (runtime)             '
+const REFUSAL_AFTER = '\n\nFix the variables above and restart the process.'
+
+/**
+ * A property descriptor with no prototype, written without calling any built-in.
+ *
+ * @param value - The value of the property.
+ * @param enumerable - Whether it is enumerable.
+ * @returns The descriptor.
+ */
+function fixed(value: unknown, enumerable: boolean): PropertyDescriptor {
+  const descriptor = nativeCreate(null) as PropertyDescriptor
+  descriptor.value = value
+  descriptor.enumerable = enumerable
+  descriptor.writable = false
+  descriptor.configurable = false
+  return descriptor
+}
+
+/**
+ * The error raised when a built-in the library calls has been replaced since it loaded: the same shape as
+ * `libraryError` gives, built with the references taken at load and from nothing the host can replace, so
+ * that it is a structured `BymaxConfigValidationError` whichever built-in was replaced.
+ *
+ * @param count - How many built-ins were replaced.
+ * @returns The error, marked as the library's own.
+ */
+export function runtimeRefusal(count: number): BymaxConfigValidationError {
+  const text = `${count} of the built-ins the library calls were replaced after it loaded`
+  const error = nativeConstruct(
+    nativeError,
+    [REFUSAL_BEFORE + text + REFUSAL_AFTER],
+    BymaxConfigValidationError
+  ) as BymaxConfigValidationError
+  const issue: ConfigIssue = {
+    path: '',
+    variable: '(runtime)',
+    code: ConfigErrorCode.INVALID,
+    message: text
+  }
+  nativeDefineProperty(error, 'name', fixed('BymaxConfigValidationError', false))
+  nativeDefineProperty(error, 'code', fixed(ConfigErrorCode.VALIDATION, true))
+  nativeDefineProperty(error, 'issues', fixed(nativeFreeze([nativeFreeze(issue)]), true))
+  nativeApply(setAdd, raised, [error])
+  return error
+}
+
+/**
  * Whether a thrown value is an error the library raised itself. A set lookup runs none of the value's
  * own code, which a prototype check would, and answers false for anything that is not an object.
  *

@@ -11,6 +11,7 @@
  * @layer Utility
  */
 
+import { assertBuiltinsIntact } from './builtins'
 import { ConfigErrorCode, libraryError } from './errors'
 import { hasOption, readOption } from './option-read'
 import type { EnvNamespace, EnvSchema, EnvShape } from './types'
@@ -252,6 +253,7 @@ export function assertNamespaces(schema: SchemaView): void {
 export function resolveSourceNames<TShape extends EnvShape = EnvShape>(
   schema: EnvSchema<TShape>
 ): readonly SourceBinding[] {
+  assertBuiltinsIntact()
   return bindingsOf(snapshotSchema(schema))
 }
 

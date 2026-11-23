@@ -95,6 +95,10 @@ const EXPECTED = [
   'String.prototype.toUpperCase',
   'String.prototype.trim',
   'String.prototype.Symbol(Symbol.iterator)',
+  'String.prototype.Symbol(Symbol.match)',
+  'String.prototype.Symbol(Symbol.replace)',
+  'String.prototype.Symbol(Symbol.search)',
+  'String.prototype.Symbol(Symbol.split)',
   'Number.prototype.toString',
   'Object.prototype.constructor',
   'Object.prototype.toString',
@@ -249,8 +253,15 @@ describe('the list of built-ins the library calls', () => {
       .filter((entry) => entry.original === undefined)
       .map((entry) => entry.name)
 
-    // Only the conversion hook that Object.prototype does not define is recorded as absent.
-    expect(absent).toEqual(['Object.prototype.Symbol(Symbol.toPrimitive)'])
+    // Only hooks that no engine defines are recorded as absent: the conversion hook of Object.prototype
+    // and the four that String.prototype would hand to `split`, `replace`, `match` and `search`.
+    expect(absent.sort()).toEqual([
+      'Object.prototype.Symbol(Symbol.toPrimitive)',
+      'String.prototype.Symbol(Symbol.match)',
+      'String.prototype.Symbol(Symbol.replace)',
+      'String.prototype.Symbol(Symbol.search)',
+      'String.prototype.Symbol(Symbol.split)'
+    ])
   })
 })
 
@@ -631,6 +642,27 @@ describe('a built-in replaced by a function that answers wrongly', () => {
       }
     )
   })
+})
+
+describe('a hook planted on String.prototype after the import', () => {
+  it.each([Symbol.match, Symbol.replace, Symbol.search, Symbol.split])(
+    'is counted as a replacement and refused at every entry point (%s)',
+    (hook) => {
+      const config = createValidatedConfig({ schema, source: {} })
+
+      withReplaced(
+        String.prototype,
+        hook,
+        () => undefined,
+        () => {
+          expect(replacedBuiltins()).toBe(1)
+          for (const [, start] of ENTRIES) {
+            expect(() => start(config)).toThrow()
+          }
+        }
+      )
+    }
+  )
 })
 
 describe('the library is loaded while a built-in is replaced', () => {

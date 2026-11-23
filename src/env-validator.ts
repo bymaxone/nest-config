@@ -16,6 +16,17 @@ import { types } from 'node:util'
 import type { z } from 'zod'
 
 import { assertBuiltinsIntact } from './builtins'
+import {
+  mapGet,
+  mapHas,
+  mapOf,
+  mapSet,
+  setHas,
+  setOf,
+  some,
+  sortInPlace,
+  startsWith
+} from './captured'
 import { ConfigErrorCode, isLibraryError, libraryError } from './errors'
 import type { BymaxConfigValidationError, ConfigIssue } from './errors'
 import { bare, readOption } from './option-read'
@@ -260,10 +271,10 @@ function translateIssues(
   prefixes: readonly NamespacePrefix[],
   source: ReadonlyMap<string, string | undefined>
 ): ConfigIssue[] {
-  const leafPaths = new Set(bindings.map((binding) => binding.path))
-  const namespaces = new Set(prefixes.map((entry) => entry.namespace))
-  const issueByPath = new Map<string, ZodValidationIssue>()
-  const issueByNamespace = new Map<string, ZodValidationIssue>()
+  const leafPaths = setOf(bindings.map((binding) => binding.path))
+  const namespaces = setOf(prefixes.map((entry) => entry.namespace))
+  const issueByPath = mapOf<string, ZodValidationIssue>([])
+  const issueByNamespace = mapOf<string, ZodValidationIssue>([])
   for (const issue of zodIssues) {
     // Collapse any deeper path (a nested field inside a complex leaf, e.g.
     // namespace.leaf.0) to its declared leaf path so the issue still maps to a
@@ -271,29 +282,29 @@ function translateIssues(
     // Zod lists a leaf's primary failure first, and the report shows one line
     // per variable, so the choice must be deterministic, not order-dependent.
     const path = issue.path.slice(0, 2).join('.')
-    if (leafPaths.has(path)) {
-      if (!issueByPath.has(path)) issueByPath.set(path, issue)
+    if (setHas(leafPaths, path)) {
+      if (!mapHas(issueByPath, path)) mapSet(issueByPath, path, issue)
       continue
     }
     // No leaf to point at: a rule on a namespace, or on the schema as a whole,
     // whose issue names no declared leaf. It is kept under its namespace, or under
     // the empty key for the schema, so a failed validation never reports nothing.
-    const namespace = issue.path.length > 0 && namespaces.has(String(issue.path[0]))
+    const namespace = issue.path.length > 0 && setHas(namespaces, String(issue.path[0]))
     const key = namespace ? String(issue.path[0]) : ''
-    if (!issueByNamespace.has(key)) issueByNamespace.set(key, issue)
+    if (!mapHas(issueByNamespace, key)) mapSet(issueByNamespace, key, issue)
   }
   const result: ConfigIssue[] = []
   for (const binding of bindings) {
-    const issue = issueByPath.get(binding.path)
+    const issue = mapGet(issueByPath, binding.path)
     if (issue === undefined) continue
     result.push(toConfigIssue(binding, issue, source))
   }
   for (const entry of prefixes) {
-    const issue = issueByNamespace.get(entry.namespace)
+    const issue = mapGet(issueByNamespace, entry.namespace)
     if (issue === undefined) continue
     result.push(toNamespaceIssue(entry.namespace, `${entry.prefix}*`, issue))
   }
-  const wholeSchema = issueByNamespace.get('')
+  const wholeSchema = mapGet(issueByNamespace, '')
   if (wholeSchema !== undefined) result.push(toNamespaceIssue('', '(schema)', wholeSchema))
   return result
 }
@@ -316,7 +327,7 @@ function longestMatchingPrefix(
 ): NamespacePrefix | undefined {
   let match: NamespacePrefix | undefined
   for (const entry of prefixes) {
-    if (!key.startsWith(entry.prefix)) continue
+    if (!startsWith(key, entry.prefix)) continue
     // Stryker disable next-line EqualityOperator: equivalent — `>` and `>=` differ only when two declared namespaces produce equal-length prefixes that both prefix the same source key. Equal-length prefixes can only be identical prefixes, which also collides their leaf variable names — a degenerate schema outside the supported two-level convention. Within the convention the tie is never taken.
     if (match === undefined || entry.prefix.length > match.prefix.length) {
       match = entry
@@ -347,10 +358,10 @@ function detectUnknownKeys(
   bindings: readonly SourceBinding[],
   source: ReadonlyMap<string, string | undefined>
 ): ConfigIssue[] {
-  const declared = new Set(bindings.map((binding) => binding.variable))
+  const declared = setOf(bindings.map((binding) => binding.variable))
   const issues: ConfigIssue[] = []
   for (const key of source.keys()) {
-    if (declared.has(key)) continue
+    if (setHas(declared, key)) continue
     // A key mapped to undefined represents an absent variable, not a stray one.
     if (source.get(key) === undefined) continue
     const match = longestMatchingPrefix(prefixes, key)
@@ -370,7 +381,8 @@ function detectUnknownKeys(
   // report is stable across platforms regardless of the source key-enumeration
   // order (process.env order can vary across runs).
   // Stryker disable EqualityOperator,ConditionalExpression: equivalent — the `>`/`<` mutants differ only when `left.variable === right.variable`, and the compared values are distinct Map keys, so the equal case never occurs. The two conditional mutants both reduce the comparator to "negative when `left < right`, else `0`", which still orders every realistic unknown-key list ascending under the stable sort (verified across all permutations up to length 32); a divergence would depend on the engine's internal sort-algorithm selection, which is not a documented contract. The block form is required because a directive does not attach to a multi-line `sort` argument.
-  return issues.sort(
+  return sortInPlace(
+    issues,
     (left, right) => Number(left.variable > right.variable) - Number(left.variable < right.variable)
   )
 }
@@ -423,9 +435,9 @@ export function unusableOverrideIssues(
   schema: SchemaView,
   bindings: ReadonlyArray<SourceBinding>
 ): ConfigIssue[] {
-  const variables = new Map(bindings.map((binding) => [binding.path, binding.variable]))
+  const variables = mapOf(bindings.map((binding) => [binding.path, binding.variable] as const))
   return findUnusableEnvOverrides(schema).map(({ path, found }) => {
-    const variable = variables.get(path) as string
+    const variable = mapGet(variables, path) as string
     return {
       path,
       variable,
@@ -450,10 +462,10 @@ export function coercedBooleanIssues(
   schema: SchemaView,
   bindings: ReadonlyArray<SourceBinding>
 ): ConfigIssue[] {
-  const variables = new Map(bindings.map((binding) => [binding.path, binding.variable]))
+  const variables = mapOf(bindings.map((binding) => [binding.path, binding.variable] as const))
   return findCoercedBooleanLeaves(schema).map((path) => ({
     path,
-    variable: variables.get(path) as string,
+    variable: mapGet(variables, path) as string,
     code: ConfigErrorCode.INVALID,
     message: "uses z.coerce.boolean(), where 'false' parses to true; use z.stringbool()"
   }))
@@ -650,7 +662,7 @@ function refusedSourceKind(source: unknown): string | undefined {
   // A tag the object or a prototype that has one of its own carries (Map, URL, URLSearchParams, WeakRef,
   // Math, a class with a tag) says it is no record; one that only a root prototype supplies is not the host's.
   const tagged = typeof readOption(source, Symbol.toStringTag) === 'string'
-  return tagged || NOT_A_RECORD.some((isKind) => isKind(source))
+  return tagged || some(NOT_A_RECORD, (isKind) => isKind(source))
     ? 'an object that is not a record of variables'
     : undefined
 }
@@ -700,15 +712,17 @@ function readSource(
         }
       ])
     }
-    const read = new Map<string, string | undefined>(
-      Object.keys(source).map((name) => [name, Reflect.get(source, name) as string | undefined])
+    const read = mapOf<string, string | undefined>(
+      Object.keys(source).map(
+        (name) => [name, Reflect.get(source, name) as string | undefined] as const
+      )
     )
     for (const { variable } of bindings) {
-      if (read.has(variable)) continue
+      if (mapHas(read, variable)) continue
       // `__proto__` is the source's own property or nothing: a parent that holds one is not the host's value.
       const value =
         variable === '__proto__' ? ownValue(source, variable) : readOption(source, variable)
-      read.set(variable, value as string | undefined)
+      mapSet(read, variable, value as string | undefined)
     }
     return read
   })

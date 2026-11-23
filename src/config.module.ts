@@ -12,6 +12,7 @@ import { Module } from '@nestjs/common'
 import type { DynamicModule, Provider } from '@nestjs/common'
 
 import { assertBuiltinsIntact } from './builtins'
+import { includes } from './captured'
 import { ConfigurableModuleClass } from './config.module-definition'
 import type {
   BymaxConfigForRootAsyncOptions,
@@ -111,7 +112,7 @@ function assertKnownOptions(options: object, known: readonly string[], method: s
     const prototype = Object.getPrototypeOf(options) as object | null
     // Plain: no prototype, or one that ends the chain.
     const plain = prototype === null || Object.getPrototypeOf(prototype) === null
-    return plain ? Object.keys(options).filter((key) => !known.includes(key)) : []
+    return plain ? Object.keys(options).filter((key) => !includes(known, key)) : []
   })
   if (unknown.length === 0) return
   throw libraryError(

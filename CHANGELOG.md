@@ -15,6 +15,13 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Fixed
+
+- **A replacement installed while a validation runs no longer changes a decision.** The prefix test of strict mode, the sort of the unknown-key issues, the set and map lookups that map issues to variables, the known-option test, the layout of the report (`Math.max`, `Math.min`, `padStart`, `padEnd`, `call`) and the mark that tells an error of the library from another are taken when the module loads. Before, a getter of the source that replaced `String.prototype.startsWith`, `Array.prototype.sort` or `Set.prototype.has` made strict mode accept an undeclared variable.
+- **`new BymaxConfigValidationError(issues)` formats with the built-ins taken at load**, as the library's own errors do.
+- **A read-only or accessor `code` or `issues` planted on `Object.prototype` no longer makes the error constructor throw or hand its list to a setter.** Both are own fields written by definition.
+- **The built-in baseline reads descriptor fields only from own properties**, so a `get`, `set` or `value` planted on `Object.prototype` is not taken for a field of a descriptor.
+
 ## [1.2.26] - 2026-11-22
 
 ### Fixed

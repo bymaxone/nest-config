@@ -141,7 +141,13 @@ const OWNER_GROUPS: ReadonlyArray<() => Group> = [
       'startsWith',
       'toUpperCase',
       'trim',
-      Symbol.iterator
+      Symbol.iterator,
+      // Absent in every engine today; recorded as absent, so a hook planted afterwards, which `split`
+      // and `replace` would call in place of their own, counts as a replacement.
+      Symbol.match,
+      Symbol.replace,
+      Symbol.search,
+      Symbol.split
     ]
   ],
   (): Group => ['Number.prototype', Number.prototype, ['toString']],

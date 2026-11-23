@@ -641,6 +641,18 @@ immutability matters.
 A `Buffer`, a typed array or a `DataView` is left as it is: `Object.freeze` throws on a view with
 elements, so a base64-decoded key stays writable. The object that holds it is frozen.
 
+### What a planted property can still reach
+
+The built-ins that decide something during a validation (the strict-mode prefix test, the sort of the
+report, the lookups of declared names and issues, the layout of the report, the marks that tell an
+error of the library from another) are taken when the module loads, so host code that replaces one while
+a validation runs, from a getter of the source for example, cannot change the decision. What the library
+reads through Zod is Zod's: a read-only property defined on the root prototype under the name of a declared
+leaf, with no variable set for it, can end up as that leaf's value, because the parsed object is assembled
+by Zod and not by the library. That is a limit, not a defence: code able to define properties on
+`Object.prototype` already runs with the process's authority, and the validated object is still frozen and
+redacted. Keep such code out of the process, or give the leaf a default.
+
 ### Nothing is read from anywhere but the source you name
 
 `process.env` by default, or the injectable record you provide. No file, no network, no

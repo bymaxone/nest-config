@@ -10,6 +10,8 @@
  * @layer Utility
  */
 
+import { max, min, padEnd } from './captured'
+
 /** The fields the report needs from each collected issue. */
 interface ReportableIssue {
   /** Nested config path, shown in place of the variable when the issue has none. */
@@ -67,9 +69,9 @@ function computeColumnWidth(issues: ReadonlyArray<ReportableIssue>): number {
   let longest = MIN_VARIABLE_COLUMN
   // By index, so a host that replaced the Array iterator does not change which issues are read.
   for (let at = 0; at < issues.length; at += 1) {
-    longest = Math.max(longest, nameOf(reflectGet(issues, at) as ReportableIssue).length)
+    longest = max(longest, nameOf(reflectGet(issues, at) as ReportableIssue).length)
   }
-  return Math.min(longest, MAX_VARIABLE_COLUMN) + VARIABLE_GUTTER
+  return min(longest, MAX_VARIABLE_COLUMN) + VARIABLE_GUTTER
 }
 
 /**
@@ -82,7 +84,7 @@ function computeColumnWidth(issues: ReadonlyArray<ReportableIssue>): number {
  */
 function formatIssueLine(issue: ReportableIssue, columnWidth: number): string {
   const name = nameOf(issue)
-  const padded = name.padEnd(Math.max(columnWidth, name.length + VARIABLE_GUTTER))
+  const padded = padEnd(name, max(columnWidth, name.length + VARIABLE_GUTTER))
   return `${REPORT_INDENT}${padded}${issue.message}`
 }
 

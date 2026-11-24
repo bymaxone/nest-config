@@ -196,6 +196,8 @@ describe('a built-in replaced inside the validation', () => {
     const set = setOf<string | undefined>(['a', 'b'])
 
     expect(set.size).toBe(2)
+    expect(setHas(set, 'a')).toBe(true)
+    expect(setHas(set, 'b')).toBe(true)
     expect(setHas(set, undefined)).toBe(false)
   })
 

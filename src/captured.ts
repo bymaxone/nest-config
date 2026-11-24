@@ -273,6 +273,19 @@ export function setOfBy<TItem, TValue>(
 }
 
 /**
+ * Wrap a value in a box with no prototype, built from the captured `Object.create`, so that resolving a
+ * promise with the box finds no `then` to call, whatever host code planted on `Object.prototype`.
+ *
+ * @param value - The value to hold.
+ * @returns A null-prototype object whose own `value` is the given value.
+ */
+export function boxed<T>(value: T): { readonly value: T } {
+  const box = create(null) as { value: T }
+  box.value = value
+  return box
+}
+
+/**
  * Add an item at the end of an array as an own element, even where an index setter is inherited.
  *
  * An assignment to a new index reaches a setter planted on `Array.prototype`, and `push` is replaceable;

@@ -18,6 +18,7 @@ import type { z } from 'zod'
 import { assertBuiltinsIntact } from './builtins'
 import {
   append,
+  boxed,
   concatenated,
   mapGet,
   mapHas,
@@ -572,9 +573,9 @@ export function guarded<T>(subject: string, read: () => T): T {
  * throws. Awaiting looks up `then` on the result, so a Proxy or a getter that throws there is the
  * host's code running inside the await, and it is covered like any other read.
  *
- * The result is handed back in a box: an `async` function that returned the host's object itself would
- * have it unwrapped again, outside this guard.
- *
+ * The result is handed back in a box with no prototype: a box that inherited `Object.prototype` would have
+ * a `then` planted there looked up when it resolves, and the host's own object would be unwrapped again.
+
  * @param subject - What was being produced, as the start of the message.
  * @param run - The step, which produces the value or a promise of it.
  * @returns The settled value, in a box.
@@ -585,7 +586,7 @@ export async function guardedResolve<T>(
   run: () => T | PromiseLike<T>
 ): Promise<{ readonly value: T }> {
   try {
-    return { value: await run() }
+    return boxed(await run())
   } catch (thrown) {
     throw refusalOf(subject, thrown)
   }

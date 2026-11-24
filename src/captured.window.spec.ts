@@ -10,7 +10,7 @@
 import { z } from 'zod'
 
 import { defineEnv } from './define-env'
-import { validateEnv } from './env-validator'
+import { guardedResolve, validateEnv } from './env-validator'
 import { BymaxConfigValidationError, ConfigErrorCode, isLibraryError, libraryError } from './errors'
 
 const schema = defineEnv({ app: z.object({ port: z.string() }) })
@@ -203,6 +203,35 @@ describe('a built-in replaced inside the validation', () => {
     expect(() => loaded?.mapKeys(new Map())).toThrow(
       /Map\.prototype\.keys was replaced before the import/
     )
+  })
+
+  it('hands back what the host factory returned when a then is planted on Object.prototype inside it', async () => {
+    /**
+     * Scenario: the factory, which returns an object with no prototype, plants a self-erasing `then` on Object.prototype that would
+     * resolve whatever the library hands back to forged options.
+     * Expectation: the value read is the one the factory returned; the resolution never reads that `then`.
+     */
+    const real = Object.assign(Object.create(null) as { schema: string }, { schema: 'real' })
+    const forged = { schema: 'forged' }
+    const factory = (): typeof real => {
+      Object.defineProperty(Object.prototype, 'then', {
+        configurable: true,
+        get() {
+          delete (Object.prototype as { then?: unknown }).then
+          return (resolve: (box: unknown) => void) => resolve({ value: forged })
+        }
+      })
+      return real
+    }
+
+    let resolved: { readonly value: unknown } | undefined
+    try {
+      resolved = await guardedResolve('reading what the options factory returned', factory)
+    } finally {
+      delete (Object.prototype as { then?: unknown }).then
+    }
+
+    expect(resolved?.value).toBe(real)
   })
 
   it('keeps the report layout when Math.max, Math.min and padEnd are replaced', () => {

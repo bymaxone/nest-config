@@ -350,7 +350,7 @@ At load the library records the built-ins it calls. Every entry point that start
 with the one it recorded, by identity. One that was replaced is refused
 with a `BymaxConfigValidationError` that carries the number replaced and nothing else, and nothing throws at
 import. Load order matters: a polyfill that replaces a built-in after the library is imported is refused at
-boot, so load polyfills first. A replacement made before the import is outside what the library can check: if `Object.getOwnPropertyDescriptor` throws before the package is imported, the compiled import helper of the package fails before any code of the library runs. The reads of `ConfigService` do not check again after the boot, and the
+boot, so load polyfills first. The import checks that the global `Promise` is the constructor of the promises of an async function: a stand-in in its place stops the import and names the cause, while one that also replaced `Promise.prototype.constructor` is not told apart. A replacement made before the import is outside what the library can check: if `Object.getOwnPropertyDescriptor` throws before the package is imported, the compiled import helper of the package fails before any code of the library runs. The reads of `ConfigService` do not check again after the boot, and the
 redaction of the configuration uses the `Object.defineProperty` taken at load, so a replacement made while the
 validation runs cannot leave its values printable.
 
@@ -358,6 +358,8 @@ Not defended against: what zod and Node define with their own descriptors; a sch
 a host replaces with an accessor or a read-only property; and a `then` planted on `Object.prototype`, which
 every promise in the process, Nest's own among them, adopts, and which the validated configuration, an
 ordinary object, does not escape.
+
+A promise your options factory or `onValidationError` hook returns is pinned and awaited natively. One that cannot take a property, because it is frozen or not extensible, is followed through the `then` taken at load, which reads the species constructor: a throwing `Promise[Symbol.species]` planted inside that call then refuses the options factory's result, and the promise's own rejection is left without a handler.
 
 The module, the config provider and an options provider that carries a factory, which the library rebuilds, have no prototype; the providers you bring in, and the objects Nest builds inside its own builder, are left as they are and are not covered.
 
@@ -640,6 +642,16 @@ immutability matters.
 
 A `Buffer`, a typed array or a `DataView` is left as it is: `Object.freeze` throws on a view with
 elements, so a base64-decoded key stays writable. The object that holds it is frozen.
+
+### What a planted property can still reach
+
+The built-ins that decide something during a validation are taken when the module loads, so host code that replaces one while
+a validation runs, from a getter of the source for example, cannot change the decision. What the library
+reads through Zod is Zod's: a read-only property defined on the root prototype under the name of a declared
+leaf, with no variable set for it, can end up as that leaf's value, because the parsed object is assembled
+by Zod and not by the library. That is a limit, not a defence: code able to define properties on
+`Object.prototype` already runs with the process's authority, and the validated object is still frozen and
+redacted. Keep such code out of the process, or give the leaf a default.
 
 ### Nothing is read from anywhere but the source you name
 

@@ -15,6 +15,19 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Fixed
+
+- **A replacement installed while a validation runs no longer changes a decision.** The built-ins a validation decides with are taken when the module loads. Before, a getter of the source that replaced `String.prototype.startsWith`, `Array.prototype.sort` or `Set.prototype.has` made strict mode accept an undeclared variable.
+- **`new BymaxConfigValidationError(issues)` formats with the built-ins taken at load**, as the library's own errors do.
+- **A read-only or accessor `code` or `issues` planted on `Object.prototype` no longer makes the error constructor throw or hand its list to a setter.** Both are own fields written by definition.
+- **The built-in baseline reads descriptor fields only from own properties**, so a `get`, `set` or `value` planted on `Object.prototype` is not taken for a field of a descriptor.
+- **The baseline of built-ins records the well-known-symbol hooks on `String.prototype` as absent**, so a hook planted on them after the import is refused as a replacement.
+- **A `then` or a `constructor` planted while a validation runs no longer answers for a promise the module hands to a caller that awaits it.** The promises the module returns to Nest are tagged with an own, non-writable, non-enumerable `constructor` equal to the intrinsic `Promise` taken at load, so an `await` takes them as they are and never reads a `then`. The result of the options factory is handed back in a box with no prototype, so a `then` on `Object.prototype` does not make the box a thenable.
+- **The validated configuration carries an own, non-enumerable `then` of `undefined`**, so a `then` planted on `Object.prototype` is not found when a promise resolves with the root. It is visible to `Object.getOwnPropertyNames` and `Reflect.ownKeys`, and `'then' in root` is now `true`; `Object.keys`, JSON and `util.inspect` are unchanged, and `ConfigService` and `createTestConfig` skip it. A namespace named `then` keeps its own, enumerable `then`. A callable or accessor own `then` left on the root by a setter that ran during validation is refused with a `BymaxConfigValidationError`.
+- **A native promise the options factory or the `onValidationError` hook returns is awaited without reading a `then` from it before the module uses it.** Accessors planted on `Promise.prototype` inside that call, which restore themselves on their first read, no longer answer for the promise: before, they could replace the options the factory returned or drop the cause a hook rejected with. The promise is pinned and awaited natively, and the fulfilment value is boxed so it is not read for a `then` a second time; a promise that cannot take a property, such as a frozen one, is followed through a new promise instead.
+- **The import stops when the global `Promise` is not the constructor of the promises of the engine.** The constructor that tags a promise has to be the engine's own, so a stand-in in the place of `Promise` before the import is refused, naming the cause, instead of becoming the pin value. A stand-in that also replaced `Promise.prototype.constructor` is not told apart, and neither is any other replacement made before the import.
+- **Known limits.** Under a hijack of `Promise.prototype` in the same turn, Nest's own awaits are hijacked as well, and a compile can succeed with `BYMAX_CONFIG` set to `null` because Nest swallows the rejection of the factory promise. A setter on `Object.prototype` can still replace a validated value in the root that zod builds; that is not new.
+
 ## [1.2.26] - 2026-11-22
 
 ### Fixed

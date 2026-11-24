@@ -95,12 +95,13 @@ export class ConfigService<TConfig> {
       const namespaces: string[] = []
       const root = config as Record<string, unknown>
       for (const namespace of Object.getOwnPropertyNames(root)) {
-        // The root carries its serializer as a non-enumerable `toJSON` function; it is not a namespace.
+        // The root carries its serializer as a non-enumerable `toJSON` function and a non-enumerable `then` of
+        // `undefined`; neither is a namespace.
         const descriptor = Object.getOwnPropertyDescriptor(root, namespace)
         if (
-          namespace === 'toJSON' &&
           descriptor?.enumerable === false &&
-          typeof descriptor.value === 'function'
+          ((namespace === 'toJSON' && typeof descriptor.value === 'function') ||
+            (namespace === 'then' && descriptor.value === undefined))
         )
           continue
         namespaces.push(namespace)

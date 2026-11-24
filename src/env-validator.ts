@@ -16,8 +16,24 @@ import { types } from 'node:util'
 import type { z } from 'zod'
 
 import { assertBuiltinsIntact } from './builtins'
+import {
+  append,
+  concatenated,
+  mapGet,
+  mapHas,
+  mapKeys,
+  mapOf,
+  mapSet,
+  setHas,
+  setOf,
+  setOfBy,
+  some,
+  sortInPlace,
+  startsWith
+} from './captured'
 import { ConfigErrorCode, isLibraryError, libraryError } from './errors'
 import type { BymaxConfigValidationError, ConfigIssue } from './errors'
+import { awaitHost } from './host-promise'
 import { bare, readOption } from './option-read'
 import {
   bindingsOf,
@@ -260,10 +276,10 @@ function translateIssues(
   prefixes: readonly NamespacePrefix[],
   source: ReadonlyMap<string, string | undefined>
 ): ConfigIssue[] {
-  const leafPaths = new Set(bindings.map((binding) => binding.path))
-  const namespaces = new Set(prefixes.map((entry) => entry.namespace))
-  const issueByPath = new Map<string, ZodValidationIssue>()
-  const issueByNamespace = new Map<string, ZodValidationIssue>()
+  const leafPaths = setOf(bindings.map((binding) => binding.path))
+  const namespaces = setOf(prefixes.map((entry) => entry.namespace))
+  const issueByPath = mapOf<string, ZodValidationIssue>([])
+  const issueByNamespace = mapOf<string, ZodValidationIssue>([])
   for (const issue of zodIssues) {
     // Collapse any deeper path (a nested field inside a complex leaf, e.g.
     // namespace.leaf.0) to its declared leaf path so the issue still maps to a
@@ -271,29 +287,29 @@ function translateIssues(
     // Zod lists a leaf's primary failure first, and the report shows one line
     // per variable, so the choice must be deterministic, not order-dependent.
     const path = issue.path.slice(0, 2).join('.')
-    if (leafPaths.has(path)) {
-      if (!issueByPath.has(path)) issueByPath.set(path, issue)
+    if (setHas(leafPaths, path)) {
+      if (!mapHas(issueByPath, path)) mapSet(issueByPath, path, issue)
       continue
     }
     // No leaf to point at: a rule on a namespace, or on the schema as a whole,
     // whose issue names no declared leaf. It is kept under its namespace, or under
     // the empty key for the schema, so a failed validation never reports nothing.
-    const namespace = issue.path.length > 0 && namespaces.has(String(issue.path[0]))
+    const namespace = issue.path.length > 0 && setHas(namespaces, String(issue.path[0]))
     const key = namespace ? String(issue.path[0]) : ''
-    if (!issueByNamespace.has(key)) issueByNamespace.set(key, issue)
+    if (!mapHas(issueByNamespace, key)) mapSet(issueByNamespace, key, issue)
   }
   const result: ConfigIssue[] = []
   for (const binding of bindings) {
-    const issue = issueByPath.get(binding.path)
+    const issue = mapGet(issueByPath, binding.path)
     if (issue === undefined) continue
     result.push(toConfigIssue(binding, issue, source))
   }
   for (const entry of prefixes) {
-    const issue = issueByNamespace.get(entry.namespace)
+    const issue = mapGet(issueByNamespace, entry.namespace)
     if (issue === undefined) continue
     result.push(toNamespaceIssue(entry.namespace, `${entry.prefix}*`, issue))
   }
-  const wholeSchema = issueByNamespace.get('')
+  const wholeSchema = mapGet(issueByNamespace, '')
   if (wholeSchema !== undefined) result.push(toNamespaceIssue('', '(schema)', wholeSchema))
   return result
 }
@@ -315,8 +331,9 @@ function longestMatchingPrefix(
   key: string
 ): NamespacePrefix | undefined {
   let match: NamespacePrefix | undefined
-  for (const entry of prefixes) {
-    if (!key.startsWith(entry.prefix)) continue
+  for (let at = 0; at < prefixes.length; at += 1) {
+    const entry = prefixes[at] as NamespacePrefix
+    if (!startsWith(key, entry.prefix)) continue
     // Stryker disable next-line EqualityOperator: equivalent — `>` and `>=` differ only when two declared namespaces produce equal-length prefixes that both prefix the same source key. Equal-length prefixes can only be identical prefixes, which also collides their leaf variable names — a degenerate schema outside the supported two-level convention. Within the convention the tie is never taken.
     if (match === undefined || entry.prefix.length > match.prefix.length) {
       match = entry
@@ -328,14 +345,9 @@ function longestMatchingPrefix(
 /**
  * Detect source variables that match a namespace prefix but no declared leaf.
  *
- * The namespace-prefix gate is mandatory: unrelated process variables (such as
- * `PATH` or `HOME`) never match a declared prefix and are therefore ignored, so
- * strict mode reports only variables that look like configuration. A namespace
- * that declared `meta({ open: true })` waives the check for the remainder of
- * its prefix, which is how a schema shares a prefix with a library that reads
- * its own variables. Its declared leaves stay bound and validated: the waiver is
- * applied only after a declared name has already been excluded, so it can reach
- * an undeclared variable and nothing else.
+ * Only a variable that starts with a declared prefix is looked at, so `PATH` or `HOME` are ignored. A
+ * namespace that declared `meta({ open: true })` waives the check for the rest of its prefix; its declared
+ * leaves stay bound and validated, because the waiver applies only after a declared name is excluded.
  *
  * @param prefixes - The declared namespace prefixes and their open flags.
  * @param bindings - The leaf-to-variable bindings, used to skip declared names.
@@ -347,19 +359,19 @@ function detectUnknownKeys(
   bindings: readonly SourceBinding[],
   source: ReadonlyMap<string, string | undefined>
 ): ConfigIssue[] {
-  const declared = new Set(bindings.map((binding) => binding.variable))
+  // Captured calls and index reads only: a live `push` or iterator replaced by a getter could hide a key.
+  const declared = setOfBy(bindings, (binding) => binding.variable)
   const issues: ConfigIssue[] = []
-  for (const key of source.keys()) {
-    if (declared.has(key)) continue
-    // A key mapped to undefined represents an absent variable, not a stray one.
-    if (source.get(key) === undefined) continue
+  const keys = mapKeys(source)
+  for (let at = 0; at < keys.length; at += 1) {
+    const key = keys[at] as string
+    if (setHas(declared, key)) continue
+    if (mapGet(source, key) === undefined) continue // absent, not stray
     const match = longestMatchingPrefix(prefixes, key)
     if (match === undefined) continue
-    // The namespace declared itself open: the rest of its prefix belongs to a
-    // library or tool that reads those variables natively, so an undeclared one
-    // is not evidence of an operator mistake.
+    // An open namespace shares its prefix with a library that reads those variables itself.
     if (match.open) continue
-    issues.push({
+    append(issues, {
       path: match.namespace,
       variable: key,
       code: ConfigErrorCode.UNKNOWN_KEY,
@@ -370,7 +382,8 @@ function detectUnknownKeys(
   // report is stable across platforms regardless of the source key-enumeration
   // order (process.env order can vary across runs).
   // Stryker disable EqualityOperator,ConditionalExpression: equivalent — the `>`/`<` mutants differ only when `left.variable === right.variable`, and the compared values are distinct Map keys, so the equal case never occurs. The two conditional mutants both reduce the comparator to "negative when `left < right`, else `0`", which still orders every realistic unknown-key list ascending under the stable sort (verified across all permutations up to length 32); a divergence would depend on the engine's internal sort-algorithm selection, which is not a documented contract. The block form is required because a directive does not attach to a multi-line `sort` argument.
-  return issues.sort(
+  return sortInPlace(
+    issues,
     (left, right) => Number(left.variable > right.variable) - Number(left.variable < right.variable)
   )
 }
@@ -423,9 +436,9 @@ export function unusableOverrideIssues(
   schema: SchemaView,
   bindings: ReadonlyArray<SourceBinding>
 ): ConfigIssue[] {
-  const variables = new Map(bindings.map((binding) => [binding.path, binding.variable]))
+  const variables = mapOf(bindings.map((binding) => [binding.path, binding.variable] as const))
   return findUnusableEnvOverrides(schema).map(({ path, found }) => {
-    const variable = variables.get(path) as string
+    const variable = mapGet(variables, path) as string
     return {
       path,
       variable,
@@ -450,10 +463,10 @@ export function coercedBooleanIssues(
   schema: SchemaView,
   bindings: ReadonlyArray<SourceBinding>
 ): ConfigIssue[] {
-  const variables = new Map(bindings.map((binding) => [binding.path, binding.variable]))
+  const variables = mapOf(bindings.map((binding) => [binding.path, binding.variable] as const))
   return findCoercedBooleanLeaves(schema).map((path) => ({
     path,
-    variable: variables.get(path) as string,
+    variable: mapGet(variables, path) as string,
     code: ConfigErrorCode.INVALID,
     message: "uses z.coerce.boolean(), where 'false' parses to true; use z.stringbool()"
   }))
@@ -560,9 +573,9 @@ export function guarded<T>(subject: string, read: () => T): T {
  * throws. Awaiting looks up `then` on the result, so a Proxy or a getter that throws there is the
  * host's code running inside the await, and it is covered like any other read.
  *
- * The result is handed back in a box: an `async` function that returned the host's object itself would
- * have it unwrapped again, outside this guard.
- *
+ * The result is handed back in a box with no prototype: a box that inherited `Object.prototype` would have
+ * a `then` planted there looked up when it resolves, and the host's own object would be unwrapped again.
+
  * @param subject - What was being produced, as the start of the message.
  * @param run - The step, which produces the value or a promise of it.
  * @returns The settled value, in a box.
@@ -573,7 +586,7 @@ export async function guardedResolve<T>(
   run: () => T | PromiseLike<T>
 ): Promise<{ readonly value: T }> {
   try {
-    return { value: await run() }
+    return await awaitHost(run())
   } catch (thrown) {
     throw refusalOf(subject, thrown)
   }
@@ -650,7 +663,7 @@ function refusedSourceKind(source: unknown): string | undefined {
   // A tag the object or a prototype that has one of its own carries (Map, URL, URLSearchParams, WeakRef,
   // Math, a class with a tag) says it is no record; one that only a root prototype supplies is not the host's.
   const tagged = typeof readOption(source, Symbol.toStringTag) === 'string'
-  return tagged || NOT_A_RECORD.some((isKind) => isKind(source))
+  return tagged || some(NOT_A_RECORD, (isKind) => isKind(source))
     ? 'an object that is not a record of variables'
     : undefined
 }
@@ -700,15 +713,17 @@ function readSource(
         }
       ])
     }
-    const read = new Map<string, string | undefined>(
-      Object.keys(source).map((name) => [name, Reflect.get(source, name) as string | undefined])
+    const read = mapOf<string, string | undefined>(
+      Object.keys(source).map(
+        (name) => [name, Reflect.get(source, name) as string | undefined] as const
+      )
     )
     for (const { variable } of bindings) {
-      if (read.has(variable)) continue
+      if (mapHas(read, variable)) continue
       // `__proto__` is the source's own property or nothing: a parent that holds one is not the host's value.
       const value =
         variable === '__proto__' ? ownValue(source, variable) : readOption(source, variable)
-      read.set(variable, value as string | undefined)
+      mapSet(read, variable, value as string | undefined)
     }
     return read
   })
@@ -773,13 +788,13 @@ export function validateEnv<TShape extends EnvShape>(
     try {
       result = schema.safeParse(candidate)
     } catch (thrown) {
-      throw libraryError([...overrides, toWithheldIssue('a rule', thrown), ...unknown])
+      throw libraryError(concatenated([overrides, [toWithheldIssue('a rule', thrown)], unknown]))
     }
     if (result.success) {
       if (unknown.length === 0 && overrides.length === 0) return result.data
-      throw libraryError([...overrides, ...unknown])
+      throw libraryError(concatenated([overrides, unknown]))
     }
     const issues = translateIssues(result.error.issues, bindings, prefixes, sourceMap)
-    throw libraryError([...overrides, ...issues, ...unknown])
+    throw libraryError(concatenated([overrides, issues, unknown]))
   })
 }

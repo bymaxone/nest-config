@@ -180,7 +180,7 @@ describe('ConfigService serialization', () => {
     expect(JSON.parse(JSON.stringify(service))).toEqual(service.toJSON())
   })
 
-  it('serializes after Array[Symbol.species] was replaced by a constructor that throws', () => {
+  it('serializes after Array[Symbol.species] was replaced by a getter that throws', () => {
     /**
      * The namespace names are copied without asking the realm for a species constructor, so a
      * host that replaced it after bootstrap cannot make an incidental JSON.stringify throw.

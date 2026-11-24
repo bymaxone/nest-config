@@ -12,6 +12,7 @@
  */
 
 import { assertBuiltinsIntact } from './builtins'
+import { setAdd, setHas, setOf } from './captured'
 import { ConfigErrorCode, libraryError } from './errors'
 import { hasOption, readOption } from './option-read'
 import type { EnvNamespace, EnvSchema, EnvShape } from './types'
@@ -361,10 +362,10 @@ interface CoercionNode {
 function wrapsCoercedBoolean(
   node: CoercionNode | undefined,
   depth = 1,
-  seen: Set<CoercionNode> = new Set()
+  seen: Set<CoercionNode> = setOf([])
 ): boolean {
-  if (node === undefined || seen.has(node)) return false
-  seen.add(node)
+  if (node === undefined || setHas(seen, node)) return false
+  setAdd(seen, node)
   assertWrapperDepth(depth)
   const def = node._zod.def
   if (readOption(def, 'type') === 'boolean' && readOption(def, 'coerce') === true) return true

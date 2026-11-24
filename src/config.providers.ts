@@ -16,12 +16,14 @@ import { Logger } from '@nestjs/common'
 import type { FactoryProvider } from '@nestjs/common'
 
 import { assertBuiltinsIntact } from './builtins'
+import { pin, tagged } from './captured'
 import type { BymaxConfigModuleOptions } from './config.options'
 import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { deepFreeze } from './deep-freeze'
 import { guarded, toWithheldIssue, validateEnv, withCause } from './env-validator'
-import { isLibraryError, libraryError } from './errors'
+import { ConfigErrorCode, isLibraryError, libraryError } from './errors'
 import type { BymaxConfigValidationError, ConfigIssue } from './errors'
+import { awaitHost } from './host-promise'
 import { bare, hasOption, readOption } from './option-read'
 import type { EnvOutput, EnvSchema, EnvShape } from './types'
 
@@ -55,7 +57,10 @@ const REDACTED_ROOT = '[BymaxConfig: values redacted]'
  * the values again. A logger that spreads the enumerable keys of the root itself, as pino does
  * when it is handed as the merge object, prints the values too. It covers the root only: a
  * namespace printed or serialized directly shows its values. It is defined before the freeze, and
- * `assertNamespaces` keeps a namespace from taking the name `toJSON`.
+ * `assertNamespaces` keeps a namespace from taking the name `toJSON`. It also carries an own, non-enumerable
+ * `then` of `undefined`, so that a `then` planted on `Object.prototype` is never found when a promise
+ * resolves with the root. A callable or accessor own `then` that validation left on the root is refused; a
+ * planted non-callable value can remain.
  *
  * @param root - The validated output, not yet frozen.
  * @returns The same reference.
@@ -67,6 +72,24 @@ function redactRoot<T extends object>(root: T): T {
     'toJSON',
     bare({ value: () => ({ service: 'BymaxConfig', namespaces: keys(root) }) })
   )
+  // Resolving a promise with the root reads its `then`, and the root inherits `Object.prototype`, so a
+  // `then` planted there would answer for the configuration. An own `then` of `undefined` shadows it. An own
+  // `then` that validation left behind is kept only as a namespace of that name is: a data property that
+  // is not callable. A setter on `Object.prototype` that runs while the root is built can define a callable
+  // one, and a promise resolved with the root would call it.
+  const held = ownDescriptor(root, 'then')
+  if (held === undefined) defineProperty(root, 'then', pin(undefined))
+  else if (typeof held.value === 'function' || held.get !== undefined || held.set !== undefined) {
+    throw libraryError([
+      {
+        path: 'then',
+        variable: 'THEN',
+        code: ConfigErrorCode.INVALID,
+        message:
+          'the validated configuration holds a callable or accessor `then`, which a promise would call'
+      }
+    ])
+  }
   return root
 }
 
@@ -75,6 +98,9 @@ function redactRoot<T extends object>(root: T): T {
  * that a replacement made later cannot leave the configuration printing its values.
  */
 const defineProperty = Object.defineProperty
+
+/** `Object.getOwnPropertyDescriptor` as it was when the module loaded, for the check of the root's own `then`. */
+const ownDescriptor = Object.getOwnPropertyDescriptor
 
 /** The symbol Node's `util.inspect` looks for, as it was when the module loaded, so that reassigning it later cannot leave the root printable. */
 const inspectCustom = inspect.custom
@@ -100,7 +126,7 @@ async function reportIssues(
 ): Promise<void> {
   if (hook === undefined) return
   try {
-    await hook(error.issues)
+    await awaitHost(hook(error.issues))
   } catch (hookError) {
     // A refused host read already carries what the host threw as its cause, even `undefined`, and keeps it.
     if (!('cause' in error)) withCause(error, hookError)
@@ -176,14 +202,16 @@ export function createValidatedConfig<TShape extends EnvShape>(
   try {
     return deepFreeze(redactRoot(validated))
   } catch (thrown) {
+    if (isLibraryError(thrown)) throw thrown
     throw libraryError([toWithheldIssue('freezing the validated configuration', thrown)])
   }
 }
 
 /**
  * Validate for the module: the same result as {@link createValidatedConfig}, and on a
- * validation failure the hook runs and is awaited before the aggregated error is rethrown,
- * aborting module resolution before any consumer provider is instantiated.
+ * validation failure the hook runs and is awaited before the aggregated error is rethrown, so the
+ * promise it returns rejects. What Nest does with that rejection is Nest's: a promise of its own that
+ * host code hijacked in the same turn can still swallow it.
  *
  * On a validation failure it writes one object message, the stable event and the number of issues
  * and never a value, before the hook runs.
@@ -210,9 +238,11 @@ async function provideValidatedConfig(
       } catch {
         // A faulty logger must never replace the failure it reports.
       }
-      await reportIssues(
-        readOption(options, 'onValidationError') as ProvidedOptions['onValidationError'],
-        error
+      await tagged(
+        reportIssues(
+          readOption(options, 'onValidationError') as ProvidedOptions['onValidationError'],
+          error
+        )
       )
     }
     throw error
@@ -226,6 +256,6 @@ async function provideValidatedConfig(
  */
 export const bymaxConfigProvider: FactoryProvider = bare({
   provide: BYMAX_CONFIG,
-  useFactory: provideValidatedConfig,
+  useFactory: (options: ProvidedOptions) => tagged(provideValidatedConfig(options)),
   inject: [BYMAX_CONFIG_OPTIONS]
 })

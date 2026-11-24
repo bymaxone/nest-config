@@ -95,6 +95,10 @@ const EXPECTED = [
   'String.prototype.toUpperCase',
   'String.prototype.trim',
   'String.prototype.Symbol(Symbol.iterator)',
+  'String.prototype.Symbol(Symbol.match)',
+  'String.prototype.Symbol(Symbol.replace)',
+  'String.prototype.Symbol(Symbol.search)',
+  'String.prototype.Symbol(Symbol.split)',
   'Number.prototype.toString',
   'Object.prototype.constructor',
   'Object.prototype.toString',
@@ -249,8 +253,15 @@ describe('the list of built-ins the library calls', () => {
       .filter((entry) => entry.original === undefined)
       .map((entry) => entry.name)
 
-    // Only the conversion hook that Object.prototype does not define is recorded as absent.
-    expect(absent).toEqual(['Object.prototype.Symbol(Symbol.toPrimitive)'])
+    // Only hooks that no engine defines are recorded as absent: the conversion hook of Object.prototype
+    // and the four that String.prototype would hand to `split`, `replace`, `match` and `search`.
+    expect(absent.sort()).toEqual([
+      'Object.prototype.Symbol(Symbol.toPrimitive)',
+      'String.prototype.Symbol(Symbol.match)',
+      'String.prototype.Symbol(Symbol.replace)',
+      'String.prototype.Symbol(Symbol.search)',
+      'String.prototype.Symbol(Symbol.split)'
+    ])
   })
 })
 
@@ -540,6 +551,28 @@ describe('a built-in that was deleted', () => {
   })
 })
 
+describe('descriptor fields planted on Object.prototype after the import', () => {
+  // The planting wraps plain-object owners only: a planted `get` makes the descriptor of a property of the
+  // test sandbox's global invalid for the engine itself, which no read of the library can prevent.
+  it.each(['get', 'set', 'value'] as const)(
+    'does not read an inherited %s from the descriptor of a data property or of an accessor',
+    (field) => {
+      const floor = getDescriptor(Math, 'floor') as PropertyDescriptor
+      const flags = getDescriptor(RegExp.prototype, 'flags') as PropertyDescriptor
+      const planted = jest.fn(() => 1)
+      defineProp(Object.prototype, field, { value: planted, configurable: true, writable: true })
+      try {
+        expect(unchanged(Math, floor, { original: floor, resolved: undefined })).toBe(true)
+        expect(unchanged(RegExp.prototype, flags, { original: flags, resolved: '' })).toBe(true)
+        expect(sameDescriptor(floor, floor)).toBe(true)
+        expect(planted).not.toHaveBeenCalled()
+      } finally {
+        Reflect.deleteProperty(Object.prototype, field)
+      }
+    }
+  )
+})
+
 describe('nothing is replaced', () => {
   it('counts no replaced built-in and does not refuse', () => {
     expect(replacedBuiltins()).toBe(0)
@@ -609,6 +642,27 @@ describe('a built-in replaced by a function that answers wrongly', () => {
       }
     )
   })
+})
+
+describe('a hook planted on String.prototype after the import', () => {
+  it.each([Symbol.match, Symbol.replace, Symbol.search, Symbol.split])(
+    'is counted as a replacement and refused at every entry point (%s)',
+    (hook) => {
+      const config = createValidatedConfig({ schema, source: {} })
+
+      withReplaced(
+        String.prototype,
+        hook,
+        () => undefined,
+        () => {
+          expect(replacedBuiltins()).toBe(1)
+          for (const [, start] of ENTRIES) {
+            expect(() => start(config)).toThrow()
+          }
+        }
+      )
+    }
+  )
 })
 
 describe('the library is loaded while a built-in is replaced', () => {

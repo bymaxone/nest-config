@@ -8,6 +8,7 @@
  * @layer Error
  */
 
+import { append, padStart, weakSetAdd, weakSetHas } from './captured'
 import { bare } from './option-read'
 import { formatIssueReport } from './report-formatter'
 
@@ -41,13 +42,13 @@ const MAX_FIELD_LENGTH = 200
 
 /**
  * The built-ins the copy and the escaping of an issue read with (`codePointAt`, `fromCodePoint`, the regex
- * `exec`, `Reflect.get` and `Reflect.set`), taken at load so that a later replacement is not followed.
+ * `exec` and `Reflect.get`), taken at load so that a later replacement is not followed.
  */
 const codePointAt = String.prototype.codePointAt
 const fromCodePoint = String.fromCodePoint
 const execUnsafe = RegExp.prototype.exec
 const reflectGet = Reflect.get
-const reflectSet = Reflect.set
+const nativeApplyAtLoad = Reflect.apply
 
 /**
  * Characters that change how text reads on a terminal or in a log line without being visible, by
@@ -71,16 +72,16 @@ function printable(text: string): string {
   // By index, with `codePointAt` and `fromCodePoint` taken when the module loaded, so a host that replaced
   // the String iterator or either method afterwards does not change which characters are read.
   for (let at = 0; at < text.length;) {
-    const code = codePointAt.call(text, at) as number
+    const code = nativeApplyAtLoad(codePointAt, text, [at]) as number
     const character = fromCodePoint(code)
     at += character.length
     const hex = code.toString(16)
     // A code point past U+FFFF is braced, so its escape cannot be read as a shorter one plus a digit.
     const piece =
-      execUnsafe.call(UNSAFE_CHARACTER, character) !== null
+      nativeApplyAtLoad(execUnsafe, UNSAFE_CHARACTER, [character]) !== null
         ? hex.length > 4
           ? `\\u{${hex}}`
-          : `\\u${hex.padStart(4, '0')}`
+          : `\\u${padStart(hex, 4, '0')}`
         : character
     if (out.length + piece.length > MAX_FIELD_LENGTH) return `${out}…`
     out += piece
@@ -188,7 +189,7 @@ function copyIssues(issues: ReadonlyArray<ConfigIssue>): ReadonlyArray<ConfigIss
     if (typeof issue !== 'object' || issue === null) {
       throw new TypeError(`BymaxConfigValidationError: issue ${index} must be an object`)
     }
-    reflectSet(copy, index, copyIssue(issue, index))
+    append(copy, copyIssue(issue, index))
   }
   return copy
 }
@@ -256,10 +257,10 @@ export interface ConfigIssue {
  */
 export class BymaxConfigValidationError extends Error {
   /** The stable top-level error code. */
-  public readonly code: ConfigValidationCode = ConfigErrorCode.VALIDATION
+  declare public readonly code: ConfigValidationCode
 
   /** The immutable, aggregated list of collected violations. */
-  public readonly issues: ReadonlyArray<ConfigIssue>
+  declare public readonly issues: ReadonlyArray<ConfigIssue>
 
   /**
    * Build the aggregated error from the collected issues.
@@ -293,14 +294,32 @@ export class BymaxConfigValidationError extends Error {
         configurable: false
       })
     )
-    this.issues = Object.freeze(normalized)
+    // `code` and `issues` are own fields written by definition, never by assignment: an assignment
+    // consults the prototype chain, where a read-only or accessor field planted on the root prototype
+    // would make it throw or hand the value to a setter that discards it.
+    Object.defineProperty(
+      this,
+      'code',
+      bare({
+        value: ConfigErrorCode.VALIDATION,
+        enumerable: true,
+        writable: false,
+        configurable: false
+      })
+    )
+    Object.defineProperty(
+      this,
+      'issues',
+      bare({
+        value: Object.freeze(normalized),
+        enumerable: true,
+        writable: false,
+        configurable: false
+      })
+    )
     // Restore the prototype chain so `instanceof` holds across transpilation
     // targets and ESM/CJS realm boundaries.
     Object.setPrototypeOf(this, BymaxConfigValidationError.prototype)
-    // Lock the contract properties so the error is fully immutable at runtime,
-    // matching the readonly type, the frozen issues, and the stable name.
-    Object.defineProperty(this, 'code', bare({ writable: false, configurable: false }))
-    Object.defineProperty(this, 'issues', bare({ writable: false, configurable: false }))
   }
 }
 
@@ -317,7 +336,7 @@ const raised = new WeakSet<object>()
  */
 export function libraryError(issues: ReadonlyArray<ConfigIssue>): BymaxConfigValidationError {
   const error = new BymaxConfigValidationError(issues)
-  raised.add(error)
+  weakSetAdd(raised, error)
   return error
 }
 
@@ -389,5 +408,5 @@ export function runtimeRefusal(count: number): BymaxConfigValidationError {
  * @returns True only for an error built by {@link libraryError}.
  */
 export function isLibraryError(thrown: unknown): thrown is BymaxConfigValidationError {
-  return raised.has(thrown as object)
+  return weakSetHas(raised, thrown)
 }

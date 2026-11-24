@@ -18,7 +18,6 @@ import type { z } from 'zod'
 import { assertBuiltinsIntact } from './builtins'
 import {
   append,
-  boxed,
   concatenated,
   mapGet,
   mapHas,
@@ -34,6 +33,7 @@ import {
 } from './captured'
 import { ConfigErrorCode, isLibraryError, libraryError } from './errors'
 import type { BymaxConfigValidationError, ConfigIssue } from './errors'
+import { awaitHost } from './host-promise'
 import { bare, readOption } from './option-read'
 import {
   bindingsOf,
@@ -586,7 +586,7 @@ export async function guardedResolve<T>(
   run: () => T | PromiseLike<T>
 ): Promise<{ readonly value: T }> {
   try {
-    return boxed(await run())
+    return await awaitHost(run())
   } catch (thrown) {
     throw refusalOf(subject, thrown)
   }

@@ -428,6 +428,32 @@ describe('the promises the module hands to its callers', () => {
     }
   )
 
+  it('keeps the value a frozen promise fulfilled with when that value answers differently the second time its then is read', async () => {
+    /**
+     * Scenario: the factory returns a frozen promise fulfilled with options whose non-enumerable then is
+     * undefined on the first read and a function that would resolve forged options on the second.
+     * Expectation: the options that reach the provider are the ones the promise fulfilled with, read once.
+     */
+    await settled()
+    const forged = { schema, source: { APP_NAME: 'forged' } }
+    const options = { schema, source: { APP_NAME: 'real' } }
+    let reads = 0
+    Object.defineProperty(options, 'then', {
+      enumerable: false,
+      get: () => (++reads === 1 ? undefined : (done: (value: unknown) => void) => done(forged))
+    })
+    const factory = factoryOf(
+      BymaxConfigModule.forRootAsync({
+        useFactory: () => Object.freeze(Promise.resolve(options)) as Promise<never>
+      }).providers ?? [],
+      BYMAX_CONFIG_OPTIONS
+    )
+
+    const outcome = (await tagged(outcomeOf(factory))) as { resolved?: { source?: unknown } }
+
+    expect(outcome.resolved?.source).toEqual({ APP_NAME: 'real' })
+  })
+
   it('keeps the provider token resolvable when nothing is hijacked', async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [BymaxConfigModule.forRoot({ schema, source: { APP_NAME: 'ok' } })]

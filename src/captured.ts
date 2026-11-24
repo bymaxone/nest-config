@@ -325,7 +325,7 @@ export function append<T>(list: T[], item: T): void {
  * host code that replaced them inside the window would otherwise answer for a promise this library returns.
  * With the own property in place the `await` takes the promise as it is and never reads `then`. The pin is
  * neither writable nor configurable, so nothing can replace it afterwards. A frozen promise answers `false`
- * to the definition and is awaited as it is; `adopted` is the one for a promise this library did not make.
+ * to the definition and is awaited as it is; `followed` is the one for a promise this library did not make.
  *
  * @param promise - A promise the library hands to a caller that awaits it.
  * @returns The same promise, tagged where the property could be defined.
@@ -336,20 +336,21 @@ export function tagged<T>(promise: Promise<T>): Promise<T> {
 }
 
 /**
- * A promise the host produced, made safe to `await`: the same promise with its `constructor` pinned, or, where
- * it cannot be pinned because it is frozen or not extensible, a new promise that follows it.
+ * Follow a promise the host produced through a new promise, so the value it fulfils with is taken as it is.
  *
- * The follower is settled through the `then` taken at load and called with `Reflect.apply`, which reads no
- * `then` from the promise, and the new promise is tagged like any other the library hands to an `await`.
+ * The follower subscribes with the `then` taken at load, called with `Reflect.apply`, which reads no `then`
+ * from the promise. It settles with the value in a box that has no `then`: resolving it with the value itself
+ * would read a `then` of that value a second time, and a value that answers differently on the second read
+ * would not be the value the promise fulfilled with. The follower is tagged like any other promise the
+ * library hands to an `await`.
  *
  * @param promise - A native promise returned by host code.
- * @returns A promise whose `await` takes it as it is and settles with what `promise` settles with.
+ * @returns A promise of the fulfilment value in a box, rejected with the reason `promise` rejects with.
  */
-export function adopted<T>(promise: Promise<T>): Promise<T> {
-  if (defineProperty(promise, 'constructor', pin(PromiseIntrinsic))) return promise
+export function followed<T>(promise: Promise<T>): Promise<{ readonly value: T }> {
   return tagged(
-    new PromiseIntrinsic<T>((resolve, reject) => {
-      apply(thenOf, promise, [resolve, reject])
+    new PromiseIntrinsic<{ readonly value: T }>((resolve, reject) => {
+      apply(thenOf, promise, [(value: T): void => resolve(boxed(value)), reject])
     })
   )
 }

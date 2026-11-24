@@ -24,7 +24,6 @@ import { ConfigService } from './config.service'
 import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { guarded, guardedResolve } from './env-validator'
 import { ConfigErrorCode, libraryError } from './errors'
-import { pinHostPromise } from './host-promise'
 import { bare, hasOption, readOption } from './option-read'
 
 /**
@@ -225,9 +224,7 @@ function readOptionsOf(provider: Provider): Provider {
         (async (): Promise<BymaxConfigModuleOptions> => {
           assertBuiltinsIntact()
           const { value } = await tagged(
-            guardedResolve('reading what the options factory returned', () =>
-              pinHostPromise(factory(...args))
-            )
+            guardedResolve('reading what the options factory returned', () => factory(...args))
           )
           return readModuleOptions(value as BymaxConfigModuleOptions, 'forRootAsync')
         })()

@@ -28,14 +28,14 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // when the artifact shrinks.
 //
 // Calibration history (newest first):
-//   - The internal subpath measures 10.63 KiB brotli (10882 bytes): the engine below plus the pin of a promise the host
-//     returns, with the follower of a frozen one and the check that the global `Promise` is the constructor of the promises of the engine, and `captured.ts`, the
+//   - The internal subpath measures 10.64 KiB brotli (10897 bytes): the engine below plus the follower of a promise the
+//     host returns and the check that the global `Promise` is the constructor of the promises of the engine, and `captured.ts`, the
 //     built-ins that decide a strict-mode refusal, an issue lookup, the layout of a report or the mark of a
 //     library error, taken when the module loads and called through a captured `Reflect.apply`, the own-field
 //     definition of `code` and `issues` on the error, the keys of the source and every report list built by index and by defined elements, with `keys` and the iterator `next` captured, and the four absent
 //     `String.prototype` hooks in the baseline, and the own `constructor` that tags each promise handed to a caller
 //     that awaits it, pinned for good, and the own `then` of `undefined` that keeps a `then` planted on
-//     `Object.prototype` from answering when a promise resolves with the root, and the refusal of a callable or accessor own `then` on that root, with its typed error. The budget, 10912 bytes (10.66 KiB),
+//     `Object.prototype` from answering when a promise resolves with the root, and the refusal of a callable or accessor own `then` on that root, with its typed error. The budget, 10927 bytes (10.67 KiB),
 //     is that measurement plus 30 bytes.
 //   - The internal subpath measures 9.37 KiB brotli (9753 bytes): the engine below plus the one reader of an
 //     option by name, which finds the first holder of a name without reading a property of the root prototype,
@@ -101,7 +101,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 //     real public API lands and the built artifact stabilizes.
 const BUDGETS = [
   { name: 'root (schema, module, service)', path: 'dist/index.mjs', brotli: 5.25 * 1024 },
-  { name: 'internal (validation engine)', path: 'dist/internal/index.mjs', brotli: 10912 },
+  { name: 'internal (validation engine)', path: 'dist/internal/index.mjs', brotli: 10927 },
   { name: 'testing (test doubles)', path: 'dist/testing/index.mjs', brotli: 7 * 1024 }
 ]
 

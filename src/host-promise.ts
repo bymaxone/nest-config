@@ -1,24 +1,34 @@
 /**
- * @fileoverview The one step that makes an `await` of a promise the host produced take that promise as it is.
+ * @fileoverview The one step that makes an `await` of what the host produced take its value as it is.
  * @layer Utility
  */
 
 import { types } from 'node:util'
 
-import { adopted } from './captured'
+import { boxed, followed, tagged } from './captured'
 
 const isPromise = types.isPromise
 
 /**
- * A native promise the host produced, made safe to await. An `await` reads `constructor` of a native promise
- * and, when it is not the intrinsic, reads `then`; accessors the host planted on `Promise.prototype` inside its
- * own call, which put the native property back on their first read, would answer for the promise. With the
- * own `constructor` in place the `await` takes the promise as it is, and a promise that cannot take one
- * because it is frozen is followed through a new promise instead. Anything else is returned as it is.
+ * Await what the host's code produced and hand its value back in a box. A native promise is followed through
+ * a new promise that reads no `then` from it, so accessors the host planted on `Promise.prototype` inside its
+ * own call cannot answer for it, whether or not the promise can take a property. Anything else is awaited as
+ * it is.
  *
  * @param value - What the host's code returned.
- * @returns The same value, or a promise that settles with what a frozen native promise settles with.
+ * @returns The settled value, in a box with no `then`, in a promise that is tagged for the caller's `await`.
  */
-export function pinHostPromise<T>(value: T): T {
-  return isPromise(value) ? (adopted(value) as T) : value
+export function awaitHost<T>(value: T | PromiseLike<T>): Promise<{ readonly value: T }> {
+  return tagged(settle(value))
+}
+
+/**
+ * The settling step of {@link awaitHost}, whose promise the caller tags before awaiting it.
+ *
+ * @param value - What the host's code returned.
+ * @returns The settled value, in a box with no `then`.
+ */
+async function settle<T>(value: T | PromiseLike<T>): Promise<{ readonly value: T }> {
+  if (isPromise(value)) return await followed(value as Promise<T>)
+  return boxed(await value)
 }

@@ -179,6 +179,10 @@ describe('the promises the module hands to its callers', () => {
       configurable: false
     })
     expect(Object.keys(root)).toEqual(['app'])
+    expect(JSON.parse(JSON.stringify(root))).toEqual({
+      service: 'BymaxConfig',
+      namespaces: ['app']
+    })
   })
 
   /**

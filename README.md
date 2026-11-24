@@ -619,7 +619,7 @@ anything that can reach it. A namespace cannot be named `toJSON`: the boot refus
 
 The redaction is visible on the root: `toJSON` is an own, non-enumerable property, so it appears in
 `Object.getOwnPropertyNames(root)` and `Reflect.ownKeys(root)` (`Object.keys` still lists the
-namespaces only) and `'toJSON' in root` is `true`. The root also carries an own, non-enumerable `then` of `undefined`, which keeps a `then` planted on `Object.prototype` from answering when a promise resolves with the root: `'then' in root` is `true` and `then` appears in `Object.getOwnPropertyNames(root)` and `Reflect.ownKeys(root)` too, so a copy made from those lists gets an own `then: undefined`. `ConfigService` and `createTestConfig` skip it. In strict mode code, deleting, assigning or
+namespaces only) and `'toJSON' in root` is `true`. The root also carries an own, non-enumerable `then` of `undefined`, which keeps a `then` planted on `Object.prototype` from answering when a promise resolves with the root: `'then' in root` is `true` and `then` appears in `Object.getOwnPropertyNames(root)` and `Reflect.ownKeys(root)` too, so a copy made from those lists gets an own `then: undefined`. In strict mode code, deleting, assigning or
 redefining it throws a `TypeError`, because the root is frozen; in sloppy mode `Object.defineProperty`
 still throws, while deleting and assigning silently change nothing. `util.format('%j', root)` prints the
 names.

@@ -13,20 +13,38 @@ const create = Object.create
 const ownDescriptorOf = Object.getOwnPropertyDescriptor
 const prototypeOf = Object.getPrototypeOf
 const hasOwnOf = Object.hasOwn
-const PromiseIntrinsic = Promise
-const thenOf = Promise.prototype.then
-
-// The pin value of `tagged` has to be the engine's own `Promise`, since an `await` compares a promise's
-// `constructor` with it. The promise an async function returns inherits its `constructor` from the intrinsic
-// prototype whatever the global `Promise` was replaced with, so a global that is not that constructor is a
-// stand-in, and the import fails here, naming the cause, instead of pinning a promise to it. The read goes
-// through the promise and not through `Object.getPrototypeOf`, which a host may have replaced and which the
-// import has to survive.
-if ((async (): Promise<void> => {})().constructor !== PromiseIntrinsic) {
-  throw new TypeError(
-    'Promise was replaced before the import: it is not the constructor of the promises of the engine'
-  )
+const ObjectPrototype = Object.prototype
+/**
+ * The prototype an async function's promise has, which the engine's `Promise`, its `then` and the pin value
+ * of a tagged promise are all taken from, never from the global binding: a host that replaced the global
+ * `Promise` before the import (zone.js, bluebird, a subclass, a wrapper) still loads, and the library keeps the
+ * intrinsic. It is read through `Reflect` because `Object.getPrototypeOf` is one of the built-ins a host may
+ * have replaced and the import has to survive.
+ */
+const enginePromisePrototype = Reflect.getPrototypeOf((async (): Promise<void> => {})()) as {
+  constructor: unknown
+  then: Promise<unknown>['then']
 }
+const thenOf = enginePromisePrototype.then
+
+/**
+ * The engine's own `Promise`, which an `await` compares a promise's `constructor` with. The import fails only
+ * when the constructor that prototype names is not a function whose `prototype` is that prototype, a pair that
+ * disagrees with itself. A host that replaced both before the import is out of reach: that is the before-load
+ * limit the README states.
+ */
+const PromiseIntrinsic = ((): PromiseConstructor => {
+  const candidate = enginePromisePrototype.constructor as PromiseConstructor
+  if (
+    typeof candidate !== 'function' ||
+    (candidate.prototype as unknown) !== (enginePromisePrototype as unknown)
+  ) {
+    throw new TypeError(
+      'The constructor of the promise prototype is not the Promise of the engine: it was replaced before the import'
+    )
+  }
+  return candidate
+})()
 const startsWithOf = String.prototype.startsWith
 const padStartOf = String.prototype.padStart
 const padEndOf = String.prototype.padEnd
@@ -390,6 +408,26 @@ export function ownsThenAccessor(value: unknown): boolean {
   if (!isObjectLike(value)) return false
   const found = ownDescriptorOf(value, 'then')
   return found !== undefined && !hasOwnOf(found, 'value')
+}
+
+/**
+ * Whether the nearest `then` on the prototype chain of `value`, below `Object.prototype`, is an accessor: a
+ * class getter, say. Only host code can have put one there. `Object.prototype` is left out on purpose: an
+ * accessor planted there answers for every object and is not read, as {@link callableThen} states.
+ *
+ * @param value - What the host returned.
+ * @returns True when a prototype other than `Object.prototype` holds a getter or setter named `then` that no
+ *   nearer holder hides.
+ */
+export function inheritsThenAccessor(value: unknown): boolean {
+  if (!isObjectLike(value) || hasOwnOf(value, 'then')) return false
+  let holder = prototypeOf(value) as object | null
+  while (holder !== null && holder !== ObjectPrototype) {
+    const found = ownDescriptorOf(holder, 'then')
+    if (found !== undefined) return !hasOwnOf(found, 'value')
+    holder = prototypeOf(holder) as object | null
+  }
+  return false
 }
 
 /**

@@ -5,7 +5,15 @@
 
 import { types } from 'node:util'
 
-import { adopted, boxed, callableThen, followed, ownsThenAccessor, tagged } from './captured'
+import {
+  adopted,
+  boxed,
+  callableThen,
+  followed,
+  inheritsThenAccessor,
+  ownsThenAccessor,
+  tagged
+} from './captured'
 
 const isPromise = types.isPromise
 const isProxy = types.isProxy
@@ -17,7 +25,7 @@ const reflectGet = Reflect.get
  * own call do not answer for it when the promise can take a property; a promise that cannot is followed, which has the
  * limit {@link followed} states. A thenable with a data `then` is
  * followed into a promise of the library's own, and what it resolves with is settled the same way; any other value is returned as it is, never awaited, except that
- * a Proxy or an own accessor `then` that yields a function is refused.
+ * a Proxy, an own accessor `then` or one on a prototype below `Object.prototype` that yields a function is refused.
  *
  * @param value - What the host's code returned.
  * @returns The settled value, in a box with no `then`, in a promise that is tagged for the caller's `await`.
@@ -39,10 +47,10 @@ async function settle<T>(value: T | PromiseLike<T>): Promise<{ readonly value: T
   // anything else is the value itself and is never awaited.
   const then = callableThen(value)
   if (then === undefined) {
-    // A Proxy, or an object with an accessor `then` of its own, answers to the host: the read is made once and
+    // A Proxy, or an object with an accessor `then` of its own or on a class prototype, answers to the host: the read is made once and
     // a failure of it is the host's, while a function it hands back is refused rather than followed.
     if (
-      (isProxy(value) || ownsThenAccessor(value)) &&
+      (isProxy(value) || ownsThenAccessor(value) || inheritsThenAccessor(value)) &&
       typeof reflectGet(value as object, 'then') === 'function'
     ) {
       throw new TypeError(

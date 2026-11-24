@@ -350,6 +350,16 @@ async function boxedAwait<T>(promise: Promise<T>): Promise<{ readonly value: T }
 }
 
 /**
+ * Whether `value` is an object or a function, the only kinds that can own a property.
+ *
+ * @param value - What the host returned.
+ * @returns True for a non-null object or a function.
+ */
+function isObjectLike(value: unknown): value is object {
+  return (typeof value === 'object' && value !== null) || typeof value === 'function'
+}
+
+/**
  * The `then` that resolving a promise with `value` would call, found by descriptor along the prototype chain
  * so that no getter runs: only a data property that holds a function counts. A getter on the chain, such as
  * one a host planted on `Object.prototype` to answer once, is not a `then` this library follows.
@@ -358,8 +368,8 @@ async function boxedAwait<T>(promise: Promise<T>): Promise<{ readonly value: T }
  * @returns The function a data property named `then` holds, or undefined when the value is not a thenable.
  */
 export function callableThen(value: unknown): ((...args: unknown[]) => unknown) | undefined {
-  let holder: object | null =
-    (typeof value === 'object' && value !== null) || typeof value === 'function' ? value : null
+  if (!isObjectLike(value)) return undefined
+  let holder: object | null = value
   while (holder !== null) {
     const found = ownDescriptorOf(holder, 'then')
     if (found !== undefined) {
@@ -377,7 +387,7 @@ export function callableThen(value: unknown): ((...args: unknown[]) => unknown) 
  * @returns True when the value owns a `then` that is a getter or a setter.
  */
 export function ownsThenAccessor(value: unknown): boolean {
-  if (!((typeof value === 'object' && value !== null) || typeof value === 'function')) return false
+  if (!isObjectLike(value)) return false
   const found = ownDescriptorOf(value, 'then')
   return found !== undefined && !hasOwnOf(found, 'value')
 }

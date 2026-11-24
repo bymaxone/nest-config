@@ -11,6 +11,7 @@ const apply = Reflect.apply
 const defineProperty = Reflect.defineProperty
 const create = Object.create
 const PromiseIntrinsic = Promise
+const thenOf = Promise.prototype.then
 
 // The pin value of `tagged` has to be the engine's own `Promise`, since an `await` compares a promise's
 // `constructor` with it. The promise an async function returns inherits its `constructor` from the intrinsic
@@ -324,7 +325,7 @@ export function append<T>(list: T[], item: T): void {
  * host code that replaced them inside the window would otherwise answer for a promise this library returns.
  * With the own property in place the `await` takes the promise as it is and never reads `then`. The pin is
  * neither writable nor configurable, so nothing can replace it afterwards. A frozen promise answers `false`
- * to the definition and is awaited as it is.
+ * to the definition and is awaited as it is; `adopted` is the one for a promise this library did not make.
  *
  * @param promise - A promise the library hands to a caller that awaits it.
  * @returns The same promise, tagged where the property could be defined.
@@ -332,6 +333,25 @@ export function append<T>(list: T[], item: T): void {
 export function tagged<T>(promise: Promise<T>): Promise<T> {
   defineProperty(promise, 'constructor', pin(PromiseIntrinsic))
   return promise
+}
+
+/**
+ * A promise the host produced, made safe to `await`: the same promise with its `constructor` pinned, or, where
+ * it cannot be pinned because it is frozen or not extensible, a new promise that follows it.
+ *
+ * The follower is settled through the `then` taken at load and called with `Reflect.apply`, which reads no
+ * `then` from the promise, and the new promise is tagged like any other the library hands to an `await`.
+ *
+ * @param promise - A native promise returned by host code.
+ * @returns A promise whose `await` takes it as it is and settles with what `promise` settles with.
+ */
+export function adopted<T>(promise: Promise<T>): Promise<T> {
+  if (defineProperty(promise, 'constructor', pin(PromiseIntrinsic))) return promise
+  return tagged(
+    new PromiseIntrinsic<T>((resolve, reject) => {
+      apply(thenOf, promise, [resolve, reject])
+    })
+  )
 }
 
 /**

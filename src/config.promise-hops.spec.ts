@@ -322,6 +322,66 @@ describe('the promises the module hands to its callers', () => {
     expect(outcome.rejected?.cause).toBe(failure)
   })
 
+  it('keeps what the options factory returned when the native promise it returns is frozen and answered for by accessors', async () => {
+    /**
+     * Scenario: the factory freezes its promise, so no own constructor can be pinned, and plants accessors
+     * that answer for it on their first read.
+     * Expectation: the options that reach the provider are the ones the promise resolved with.
+     */
+    await settled()
+    const real = { APP_NAME: 'real' }
+    const factory = factoryOf(
+      BymaxConfigModule.forRootAsync({
+        useFactory: () => {
+          const frozen = Object.freeze(Promise.resolve({ schema, source: real }))
+          plantSelfRestoringAnswer({ schema, source: { APP_NAME: 'forged' } })
+          return frozen
+        }
+      }).providers ?? [],
+      BYMAX_CONFIG_OPTIONS
+    )
+
+    let outcome: { resolved?: { source?: unknown } }
+    try {
+      outcome = (await tagged(outcomeOf(factory))) as typeof outcome
+    } finally {
+      restore()
+    }
+
+    expect(outcome.resolved?.source).toEqual(real)
+  })
+
+  it('keeps the cause a hook rejected with when the native promise it returns is frozen and answered for by accessors', async () => {
+    /**
+     * Scenario: the hook returns a frozen rejected promise and plants accessors that answer on first read.
+     * Expectation: the validation error still carries the cause the hook rejected with.
+     */
+    await settled()
+    const failure = new Error('the hook failed')
+    const onValidationError = (): Promise<void> => {
+      const rejected = Object.freeze(Promise.reject(failure))
+      nativeThen.call(rejected, undefined, () => undefined)
+      plantSelfRestoringAnswer(undefined)
+      return rejected
+    }
+    const factory = factoryOf(
+      BymaxConfigModule.forRoot({ schema, source: {}, onValidationError }).providers ?? [],
+      BYMAX_CONFIG
+    )
+
+    let outcome: { rejected?: BymaxConfigValidationError }
+    try {
+      outcome = (await tagged(
+        outcomeOf(() => factory({ schema, source: {}, onValidationError }))
+      )) as typeof outcome
+    } finally {
+      restore()
+    }
+
+    expect(outcome.rejected).toBeInstanceOf(BymaxConfigValidationError)
+    expect(outcome.rejected?.cause).toBe(failure)
+  })
+
   it('keeps the provider token resolvable when nothing is hijacked', async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [BymaxConfigModule.forRoot({ schema, source: { APP_NAME: 'ok' } })]

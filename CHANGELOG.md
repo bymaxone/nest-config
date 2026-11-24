@@ -15,6 +15,8 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.27] - 2026-11-24
+
 ### Fixed
 
 - **An options factory or hook that returns a value that is not a promise is no longer awaited.** The `await` read `then` along the whole prototype chain, so an accessor planted on `Object.prototype` during the factory's own call could answer for the options. The library now finds `then` by descriptor and follows only a data function, into a promise of its own. A Proxy, or an object with an own accessor `then`, is read once: a throwing read refuses the result with the error as the cause, and a function it answers with is refused, not followed.
@@ -30,6 +32,8 @@ as the GitHub Release body, so each released version needs a matching
 - **A native promise the options factory or the `onValidationError` hook returns is awaited without reading a `then` from it before the module uses it.** Accessors planted on `Promise.prototype` inside that call, which restore themselves on their first read, no longer answer for the promise: before, they could replace the options the factory returned or drop the cause a hook rejected with. The promise is pinned and awaited natively, and the fulfilment value is boxed so it is not read for a `then` a second time; a promise that cannot take a property, such as a frozen one, is followed through a new promise instead.
 - **The import stops when the global `Promise` is not the constructor of the promises of the engine.** The constructor that tags a promise has to be the engine's own, so a stand-in in the place of `Promise` before the import is refused, naming the cause, instead of becoming the pin value. A stand-in that also replaced `Promise.prototype.constructor` is not told apart, and neither is any other replacement made before the import.
 - **Known limits.** These guards are best-effort hardening against same-process code, which is trusted as it is in Node; see the threat model in `SECURITY.md`. A data `then` planted on `Object.prototype` during a host call can still be followed, the built-ins the options are copied with are read live after the options factory returns, a Proxy in the prototype chain of a returned value answers to host code (one whose prototype is itself makes the lookup of its `then` loop), a thenable that resolves with itself, or two that resolve with each other, never settles (a native `await` behaves the same way), and a throwing `Promise[Symbol.species]` planted during a call refuses the result of a frozen promise. Under a hijack of `Promise.prototype` in the same turn, Nest's own awaits are hijacked as well, and a compile can succeed with `BYMAX_CONFIG` set to `null` because Nest swallows the rejection of the factory promise. A setter on `Object.prototype` can still replace a validated value in the root that zod builds; that is not new.
+
+No declaration change: there is nothing to apply to a derived backend.
 
 ## [1.2.26] - 2026-11-22
 
@@ -1249,6 +1253,7 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.16]: https://github.com/bymaxone/nest-config/compare/v1.2.15...v1.2.16
 [1.2.17]: https://github.com/bymaxone/nest-config/compare/v1.2.16...v1.2.17
 [1.2.18]: https://github.com/bymaxone/nest-config/compare/v1.2.17...v1.2.18
+[1.2.27]: https://github.com/bymaxone/nest-config/compare/v1.2.26...v1.2.27
 [1.2.26]: https://github.com/bymaxone/nest-config/compare/v1.2.25...v1.2.26
 [1.2.25]: https://github.com/bymaxone/nest-config/compare/v1.2.24...v1.2.25
 [1.2.24]: https://github.com/bymaxone/nest-config/compare/v1.2.23...v1.2.24
@@ -1257,4 +1262,4 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.21]: https://github.com/bymaxone/nest-config/compare/v1.2.20...v1.2.21
 [1.2.20]: https://github.com/bymaxone/nest-config/compare/v1.2.19...v1.2.20
 [1.2.19]: https://github.com/bymaxone/nest-config/compare/v1.2.18...v1.2.19
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.26...HEAD
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.27...HEAD

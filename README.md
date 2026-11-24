@@ -359,7 +359,7 @@ a host replaces with an accessor or a read-only property; and a `then` planted o
 every promise in the process, Nest's own among them, adopts, and which the validated configuration, an
 ordinary object, does not escape.
 
-A promise your options factory or `onValidationError` hook returns is pinned and awaited natively. One that cannot take a property, because it is frozen or not extensible, is followed through the `then` taken at load, which reads the species constructor: a throwing `Promise[Symbol.species]` planted inside that call then refuses the options factory's result, and the promise's own rejection is left without a handler.
+A promise your options factory or `onValidationError` hook returns is pinned and awaited natively. One that cannot take a property, because it is frozen, not extensible, or carries a non-configurable own `constructor`, is followed through the `then` taken at load, which reads the species constructor: a throwing `Promise[Symbol.species]` planted inside that call then refuses the options factory's result, and the promise's own rejection is left without a handler. A non-configurable own `constructor` getter that throws takes the same path, with the getter's error as the cause.
 
 The module, the config provider and an options provider that carries a factory, which the library rebuilds, have no prototype; the providers you bring in, and the objects Nest builds inside its own builder, are left as they are and are not covered.
 

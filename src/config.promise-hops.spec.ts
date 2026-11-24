@@ -394,6 +394,40 @@ describe('the promises the module hands to its callers', () => {
     expect(unhandled).toEqual([])
   })
 
+  it('refuses the result with the getter error as the cause when the promise constructor is a throwing getter that cannot be redefined', async () => {
+    /**
+     * Scenario: the factory returns a promise that rejects with its own failure and carries a
+     * non-configurable own `constructor` getter that throws, so no pin can be defined and the follower
+     * reads the constructor through the captured then.
+     * Expectation: the module refuses the factory's result with the getter's error as the cause. The host
+     * handles its own rejection first, because the test runner fails a test on an unhandled one.
+     */
+    await settled()
+    const failure = new Error('host-failed')
+    const getterError = new Error('constructor getter')
+    const factory = factoryOf(
+      BymaxConfigModule.forRootAsync({
+        useFactory: () => {
+          const rejected = Promise.reject(failure)
+          rejected.catch(() => undefined)
+          Reflect.defineProperty(rejected, 'constructor', {
+            configurable: false,
+            get() {
+              throw getterError
+            }
+          })
+          return rejected
+        }
+      }).providers ?? [],
+      BYMAX_CONFIG_OPTIONS
+    )
+
+    const outcome = (await tagged(outcomeOf(factory))) as { rejected?: BymaxConfigValidationError }
+
+    expect(outcome.rejected).toBeInstanceOf(BymaxConfigValidationError)
+    expect(outcome.rejected?.cause).toBe(getterError)
+  })
+
   it('keeps what the options factory returned when the native promise it returns is frozen and answered for by accessors', async () => {
     /**
      * Scenario: the factory freezes its promise, so no own constructor can be pinned, and plants accessors

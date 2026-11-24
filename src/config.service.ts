@@ -98,8 +98,12 @@ export class ConfigService<TConfig> {
         // The root carries its serializer as a non-enumerable `toJSON` function and a non-enumerable `then` of
         // `undefined`; neither is a namespace.
         const descriptor = Object.getOwnPropertyDescriptor(root, namespace)
+        // A descriptor is an ordinary object: `value` is read only when the descriptor owns it, so a
+        // `value` planted on `Object.prototype` cannot make an accessor look like the pinned data property.
+        const data = descriptor !== undefined && Object.hasOwn(descriptor, 'value')
         if (
-          descriptor?.enumerable === false &&
+          data &&
+          descriptor.enumerable === false &&
           ((namespace === 'toJSON' && typeof descriptor.value === 'function') ||
             (namespace === 'then' && descriptor.value === undefined))
         )

@@ -8,7 +8,7 @@
  * Mocks: none. Each value is built for one case.
  */
 
-import { callableThen, ownsThenAccessor } from './captured'
+import { callableThen, inheritsThenAccessor, ownsThenAccessor } from './captured'
 
 /** A function a data `then` can hold. */
 const handler = (): void => undefined
@@ -119,5 +119,85 @@ describe('ownsThenAccessor', () => {
     }) as object
 
     expect(ownsThenAccessor(inherited)).toBe(false)
+  })
+})
+
+describe('inheritsThenAccessor', () => {
+  it.each([
+    ['undefined', undefined],
+    ['null', null],
+    ['a string', 'then'],
+    ['a number', 1]
+  ])('answers false for %s', (_title, value) => {
+    expect(inheritsThenAccessor(value)).toBe(false)
+  })
+
+  it('answers true for an object whose class prototype has a getter named then', () => {
+    class Holder {
+      get then() {
+        return handler
+      }
+    }
+
+    expect(inheritsThenAccessor(new Holder())).toBe(true)
+  })
+
+  it('answers true for a setter named then with no getter, two prototypes up', () => {
+    const grand = { set then(_value: unknown) {} }
+
+    expect(inheritsThenAccessor(Object.create(Object.create(grand) as object) as object)).toBe(true)
+  })
+
+  it('answers true for a function whose prototype has a getter named then', () => {
+    const holder = () => undefined
+    Object.setPrototypeOf(holder, {
+      get then() {
+        return handler
+      }
+    })
+
+    expect(inheritsThenAccessor(holder)).toBe(true)
+  })
+
+  it('answers false for an own then of any kind, since that is for ownsThenAccessor', () => {
+    const inherited = Object.create({
+      get then() {
+        return handler
+      }
+    }) as object
+    Reflect.defineProperty(inherited, 'then', { get: () => handler })
+
+    expect(inheritsThenAccessor(inherited)).toBe(false)
+  })
+
+  it('answers false when a nearer data then hides the accessor further up', () => {
+    const near = Object.create(
+      {
+        get then() {
+          return handler
+        }
+      },
+      { then: { value: handler } }
+    ) as object
+
+    expect(inheritsThenAccessor(Object.create(near) as object)).toBe(false)
+  })
+
+  it('answers false for an accessor on Object.prototype, which answers for every object', () => {
+    let answers: boolean[]
+    Reflect.defineProperty(Object.prototype, 'then', { get: () => handler, configurable: true })
+    try {
+      answers = [inheritsThenAccessor({}), inheritsThenAccessor(Object.create(null) as object)]
+    } finally {
+      Reflect.deleteProperty(Object.prototype, 'then')
+    }
+
+    expect(answers).toEqual([false, false])
+  })
+
+  it('answers false for plain objects, null-prototype objects and functions with no then', () => {
+    expect(inheritsThenAccessor({})).toBe(false)
+    expect(inheritsThenAccessor(Object.create(null) as object)).toBe(false)
+    expect(inheritsThenAccessor(() => undefined)).toBe(false)
   })
 })

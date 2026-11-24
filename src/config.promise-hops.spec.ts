@@ -604,6 +604,38 @@ describe('the promises the module hands to its callers', () => {
     expect(followed).toBe(0)
   })
 
+  it('refuses options whose then is a getter on a class prototype, naming the cause and without following it', async () => {
+    /**
+     * Scenario: the factory returns an instance of a class whose prototype declares `get then()` answering a
+     * function.
+     * Expectation: the result is refused with the same cause as an own accessor, and the function is not
+     * called, instead of the instance being read as options and failing on the schema.
+     */
+    await settled()
+    let followed = 0
+    class Options {
+      schema = schema
+      source = {}
+      get then() {
+        return () => {
+          followed += 1
+        }
+      }
+    }
+    const factory = factoryOf(
+      BymaxConfigModule.forRootAsync(returning(() => new Options())).providers ?? [],
+      BYMAX_CONFIG_OPTIONS
+    )
+
+    const outcome = (await tagged(outcomeOf(factory))) as { rejected?: BymaxConfigValidationError }
+
+    expect(outcome.rejected).toBeInstanceOf(BymaxConfigValidationError)
+    expect((outcome.rejected?.cause as TypeError).message).toBe(
+      'the value returned by host code answers with a then that is not a data property'
+    )
+    expect(followed).toBe(0)
+  })
+
   it.each([
     ['a function', (): void => undefined],
     ['null', null],

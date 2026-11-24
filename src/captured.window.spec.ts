@@ -261,24 +261,76 @@ describe('a built-in replaced inside the validation', () => {
 
   it.each([
     ['a class of its own', class Foreign {}],
+    ['a subclass of Promise', class Sub extends Promise<unknown> {}],
+    ['a wrapper function', Object.assign(function Promise() {}, { prototype: {} })],
     [
       'a function that took the intrinsic prototype',
       Object.assign(function Promise() {}, {
         prototype: Reflect.getPrototypeOf((async (): Promise<void> => {})())
       })
     ]
-  ])('stops the import and names the cause when the global Promise is %s', (_name, standIn) => {
+  ])('loads when the global Promise is %s', (_name, standIn) => {
     /**
-     * Scenario: the global `Promise` is replaced before the module is evaluated.
-     * Expectation: the import throws a TypeError that says it is not the constructor of the promises of
-     * the engine, since the prototype of those promises still names the intrinsic one.
+     * Scenario: the global `Promise` is replaced before the module is evaluated (zone.js, bluebird, a
+     * subclass, a wrapper).
+     * Expectation: the import does not throw, since the constructor is taken from the prototype of an
+     * async function's promise and the global is never read.
      */
-    expect(loadWithPromise(standIn)).toEqual(
-      new TypeError(
-        'Promise was replaced before the import: it is not the constructor of the promises of the engine'
-      )
-    )
+    expect(loadWithPromise(standIn)).toBeUndefined()
   })
+
+  it('pins a promise to the engine Promise, not to the replaced global', () => {
+    /**
+     * Scenario: the global `Promise` is a subclass while the module is evaluated.
+     * Expectation: a promise the module tags carries the engine constructor as its own `constructor`.
+     */
+    const engine = (
+      Reflect.getPrototypeOf((async (): Promise<void> => {})()) as { constructor: unknown }
+    ).constructor
+    const held = Object.getOwnPropertyDescriptor(globalThis, 'Promise') as PropertyDescriptor
+    Object.defineProperty(globalThis, 'Promise', {
+      ...held,
+      value: class Sub extends Promise<unknown> {}
+    })
+    try {
+      let tagged: unknown
+      jest.isolateModules(() => {
+        tagged = (require('./captured') as typeof import('./captured')).tagged(engine as never)
+      })
+      expect((tagged as { constructor: unknown }).constructor).toBe(engine)
+    } finally {
+      Object.defineProperty(globalThis, 'Promise', held)
+    }
+  })
+
+  it.each([
+    ['not a function', 1],
+    [
+      'a function whose prototype is another object',
+      Object.assign(function Promise() {}, { prototype: {} })
+    ]
+  ])(
+    'stops the import and names the cause when the promise prototype names a constructor that is %s',
+    (_name, standIn) => {
+      /**
+       * Scenario: `constructor` of the prototype an async function's promise has is replaced before the
+       * module is evaluated by something that is not a function owning that prototype.
+       * Expectation: the import throws a TypeError naming the constructor of the promise prototype.
+       */
+      const prototype = Reflect.getPrototypeOf((async (): Promise<void> => {})()) as object
+      const held = Object.getOwnPropertyDescriptor(prototype, 'constructor') as PropertyDescriptor
+      Object.defineProperty(prototype, 'constructor', { ...held, value: standIn })
+      try {
+        expect(loadWithPromise(Promise)).toEqual(
+          new TypeError(
+            'The constructor of the promise prototype is not the Promise of the engine: it was replaced before the import'
+          )
+        )
+      } finally {
+        Object.defineProperty(prototype, 'constructor', held)
+      }
+    }
+  )
 
   it('loads when the global Promise and the constructor of its prototype are both replaced', () => {
     /**

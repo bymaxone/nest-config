@@ -350,7 +350,7 @@ At load the library records the built-ins it calls. Every entry point that start
 with the one it recorded, by identity. One that was replaced is refused
 with a `BymaxConfigValidationError` that carries the number replaced and nothing else, and nothing throws at
 import. Load order matters: a polyfill that replaces a built-in after the library is imported is refused at
-boot, so load polyfills first. The import checks that the global `Promise` is the constructor of the promises of an async function: a stand-in in its place stops the import and names the cause, while one that also replaced `Promise.prototype.constructor` is not told apart. A replacement made before the import is outside what the library can check: if `Object.getOwnPropertyDescriptor` throws before the package is imported, the compiled import helper of the package fails before any code of the library runs. The reads of `ConfigService` do not check again after the boot, and the
+boot, so load polyfills first. The library takes the engine's `Promise` from the prototype of an async function's promise and never reads the global one, so a global replaced before the import (zone.js, bluebird, a subclass, a wrapper) still loads. The import stops and names the cause only when the `constructor` of that prototype is not a function whose `prototype` is that prototype; a replacement of both is not told apart. A replacement made before the import is outside what the library can check: if `Object.getOwnPropertyDescriptor` throws before the package is imported, the compiled import helper of the package fails before any code of the library runs. The reads of `ConfigService` do not check again after the boot, and the
 redaction of the configuration uses the `Object.defineProperty` taken at load, so a replacement made while the
 validation runs cannot leave its values printable.
 
@@ -359,8 +359,7 @@ is in Node, and the threat model in `SECURITY.md` names the limits that remain.
 
 Not defended against: what zod and Node define with their own descriptors; a schema leaf that
 a host replaces with an accessor or a read-only property; and a `then` planted on `Object.prototype`, which
-every promise in the process, Nest's own among them, adopts, and which the validated configuration, an
-ordinary object, does not escape.
+every promise in the process, Nest's own among them, adopts. The validated configuration carries an own `then` of `undefined`, so a promise resolved with it does not read the planted one; an `await` of the root returns the root.
 
 A promise your options factory or `onValidationError` hook returns is pinned and awaited natively. One that cannot take a property, because it is frozen, not extensible, or carries a non-configurable own `constructor`, is followed through the `then` taken at load, which reads the species constructor: a throwing `Promise[Symbol.species]` planted inside that call then refuses the options factory's result, and the promise's own rejection is left without a handler. A non-configurable own `constructor` getter that throws takes the same path, with the getter's error as the cause.
 
@@ -620,7 +619,7 @@ anything that can reach it. A namespace cannot be named `toJSON`: the boot refus
 
 The redaction is visible on the root: `toJSON` is an own, non-enumerable property, so it appears in
 `Object.getOwnPropertyNames(root)` and `Reflect.ownKeys(root)` (`Object.keys` still lists the
-namespaces only) and `'toJSON' in root` is `true`. In strict mode code, deleting, assigning or
+namespaces only) and `'toJSON' in root` is `true`. The root also carries an own, non-enumerable `then` of `undefined`, which keeps a `then` planted on `Object.prototype` from answering when a promise resolves with the root: `'then' in root` is `true` and `then` appears in `Object.getOwnPropertyNames(root)` and `Reflect.ownKeys(root)` too, so a copy made from those lists gets an own `then: undefined`. `ConfigService` and `createTestConfig` skip it. In strict mode code, deleting, assigning or
 redefining it throws a `TypeError`, because the root is frozen; in sloppy mode `Object.defineProperty`
 still throws, while deleting and assigning silently change nothing. `util.format('%j', root)` prints the
 names.

@@ -62,9 +62,9 @@ const EXEMPT: Readonly<Record<string, { readonly count: number; readonly reason:
     reason: 'guardedResolve hands the host promise to the checked hop and rethrows a refusal'
   },
   'host-promise.ts': {
-    count: 2,
+    count: 3,
     reason:
-      'the checked hop: it awaits the followed promise or a non-promise value and boxes the answer'
+      'the checked hop: it awaits the followed promise, the thenable it adopted and the value that answered, each boxed'
   }
 }
 

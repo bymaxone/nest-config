@@ -14,24 +14,30 @@ const ownDescriptorOf = Object.getOwnPropertyDescriptor
 const prototypeOf = Object.getPrototypeOf
 const hasOwnOf = Object.hasOwn
 const ObjectPrototype = Object.prototype
-const thenOf = Promise.prototype.then
+/**
+ * The prototype an async function's promise has, which the engine's `Promise`, its `then` and the pin value
+ * of a tagged promise are all taken from, never from the global binding: a host that replaced the global
+ * `Promise` before the import (zone.js, bluebird, a subclass, a wrapper) still loads, and the library keeps the
+ * intrinsic. It is read through `Reflect` because `Object.getPrototypeOf` is one of the built-ins a host may
+ * have replaced and the import has to survive.
+ */
+const enginePromisePrototype = Reflect.getPrototypeOf((async (): Promise<void> => {})()) as {
+  constructor: unknown
+  then: Promise<unknown>['then']
+}
+const thenOf = enginePromisePrototype.then
 
 /**
- * The engine's own `Promise`, which an `await` compares a promise's `constructor` with. It is read from the
- * prototype an async function's promise has, never from the global binding, so a host that replaced the global
- * `Promise` before the import (zone.js, bluebird, a subclass, a wrapper) still loads and the library keeps the
- * intrinsic. The prototype is read through `Reflect`, since `Object.getPrototypeOf` is one of the built-ins a host may have replaced and the import has to survive. The import fails only when the constructor that prototype names is not a function whose
- * `prototype` is that prototype, a pair that disagrees with itself. A host that replaced both before the import
- * is out of reach: that is the before-load limit the README states.
+ * The engine's own `Promise`, which an `await` compares a promise's `constructor` with. The import fails only
+ * when the constructor that prototype names is not a function whose `prototype` is that prototype, a pair that
+ * disagrees with itself. A host that replaced both before the import is out of reach: that is the before-load
+ * limit the README states.
  */
 const PromiseIntrinsic = ((): PromiseConstructor => {
-  const prototype = Reflect.getPrototypeOf((async (): Promise<void> => {})()) as {
-    constructor: unknown
-  }
-  const candidate = prototype.constructor as PromiseConstructor
+  const candidate = enginePromisePrototype.constructor as PromiseConstructor
   if (
     typeof candidate !== 'function' ||
-    (candidate.prototype as unknown) !== (prototype as unknown)
+    (candidate.prototype as unknown) !== (enginePromisePrototype as unknown)
   ) {
     throw new TypeError(
       'The constructor of the promise prototype is not the Promise of the engine: it was replaced before the import'

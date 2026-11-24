@@ -281,27 +281,64 @@ describe('a built-in replaced inside the validation', () => {
 
   it('pins a promise to the engine Promise, not to the replaced global', () => {
     /**
-     * Scenario: the global `Promise` is a subclass while the module is evaluated.
-     * Expectation: a promise the module tags carries the engine constructor as its own `constructor`.
+     * Scenario: the global `Promise` is a subclass while the module is evaluated, and the module tags a
+     * promise an async function returned.
+     * Expectation: the tagged promise's own `constructor` is the engine constructor, which the promise
+     * inherits from the intrinsic prototype, and not the subclass.
      */
-    const engine = (
-      Reflect.getPrototypeOf((async (): Promise<void> => {})()) as { constructor: unknown }
-    ).constructor
+    const promise = (async (): Promise<void> => {})()
+    const engine = (Reflect.getPrototypeOf(promise) as { constructor: unknown }).constructor
     const held = Object.getOwnPropertyDescriptor(globalThis, 'Promise') as PropertyDescriptor
     Object.defineProperty(globalThis, 'Promise', {
       ...held,
       value: class Sub extends Promise<unknown> {}
     })
     try {
-      let tagged: unknown
       jest.isolateModules(() => {
-        tagged = (require('./captured') as typeof import('./captured')).tagged(engine as never)
+        ;(require('./captured') as typeof import('./captured')).tagged(promise)
       })
-      expect((tagged as { constructor: unknown }).constructor).toBe(engine)
     } finally {
       Object.defineProperty(globalThis, 'Promise', held)
     }
+
+    expect(Reflect.getOwnPropertyDescriptor(promise, 'constructor')?.value).toBe(engine)
   })
+
+  it.each([
+    ['a class of its own', class Foreign {}],
+    [
+      'a class whose prototype has a then that answers another value',
+      class Foreign {
+        then(resolve: (value: unknown) => void): void {
+          resolve('fabricated')
+        }
+      }
+    ]
+  ])(
+    'follows a frozen promise through the engine then when the global Promise was %s at load',
+    async (_name, standIn) => {
+      /**
+       * Scenario: the global `Promise` is replaced by a stand-in while the module is evaluated and restored
+       * after; a promise that cannot take the constructor pin is then followed.
+       * Expectation: the value is the one the promise holds: the `then` the follower calls is the engine's,
+       * not the stand-in's, which would be undefined or would answer for the promise.
+       */
+      const held = Object.getOwnPropertyDescriptor(globalThis, 'Promise') as PropertyDescriptor
+      Object.defineProperty(globalThis, 'Promise', { ...held, value: standIn })
+      let captured!: typeof import('./captured')
+      try {
+        jest.isolateModules(() => {
+          captured = require('./captured') as typeof import('./captured')
+        })
+      } finally {
+        Object.defineProperty(globalThis, 'Promise', held)
+      }
+
+      await expect(captured.followed(Object.freeze(Promise.resolve('options')))).resolves.toEqual({
+        value: 'options'
+      })
+    }
+  )
 
   it.each([
     ['not a function', 1],

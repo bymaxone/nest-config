@@ -16,7 +16,7 @@ import { Logger } from '@nestjs/common'
 import type { FactoryProvider } from '@nestjs/common'
 
 import { assertBuiltinsIntact } from './builtins'
-import { tagged } from './captured'
+import { hasOwn, pin, tagged } from './captured'
 import type { BymaxConfigModuleOptions } from './config.options'
 import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { deepFreeze } from './deep-freeze'
@@ -56,7 +56,9 @@ const REDACTED_ROOT = '[BymaxConfig: values redacted]'
  * the values again. A logger that spreads the enumerable keys of the root itself, as pino does
  * when it is handed as the merge object, prints the values too. It covers the root only: a
  * namespace printed or serialized directly shows its values. It is defined before the freeze, and
- * `assertNamespaces` keeps a namespace from taking the name `toJSON`.
+ * `assertNamespaces` keeps a namespace from taking the name `toJSON`. It also carries an own, non-enumerable
+ * `then` of `undefined`, so that a `then` planted on `Object.prototype` is never found when a promise
+ * resolves with the root.
  *
  * @param root - The validated output, not yet frozen.
  * @returns The same reference.
@@ -68,6 +70,10 @@ function redactRoot<T extends object>(root: T): T {
     'toJSON',
     bare({ value: () => ({ service: 'BymaxConfig', namespaces: keys(root) }) })
   )
+  // Resolving a promise with the root reads its `then`, and the root inherits `Object.prototype`, so a
+  // `then` planted there inside the window would answer for the configuration. An own `then` of
+  // `undefined` shadows it; a namespace named `then` is already an own, non-callable one.
+  if (!hasOwn(root, 'then')) defineProperty(root, 'then', pin(undefined))
   return root
 }
 
@@ -183,8 +189,9 @@ export function createValidatedConfig<TShape extends EnvShape>(
 
 /**
  * Validate for the module: the same result as {@link createValidatedConfig}, and on a
- * validation failure the hook runs and is awaited before the aggregated error is rethrown,
- * aborting module resolution before any consumer provider is instantiated.
+ * validation failure the hook runs and is awaited before the aggregated error is rethrown, so the
+ * promise it returns rejects. What Nest does with that rejection is Nest's: a promise of its own that
+ * host code hijacked in the same turn can still swallow it.
  *
  * On a validation failure it writes one object message, the stable event and the number of issues
  * and never a value, before the hook runs.

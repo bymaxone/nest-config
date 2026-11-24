@@ -13,6 +13,7 @@ import { z } from 'zod'
 
 import { tagged } from './captured'
 import { BymaxConfigModule } from './config.module'
+import { createValidatedConfig } from './config.providers'
 import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { defineEnv } from './define-env'
 import { BymaxConfigValidationError } from './errors'
@@ -87,7 +88,10 @@ function factoryOf(providers: readonly unknown[], token: unknown): (...args: unk
 }
 
 describe('the promises the module hands to its callers', () => {
-  afterEach(restore)
+  afterEach(() => {
+    restore()
+    Reflect.deleteProperty(Object.prototype, 'then')
+  })
 
   it('rejects with the refusal from the validated-config factory when the host hijacks resolution inside the source', async () => {
     await settled()
@@ -123,14 +127,14 @@ describe('the promises the module hands to its callers', () => {
     )
   })
 
-  it('tags a promise with the intrinsic Promise as an own, non-enumerable constructor', () => {
+  it('tags a promise with the intrinsic Promise as a pinned, non-enumerable constructor', () => {
     const promise = tagged(Promise.resolve(1))
 
     expect(Reflect.getOwnPropertyDescriptor(promise, 'constructor')).toEqual({
       value: Promise,
-      writable: true,
+      writable: false,
       enumerable: false,
-      configurable: true
+      configurable: false
     })
   })
 
@@ -139,6 +143,50 @@ describe('the promises the module hands to its callers', () => {
 
     expect(tagged(frozen)).toBe(frozen)
     expect(Object.hasOwn(frozen, 'constructor')).toBe(false)
+  })
+
+  it('resolves with the configuration when a then is planted on Object.prototype inside the source', async () => {
+    await settled()
+    const factory = factoryOf(
+      BymaxConfigModule.forRoot({ schema, source: { APP_NAME: 'ok' } }).providers ?? [],
+      BYMAX_CONFIG
+    )
+    const source: Record<string, string> = {}
+    Object.defineProperty(source, 'APP_NAME', {
+      enumerable: true,
+      get() {
+        Object.defineProperty(Object.prototype, 'then', {
+          value: (resolve: (value: unknown) => void) => resolve({ app: { name: 'forged' } }),
+          configurable: true
+        })
+        queueMicrotask(() => Reflect.deleteProperty(Object.prototype, 'then'))
+        return 'ok'
+      }
+    })
+
+    const outcome = (await outcomeOf(() => factory({ schema, source }))) as { resolved?: unknown }
+
+    expect(outcome.resolved).toEqual({ app: { name: 'ok' } })
+  })
+
+  it('pins an own then of undefined on the root, out of sight of keys and JSON', () => {
+    const root = createValidatedConfig({ schema, source: { APP_NAME: 'ok' } })
+
+    expect(Reflect.getOwnPropertyDescriptor(root, 'then')).toEqual({
+      value: undefined,
+      writable: false,
+      enumerable: false,
+      configurable: false
+    })
+    expect(Object.keys(root)).toEqual(['app'])
+  })
+
+  it('leaves a namespace named then as the namespace it is', () => {
+    const named = defineEnv({ then: z.object({ name: z.string() }) })
+
+    const root = createValidatedConfig({ schema: named, source: { THEN_NAME: 'ok' } })
+
+    expect(root.then).toEqual({ name: 'ok' })
   })
 
   it('keeps the provider token resolvable when nothing is hijacked', async () => {

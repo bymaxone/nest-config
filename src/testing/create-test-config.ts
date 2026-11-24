@@ -63,8 +63,8 @@ function isPlainObject(value: unknown): value is Readonly<Record<string, unknown
  * The entries of an overrides object, each property read once and by name. The names are the own ones,
  * enumerable or not, and then those the schema declares that the object does not list, so an override
  * held by a get-only Proxy or by a bare ancestor is found; a declared name that answers `undefined`, or that
- * only the chain of Object.prototype answers, is not supplied. At the root, the non-enumerable `toJSON` function is left out: it is the serializer a
- * validated configuration carries, not a namespace, and a configuration is a valid overrides object.
+ * only the chain of Object.prototype answers, is not supplied. At the root, the non-enumerable `toJSON` function and the non-enumerable `then` of `undefined` are left out:
+ * they are what a validated configuration carries, not namespaces, and a configuration is a valid overrides object.
  * Nothing else is left out.
  *
  * @param value - An overrides object, or one of its namespaces.
@@ -78,9 +78,12 @@ function entriesOf(
   declared: readonly string[]
 ): ReadonlyArray<readonly [string, unknown]> {
   const listed = Object.getOwnPropertyNames(value).filter((name) => {
-    if (!root || name !== 'toJSON') return true
+    if (!root || (name !== 'toJSON' && name !== 'then')) return true
     const descriptor = Object.getOwnPropertyDescriptor(value, name)
-    return descriptor?.enumerable !== false || typeof descriptor.value !== 'function'
+    if (descriptor?.enumerable !== false) return true
+    return name === 'toJSON'
+      ? typeof descriptor.value !== 'function'
+      : descriptor.value !== undefined
   })
   const prototype = Object.getPrototypeOf(value) as unknown
   const unlisted = declared

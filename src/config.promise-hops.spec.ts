@@ -382,6 +382,52 @@ describe('the promises the module hands to its callers', () => {
     expect(outcome.rejected?.cause).toBe(failure)
   })
 
+  it.each([
+    ['sealed', (value: Promise<unknown>) => Object.seal(value)],
+    ['not extensible', (value: Promise<unknown>) => Object.preventExtensions(value)],
+    [
+      'carrying a constructor of its own that cannot be redefined',
+      (value: Promise<unknown>) =>
+        Object.defineProperty(value, 'constructor', { value: function Foreign() {} })
+    ],
+    [
+      'an instance of a subclass',
+      () => {
+        class Sub extends Promise<unknown> {}
+        return Sub.resolve({ schema, source: { APP_NAME: 'real' } })
+      }
+    ]
+  ])(
+    'keeps what the options factory returned when its promise is %s and accessors answer for it',
+    async (_shape, shape) => {
+      /**
+       * Scenario: the factory returns a promise that takes no pin, or one of another class, and plants
+       * accessors on Promise.prototype that answer on their first read.
+       * Expectation: the options that reach the provider are the ones the promise resolved with.
+       */
+      await settled()
+      const factory = factoryOf(
+        BymaxConfigModule.forRootAsync({
+          useFactory: () => {
+            const shaped = shape(Promise.resolve({ schema, source: { APP_NAME: 'real' } }))
+            plantSelfRestoringAnswer({ schema, source: { APP_NAME: 'forged' } })
+            return shaped as Promise<never>
+          }
+        }).providers ?? [],
+        BYMAX_CONFIG_OPTIONS
+      )
+
+      let outcome: { resolved?: { source?: unknown } }
+      try {
+        outcome = (await tagged(outcomeOf(factory))) as typeof outcome
+      } finally {
+        restore()
+      }
+
+      expect(outcome.resolved?.source).toEqual({ APP_NAME: 'real' })
+    }
+  )
+
   it('keeps the provider token resolvable when nothing is hijacked', async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [BymaxConfigModule.forRoot({ schema, source: { APP_NAME: 'ok' } })]

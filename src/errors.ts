@@ -42,7 +42,7 @@ const MAX_FIELD_LENGTH = 200
 
 /**
  * The built-ins the copy and the escaping of an issue read with (`codePointAt`, `fromCodePoint`, the regex
- * `exec`, `Reflect.get` and `Reflect.set`), taken at load so that a later replacement is not followed.
+ * `exec` and `Reflect.get`), taken at load so that a later replacement is not followed.
  */
 const codePointAt = String.prototype.codePointAt
 const fromCodePoint = String.fromCodePoint

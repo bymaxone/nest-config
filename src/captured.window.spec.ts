@@ -159,6 +159,52 @@ describe('a built-in replaced inside the validation', () => {
     expect(error?.issues.length).toBeGreaterThan(0)
   })
 
+  it.each([
+    ['returns nothing', () => undefined],
+    [
+      'throws',
+      () => {
+        throw new Error('hostile keys')
+      }
+    ],
+    ['returns a foreign object', () => ({ next: () => ({ done: true }) })]
+  ])('loads when Map.prototype.keys %s before the import', (_name, hostile) => {
+    /**
+     * Scenario: `Map.prototype.keys` is replaced before the module is evaluated.
+     * Expectation: evaluating the module does not throw; the replacement is for the entry check to refuse.
+     */
+    const restore = replace(Map.prototype, 'keys', hostile)
+    try {
+      expect(() => {
+        jest.isolateModules(() => {
+          require('./captured')
+        })
+      }).not.toThrow()
+    } finally {
+      restore()
+    }
+  })
+
+  it('names the cause when the keys of a map are asked for after a pre-import replacement', () => {
+    /**
+     * Scenario: the module loaded while `Map.prototype.keys` was replaced, and a map's keys are asked for.
+     * Expectation: a TypeError that names the replacement, not a call on undefined.
+     */
+    const restore = replace(Map.prototype, 'keys', () => undefined)
+    let loaded: typeof import('./captured') | undefined
+    try {
+      jest.isolateModules(() => {
+        loaded = require('./captured') as typeof import('./captured')
+      })
+    } finally {
+      restore()
+    }
+
+    expect(() => loaded?.mapKeys(new Map())).toThrow(
+      /Map\.prototype\.keys was replaced before the import/
+    )
+  })
+
   it('keeps the report layout when Math.max, Math.min and padEnd are replaced', () => {
     /**
      * Scenario: the public constructor formats a report while the three layout built-ins answer

@@ -22,10 +22,23 @@ const mapSetOf = Map.prototype.set
 const mapGetOf = Map.prototype.get
 const mapHasOf = Map.prototype.has
 const mapKeysOf = Map.prototype.keys
-// Read from an iterator itself, not through `Object.getPrototypeOf`, so a replaced `getPrototypeOf` at load cannot stop the import.
-const mapIteratorNextOf = (
-  new Map<string, string>().keys() as { next: () => IteratorResult<unknown> }
-).next
+/** Stands in for the iterator step when `Map.prototype.keys` was already replaced before this module loaded. */
+function mapIteratorUnavailable(): never {
+  throw new TypeError(
+    'Map iterator is unavailable: Map.prototype.keys was replaced before the import'
+  )
+}
+
+// Read from an iterator itself, not through `Object.getPrototypeOf`, so a replaced `getPrototypeOf` at load
+// cannot stop the import. A `keys` replaced before the import is a counted difference that every entry point
+// refuses before this step is used, so the import itself must not throw over it.
+const mapIteratorNextOf = ((): (() => IteratorResult<unknown>) => {
+  try {
+    return (new Map<string, string>().keys() as { next: () => IteratorResult<unknown> }).next
+  } catch {
+    return mapIteratorUnavailable
+  }
+})()
 const weakSetAddOf = WeakSet.prototype.add
 const weakSetHasOf = WeakSet.prototype.has
 

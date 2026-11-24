@@ -354,6 +354,9 @@ boot, so load polyfills first. The import checks that the global `Promise` is th
 redaction of the configuration uses the `Object.defineProperty` taken at load, so a replacement made while the
 validation runs cannot leave its values printable.
 
+These checks are best-effort hardening, not a security boundary: code in the same process is trusted, as it
+is in Node, and the threat model in `SECURITY.md` names the limits that remain.
+
 Not defended against: what zod and Node define with their own descriptors; a schema leaf that
 a host replaces with an accessor or a read-only property; and a `then` planted on `Object.prototype`, which
 every promise in the process, Nest's own among them, adopts, and which the validated configuration, an

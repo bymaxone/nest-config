@@ -14,8 +14,10 @@ const reflectGet = Reflect.get
 /**
  * Await what the host's code produced and hand its value back in a box. A native promise is followed through
  * a new promise that reads no `then` from it, so accessors the host planted on `Promise.prototype` inside its
- * own call cannot answer for it, whether or not the promise can take a property. A thenable with a data `then` is
- * followed into a promise of the library's own; any other value is returned as it is, never awaited.
+ * own call do not answer for it when the promise can take a property; a promise that cannot is followed, which has the
+ * limit {@link followed} states. A thenable with a data `then` is
+ * followed into a promise of the library's own; any other value is returned as it is, never awaited, except that
+ * a Proxy or an own accessor `then` that yields a function is refused.
  *
  * @param value - What the host's code returned.
  * @returns The settled value, in a box with no `then`, in a promise that is tagged for the caller's `await`.

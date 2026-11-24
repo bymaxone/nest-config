@@ -11,7 +11,6 @@ const apply = Reflect.apply
 const defineProperty = Reflect.defineProperty
 const create = Object.create
 const PromiseIntrinsic = Promise
-const hasOwnOf = Object.hasOwn
 const startsWithOf = String.prototype.startsWith
 const padStartOf = String.prototype.padStart
 const padEndOf = String.prototype.padEnd
@@ -303,17 +302,6 @@ export function append<T>(list: T[], item: T): void {
   descriptor.enumerable = true
   descriptor.configurable = true
   defineProperty(list, list.length, descriptor)
-}
-
-/**
- * Whether an object has an own property, through the `Object.hasOwn` taken at load.
- *
- * @param target - The object to ask.
- * @param key - The property name.
- * @returns True when the property is an own one.
- */
-export function hasOwn(target: object, key: PropertyKey): boolean {
-  return hasOwnOf(target, key)
 }
 
 /**

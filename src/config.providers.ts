@@ -16,12 +16,12 @@ import { Logger } from '@nestjs/common'
 import type { FactoryProvider } from '@nestjs/common'
 
 import { assertBuiltinsIntact } from './builtins'
-import { hasOwn, pin, tagged } from './captured'
+import { pin, tagged } from './captured'
 import type { BymaxConfigModuleOptions } from './config.options'
 import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { deepFreeze } from './deep-freeze'
 import { guarded, toWithheldIssue, validateEnv, withCause } from './env-validator'
-import { isLibraryError, libraryError } from './errors'
+import { ConfigErrorCode, isLibraryError, libraryError } from './errors'
 import type { BymaxConfigValidationError, ConfigIssue } from './errors'
 import { bare, hasOption, readOption } from './option-read'
 import type { EnvOutput, EnvSchema, EnvShape } from './types'
@@ -58,7 +58,7 @@ const REDACTED_ROOT = '[BymaxConfig: values redacted]'
  * namespace printed or serialized directly shows its values. It is defined before the freeze, and
  * `assertNamespaces` keeps a namespace from taking the name `toJSON`. It also carries an own, non-enumerable
  * `then` of `undefined`, so that a `then` planted on `Object.prototype` is never found when a promise
- * resolves with the root.
+ * resolves with the root. A callable or accessor own `then` that validation left on the root is refused.
  *
  * @param root - The validated output, not yet frozen.
  * @returns The same reference.
@@ -71,9 +71,23 @@ function redactRoot<T extends object>(root: T): T {
     bare({ value: () => ({ service: 'BymaxConfig', namespaces: keys(root) }) })
   )
   // Resolving a promise with the root reads its `then`, and the root inherits `Object.prototype`, so a
-  // `then` planted there inside the window would answer for the configuration. An own `then` of
-  // `undefined` shadows it; a namespace named `then` is already an own, non-callable one.
-  if (!hasOwn(root, 'then')) defineProperty(root, 'then', pin(undefined))
+  // `then` planted there would answer for the configuration. An own `then` of `undefined` shadows it. An own
+  // `then` that validation left behind is kept only as a namespace of that name is: a data property that
+  // is not callable. A setter on `Object.prototype` that runs while the root is built can define a callable
+  // one, and a promise resolved with the root would call it.
+  const held = ownDescriptor(root, 'then')
+  if (held === undefined) defineProperty(root, 'then', pin(undefined))
+  else if (typeof held.value === 'function' || held.get !== undefined || held.set !== undefined) {
+    throw libraryError([
+      {
+        path: 'then',
+        variable: 'THEN',
+        code: ConfigErrorCode.INVALID,
+        message:
+          'the validated configuration holds a callable or accessor `then`, which a promise would call'
+      }
+    ])
+  }
   return root
 }
 
@@ -82,6 +96,9 @@ function redactRoot<T extends object>(root: T): T {
  * that a replacement made later cannot leave the configuration printing its values.
  */
 const defineProperty = Object.defineProperty
+
+/** `Object.getOwnPropertyDescriptor` as it was when the module loaded, for the check of the root's own `then`. */
+const ownDescriptor = Object.getOwnPropertyDescriptor
 
 /** The symbol Node's `util.inspect` looks for, as it was when the module loaded, so that reassigning it later cannot leave the root printable. */
 const inspectCustom = inspect.custom
@@ -183,6 +200,7 @@ export function createValidatedConfig<TShape extends EnvShape>(
   try {
     return deepFreeze(redactRoot(validated))
   } catch (thrown) {
+    if (isLibraryError(thrown)) throw thrown
     throw libraryError([toWithheldIssue('freezing the validated configuration', thrown)])
   }
 }

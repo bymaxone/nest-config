@@ -181,6 +181,57 @@ describe('the promises the module hands to its callers', () => {
     expect(Object.keys(root)).toEqual(['app'])
   })
 
+  /**
+   * A setter on `Object.prototype`, named after a namespace, that runs when validation assigns that namespace
+   * to the root, and defines `own` on the root in its place.
+   */
+  function plantSetter(name: string, own: PropertyDescriptor): () => void {
+    let planted = true
+    Object.defineProperty(Object.prototype, name, {
+      configurable: true,
+      set(this: object, value: unknown) {
+        Object.defineProperty(this, name, {
+          value,
+          writable: true,
+          enumerable: true,
+          configurable: true
+        })
+        if (planted) {
+          planted = false
+          Object.defineProperty(this, 'then', { ...own, configurable: true })
+        }
+      }
+    })
+    return () => Reflect.deleteProperty(Object.prototype, name)
+  }
+
+  it.each([
+    ['a callable own then', { value: (): void => undefined, writable: true }],
+    ['an accessor own then', { get: (): undefined => undefined }],
+    ['a setter-only own then', { set: (): void => undefined }]
+  ])('refuses %s defined on the root while it is built', (_title, own) => {
+    const unplant = plantSetter('app', own)
+    try {
+      expect(() => createValidatedConfig({ schema, source: { APP_NAME: 'ok' } })).toThrow(
+        BymaxConfigValidationError
+      )
+    } finally {
+      unplant()
+    }
+  })
+
+  it('refuses a callable then swapped in for a namespace named then', () => {
+    const named = defineEnv({ then: z.object({ name: z.string() }) })
+    const unplant = plantSetter('then', { value: (): void => undefined, writable: true })
+    try {
+      expect(() => createValidatedConfig({ schema: named, source: { THEN_NAME: 'ok' } })).toThrow(
+        BymaxConfigValidationError
+      )
+    } finally {
+      unplant()
+    }
+  })
+
   it('leaves a namespace named then as the namespace it is', () => {
     const named = defineEnv({ then: z.object({ name: z.string() }) })
 

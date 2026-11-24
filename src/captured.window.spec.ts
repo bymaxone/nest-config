@@ -345,6 +345,10 @@ describe('a built-in replaced inside the validation', () => {
     [
       'a function whose prototype is another object',
       Object.assign(function Promise() {}, { prototype: {} })
+    ],
+    [
+      'an object that is not a function but names the prototype as its own',
+      { prototype: Reflect.getPrototypeOf((async (): Promise<void> => {})()) }
     ]
   ])(
     'stops the import and names the cause when the promise prototype names a constructor that is %s',

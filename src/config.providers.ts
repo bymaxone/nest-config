@@ -16,6 +16,7 @@ import { Logger } from '@nestjs/common'
 import type { FactoryProvider } from '@nestjs/common'
 
 import { assertBuiltinsIntact } from './builtins'
+import { tagged } from './captured'
 import type { BymaxConfigModuleOptions } from './config.options'
 import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { deepFreeze } from './deep-freeze'
@@ -210,9 +211,11 @@ async function provideValidatedConfig(
       } catch {
         // A faulty logger must never replace the failure it reports.
       }
-      await reportIssues(
-        readOption(options, 'onValidationError') as ProvidedOptions['onValidationError'],
-        error
+      await tagged(
+        reportIssues(
+          readOption(options, 'onValidationError') as ProvidedOptions['onValidationError'],
+          error
+        )
       )
     }
     throw error
@@ -226,6 +229,6 @@ async function provideValidatedConfig(
  */
 export const bymaxConfigProvider: FactoryProvider = bare({
   provide: BYMAX_CONFIG,
-  useFactory: provideValidatedConfig,
+  useFactory: (options: ProvidedOptions) => tagged(provideValidatedConfig(options)),
   inject: [BYMAX_CONFIG_OPTIONS]
 })

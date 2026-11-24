@@ -12,7 +12,7 @@ import { Module } from '@nestjs/common'
 import type { DynamicModule, Provider } from '@nestjs/common'
 
 import { assertBuiltinsIntact } from './builtins'
-import { includes } from './captured'
+import { includes, tagged } from './captured'
 import { ConfigurableModuleClass } from './config.module-definition'
 import type {
   BymaxConfigForRootAsyncOptions,
@@ -219,13 +219,16 @@ function readOptionsOf(provider: Provider): Provider {
   if (typeof factory !== 'function') return provider
   return bare({
     ...provider,
-    useFactory: async (...args: unknown[]) => {
-      assertBuiltinsIntact()
-      const { value } = await guardedResolve('reading what the options factory returned', () =>
-        factory(...args)
+    useFactory: (...args: unknown[]) =>
+      tagged(
+        (async (): Promise<BymaxConfigModuleOptions> => {
+          assertBuiltinsIntact()
+          const { value } = await tagged(
+            guardedResolve('reading what the options factory returned', () => factory(...args))
+          )
+          return readModuleOptions(value as BymaxConfigModuleOptions, 'forRootAsync')
+        })()
       )
-      return readModuleOptions(value as BymaxConfigModuleOptions, 'forRootAsync')
-    }
   }) as Provider
 }
 

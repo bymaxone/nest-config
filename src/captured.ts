@@ -10,6 +10,7 @@
 const apply = Reflect.apply
 const defineProperty = Reflect.defineProperty
 const create = Object.create
+const PromiseIntrinsic = Promise
 const startsWithOf = String.prototype.startsWith
 const padStartOf = String.prototype.padStart
 const padEndOf = String.prototype.padEnd
@@ -301,4 +302,29 @@ export function append<T>(list: T[], item: T): void {
   descriptor.enumerable = true
   descriptor.configurable = true
   defineProperty(list, list.length, descriptor)
+}
+
+/**
+ * Give a promise an own `constructor` equal to the intrinsic `Promise` taken at load.
+ *
+ * An `await` of a native promise reads its `constructor`, and when that is not `Promise` it resolves a new
+ * promise with this one and calls the `then` it finds. Both are looked up after the library's last check, so
+ * host code that replaced them inside the window would otherwise answer for a promise this library returns.
+ * With the own property in place the `await` takes the promise as it is and never reads `then`.
+ *
+ * @param promise - A promise the library hands to a caller that awaits it.
+ * @returns The same promise, tagged where the property could be defined.
+ */
+export function tagged<T>(promise: Promise<T>): Promise<T> {
+  try {
+    const descriptor = create(null) as PropertyDescriptor
+    descriptor.value = PromiseIntrinsic
+    descriptor.writable = true
+    descriptor.enumerable = false
+    descriptor.configurable = true
+    defineProperty(promise, 'constructor', descriptor)
+  } catch {
+    // A promise that cannot take the property is awaited as it is.
+  }
+  return promise
 }

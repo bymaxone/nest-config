@@ -58,7 +58,8 @@ const REDACTED_ROOT = '[BymaxConfig: values redacted]'
  * namespace printed or serialized directly shows its values. It is defined before the freeze, and
  * `assertNamespaces` keeps a namespace from taking the name `toJSON`. It also carries an own, non-enumerable
  * `then` of `undefined`, so that a `then` planted on `Object.prototype` is never found when a promise
- * resolves with the root. A callable or accessor own `then` that validation left on the root is refused.
+ * resolves with the root. A callable or accessor own `then` that validation left on the root is refused; a
+ * planted non-callable value can remain (#250).
  *
  * @param root - The validated output, not yet frozen.
  * @returns The same reference.

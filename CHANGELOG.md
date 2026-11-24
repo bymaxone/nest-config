@@ -17,7 +17,7 @@ as the GitHub Release body, so each released version needs a matching
 
 ### Fixed
 
-- **`ConfigService` no longer drops a non-enumerable accessor named `toJSON` or `then` from the namespaces it lists.** The check for the root's pinned data properties read `value` through the descriptor's prototype chain, so an accessor passed for one, and a `value` planted on `Object.prototype` made an accessor `toJSON` look like the pinned function. The field is now read only when the descriptor owns it.
+- **`ConfigService` no longer drops a non-enumerable accessor named `toJSON` or `then` from the namespaces it lists.** The check for the root's pinned data properties read `value` through the descriptor's prototype chain, so an accessor passed for one, and a `value` planted on `Object.prototype` made an accessor `toJSON` look like the pinned function. The field is now read only when the descriptor owns it, and the check of the validated root's own `then` reads its descriptor the same way.
 - **A replacement installed while a validation runs no longer changes a decision.** The built-ins a validation decides with are taken when the module loads. Before, a getter of the source that replaced `String.prototype.startsWith`, `Array.prototype.sort` or `Set.prototype.has` made strict mode accept an undeclared variable.
 - **`new BymaxConfigValidationError(issues)` formats with the built-ins taken at load**, as the library's own errors do.
 - **A read-only or accessor `code` or `issues` planted on `Object.prototype` no longer makes the error constructor throw or hand its list to a setter.** Both are own fields written by definition.

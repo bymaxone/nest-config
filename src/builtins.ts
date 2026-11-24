@@ -36,7 +36,7 @@ const hasOwn = Object.hasOwn
  * @param field - Which field.
  * @returns The own field, or undefined when the descriptor has none.
  */
-function fieldOf(descriptor: PropertyDescriptor, field: 'get' | 'set' | 'value'): unknown {
+export function fieldOf(descriptor: PropertyDescriptor, field: 'get' | 'set' | 'value'): unknown {
   return hasOwn(descriptor, field) ? descriptor[field] : undefined
 }
 

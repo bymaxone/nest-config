@@ -9,6 +9,7 @@
 
 import { z } from 'zod'
 
+import { append, setHas, setOf } from './captured'
 import { defineEnv } from './define-env'
 import { guardedResolve, validateEnv } from './env-validator'
 import { BymaxConfigValidationError, ConfigErrorCode, isLibraryError, libraryError } from './errors'
@@ -157,6 +158,61 @@ describe('a built-in replaced inside the validation', () => {
 
     expect(swallowed).toBeGreaterThan(0)
     expect(error?.issues.length).toBeGreaterThan(0)
+  })
+
+  it('reads no key past the end of the list of keys when an index is inherited by every array', () => {
+    /**
+     * Scenario: a getter of a declared variable puts `APP_STRAY` on the inherited indexes after the
+     * real ones, so a read one past the end of the list of keys finds the stray variable again.
+     * Expectation: the stray variable is reported exactly once.
+     */
+    const planted = [2, 3, 4, 5, 6, 7, 8]
+    const source = {
+      get APP_PORT(): string {
+        for (const at of planted) {
+          Object.defineProperty(Array.prototype, at, { configurable: true, value: 'APP_STRAY' })
+        }
+        return '1'
+      },
+      APP_STRAY: 'x'
+    }
+    let error: BymaxConfigValidationError | undefined
+    try {
+      validateEnv(schema, source, { strict: true })
+    } catch (thrown) {
+      error = thrown as BymaxConfigValidationError
+    } finally {
+      for (const at of planted) Reflect.deleteProperty(Array.prototype, at)
+    }
+
+    expect(error?.issues.map((issue) => issue.variable)).toEqual(['APP_STRAY'])
+  })
+
+  it('holds exactly the items given when a set is built from a list', () => {
+    /**
+     * Scenario: a set is built from two items.
+     * Expectation: it holds those two and nothing read past the end of the list.
+     */
+    const set = setOf<string | undefined>(['a', 'b'])
+
+    expect(set.size).toBe(2)
+    expect(setHas(set, undefined)).toBe(false)
+  })
+
+  it('appends an element that can be written, enumerated and deleted', () => {
+    /**
+     * Scenario: an element is appended to an empty list.
+     * Expectation: it is an own data property with every attribute true, like one a push creates.
+     */
+    const list: number[] = []
+    append(list, 7)
+
+    expect(Object.getOwnPropertyDescriptor(list, 0)).toEqual({
+      value: 7,
+      writable: true,
+      enumerable: true,
+      configurable: true
+    })
   })
 
   it.each([

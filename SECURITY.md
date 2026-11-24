@@ -71,7 +71,10 @@ the built-ins the options are copied with are read live after the options factor
 in the prototype chain of a value a host returned answers to host code (a Proxy whose prototype is itself makes the
 lookup of its `then` loop), a thenable that resolves with itself, or two that resolve with each other,
 never settles (a native `await` behaves the same way), and a throwing
-`Promise[Symbol.species]` planted during a call refuses the result of a frozen promise.
+`Promise[Symbol.species]` planted during a call refuses the result of a frozen promise. Under a hijack of
+`Promise.prototype` in the same turn, Nest's own awaits are hijacked as well, and a promise of Nest's own that
+the hijack answers for can swallow the rejection of the factory promise, so a compile can succeed without the configuration. A setter on
+`Object.prototype` can still replace a validated value in the root that zod builds.
 
 ## In-scope vulnerabilities
 

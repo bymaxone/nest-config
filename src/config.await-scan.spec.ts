@@ -74,6 +74,8 @@ describe('awaits and promise chains in src', () => {
   it('scans every source file, including those below a directory', () => {
     expect(files).toContain('captured.ts')
     expect(files).toContain('host-promise.ts')
+    expect(files).toContain('internal/index.ts')
+    expect(files).toContain('testing/create-test-config.ts')
     expect(files.every((file) => !file.endsWith('.spec.ts'))).toBe(true)
   })
 

@@ -16,7 +16,7 @@ const reflectGet = Reflect.get
  * a new promise that reads no `then` from it, so accessors the host planted on `Promise.prototype` inside its
  * own call do not answer for it when the promise can take a property; a promise that cannot is followed, which has the
  * limit {@link followed} states. A thenable with a data `then` is
- * followed into a promise of the library's own; any other value is returned as it is, never awaited, except that
+ * followed into a promise of the library's own, and what it resolves with is settled the same way; any other value is returned as it is, never awaited, except that
  * a Proxy or an own accessor `then` that yields a function is refused.
  *
  * @param value - What the host's code returned.
@@ -51,5 +51,8 @@ async function settle<T>(value: T | PromiseLike<T>): Promise<{ readonly value: T
     }
     return boxed(value as T)
   }
-  return await adopted<T>(value, then)
+  // What a thenable resolves with is settled again by this same step, as resolving a promise with it would,
+  // so a promise or another thenable inside the box is awaited by the guarded path and never handed on.
+  const answered = await adopted<unknown>(value, then)
+  return await settle(answered.value as T | PromiseLike<T>)
 }

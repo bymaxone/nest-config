@@ -68,7 +68,8 @@ against such code are best-effort hardening that narrows the common accidents, n
 a report whose attacker must already run code in the process is not a vulnerability in this package. Known
 limits, in one line: a data `then` planted on `Object.prototype` during a host call can still be followed,
 the built-ins the options are copied with are read live after the options factory returns, a Proxy placed
-in the prototype chain of a value a host returned answers to host code, and a throwing
+in the prototype chain of a value a host returned answers to host code (a Proxy whose prototype is itself makes the
+lookup of its `then` loop), and a throwing
 `Promise[Symbol.species]` planted during a call refuses the result of a frozen promise.
 
 ## In-scope vulnerabilities

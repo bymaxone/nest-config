@@ -492,6 +492,50 @@ describe('the promises the module hands to its callers', () => {
     expect(resolved.source).toEqual(real)
   })
 
+  it('settles a promise a custom thenable resolves with, as an await would, so the options reach the provider', async () => {
+    /**
+     * Scenario: the factory returns a thenable that resolves with a promise of the options.
+     * Expectation: the options themselves, not the inner promise, reach the provider.
+     */
+    await settled()
+    const real = { APP_NAME: 'real' }
+    const factory = factoryOf(
+      BymaxConfigModule.forRootAsync(
+        returning(() => ({
+          then: (resolve: (value: unknown) => void) =>
+            resolve(Promise.resolve({ schema, source: real }))
+        }))
+      ).providers ?? [],
+      BYMAX_CONFIG_OPTIONS
+    )
+
+    const resolved = (await factory()) as { source?: unknown }
+
+    expect(resolved.source).toEqual(real)
+  })
+
+  it('refuses with the cause when the promise a custom thenable resolves with rejects', async () => {
+    /**
+     * Scenario: the factory returns a thenable that resolves with a promise that rejects.
+     * Expectation: the module refuses with that failure as the cause, and nothing is left unhandled.
+     */
+    await settled()
+    const failure = new Error('inner-failed')
+    const factory = factoryOf(
+      BymaxConfigModule.forRootAsync(
+        returning(() => ({
+          then: (resolve: (value: unknown) => void) => resolve(Promise.reject(failure))
+        }))
+      ).providers ?? [],
+      BYMAX_CONFIG_OPTIONS
+    )
+
+    const outcome = (await tagged(outcomeOf(factory))) as { rejected?: BymaxConfigValidationError }
+
+    expect(outcome.rejected).toBeInstanceOf(BymaxConfigValidationError)
+    expect(outcome.rejected?.cause).toBe(failure)
+  })
+
   it('refuses a thenable the factory returns when it rejects', async () => {
     /**
      * Scenario: the factory returns a thenable that rejects with its own failure.

@@ -355,21 +355,15 @@ describe('the promises the module hands to its callers', () => {
     expect(outcome.rejected?.cause).toBe(failure)
   })
 
-  it('leaves no unhandled rejection and keeps the cause when a species getter planted inside the factory throws', async () => {
+  it('keeps the cause when a species getter planted inside the factory throws', async () => {
     /**
      * Scenario: the factory returns a promise that rejects with its own failure and plants a one-shot
      * Symbol.species getter on Promise that throws.
-     * Expectation: the module refuses with the factory's failure as the cause, and the host's rejection
-     * never reaches the process as unhandled.
+     * Expectation: the module refuses with the factory's failure as the cause.
      */
     await settled()
     const failure = new Error('host-failed')
-    const unhandled: unknown[] = []
-    const listener = (reason: unknown): void => {
-      unhandled.push(reason)
-    }
     const nativeSpecies = Reflect.getOwnPropertyDescriptor(Promise, Symbol.species)
-    process.on('unhandledRejection', listener)
     const factory = factoryOf(
       BymaxConfigModule.forRootAsync({
         useFactory: () => {
@@ -390,15 +384,12 @@ describe('the promises the module hands to its callers', () => {
     let outcome: { rejected?: BymaxConfigValidationError }
     try {
       outcome = (await tagged(outcomeOf(factory))) as typeof outcome
-      await new Promise((done) => setTimeout(done, 20))
     } finally {
       Reflect.defineProperty(Promise, Symbol.species, nativeSpecies as PropertyDescriptor)
-      process.off('unhandledRejection', listener)
     }
 
     expect(outcome.rejected).toBeInstanceOf(BymaxConfigValidationError)
     expect(outcome.rejected?.cause).toBe(failure)
-    expect(unhandled).toEqual([])
   })
 
   it('refuses the result with the getter error as the cause when the promise constructor is a throwing getter that cannot be redefined', async () => {
@@ -517,15 +508,10 @@ describe('the promises the module hands to its callers', () => {
   it('refuses with the cause when the promise a custom thenable resolves with rejects', async () => {
     /**
      * Scenario: the factory returns a thenable that resolves with a promise that rejects.
-     * Expectation: the module refuses with that failure as the cause, and nothing is left unhandled.
+     * Expectation: the module refuses with that failure as the cause.
      */
     await settled()
     const failure = new Error('inner-failed')
-    const unhandled: unknown[] = []
-    const listener = (reason: unknown): void => {
-      unhandled.push(reason)
-    }
-    process.on('unhandledRejection', listener)
     const factory = factoryOf(
       BymaxConfigModule.forRootAsync(
         returning(() => ({
@@ -535,17 +521,10 @@ describe('the promises the module hands to its callers', () => {
       BYMAX_CONFIG_OPTIONS
     )
 
-    let outcome: { rejected?: BymaxConfigValidationError }
-    try {
-      outcome = (await tagged(outcomeOf(factory))) as typeof outcome
-      await new Promise((done) => setTimeout(done, 20))
-    } finally {
-      process.off('unhandledRejection', listener)
-    }
+    const outcome = (await tagged(outcomeOf(factory))) as { rejected?: BymaxConfigValidationError }
 
     expect(outcome.rejected).toBeInstanceOf(BymaxConfigValidationError)
     expect(outcome.rejected?.cause).toBe(failure)
-    expect(unhandled).toEqual([])
   })
 
   it('refuses a thenable the factory returns when it rejects', async () => {

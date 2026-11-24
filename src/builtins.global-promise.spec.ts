@@ -4,9 +4,9 @@
  * Layer: unit.
  * Goal: prove that the baseline records whatever `Promise` the host installed before the module loaded,
  * so that a later validation neither counts that stand-in as a replacement nor refuses to start, and that
- * a stand-in swapped in after the load is still counted. The validation these rows run is also the only
- * test that evaluates the module's constants (its messages, the identifier pattern, the kinds refused
- * as a source) while a test is running, so each is asserted here by what it decides.
+ * a stand-in swapped in after the load is still counted. The rows also load the modules inside a test body, so
+ * the mutation run attributes their module-level constants (messages, the identifier pattern, the kinds
+ * refused as a source) to these rows, and each is asserted here by what it decides.
  * Mocks: none. The global is replaced for one case, the modules are evaluated in an isolated registry,
  * and the global is put back afterwards.
  */

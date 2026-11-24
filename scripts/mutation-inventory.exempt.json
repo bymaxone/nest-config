@@ -28,6 +28,10 @@
     "reason": "Tests scripts/check-spec-headers.mjs, a CI tool outside the mutate list, by spawning it on throwaway git repositories. It imports nothing from src/, so no mutant of src/ can select it."
   },
   {
+    "file": "src/config.await-scan.spec.ts",
+    "reason": "Scans the text of every file under src for awaits and promise chains against an exemption map, by reading the source tree with node:fs. It imports nothing from src/, so no mutant of src/ can select it."
+  },
+  {
     "file": "src/mutate-const-tables.spec.ts",
     "reason": "Tests scripts/mutate-const-tables.mjs, a development tool outside the mutate list, by spawning it on fixture repositories. It imports nothing from src/, so no mutant of src/ can select it."
   },

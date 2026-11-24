@@ -16,7 +16,7 @@ import { BymaxConfigModule } from './config.module'
 import { createValidatedConfig } from './config.providers'
 import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
 import { defineEnv } from './define-env'
-import { BymaxConfigValidationError } from './errors'
+import { BymaxConfigValidationError, ConfigErrorCode } from './errors'
 
 const schema = defineEnv({ app: z.object({ name: z.string() }) })
 const nativeThen = Promise.prototype.then
@@ -237,6 +237,16 @@ describe('the promises the module hands to its callers', () => {
     return () => Reflect.deleteProperty(Object.prototype, name)
   }
 
+  /** The issues of the error a build throws, so a refusal is told from any other error of the same class. */
+  function issuesOf(build: () => unknown): unknown {
+    try {
+      build()
+    } catch (error) {
+      return (error as BymaxConfigValidationError).issues
+    }
+    return undefined
+  }
+
   it.each([
     ['a callable own then', { value: (): void => undefined, writable: true }],
     ['an accessor own then', { get: (): undefined => undefined }],
@@ -244,8 +254,16 @@ describe('the promises the module hands to its callers', () => {
   ])('refuses %s defined on the root while it is built', (_title, own) => {
     const unplant = plantSetter('app', own)
     try {
-      expect(() => createValidatedConfig({ schema, source: { APP_NAME: 'ok' } })).toThrow(
-        BymaxConfigValidationError
+      expect(issuesOf(() => createValidatedConfig({ schema, source: { APP_NAME: 'ok' } }))).toEqual(
+        [
+          {
+            path: 'then',
+            variable: 'THEN',
+            code: ConfigErrorCode.INVALID,
+            message:
+              'the validated configuration holds a callable or accessor `then`, which a promise would call'
+          }
+        ]
       )
     } finally {
       unplant()
@@ -256,9 +274,17 @@ describe('the promises the module hands to its callers', () => {
     const named = defineEnv({ then: z.object({ name: z.string() }) })
     const unplant = plantSetter('then', { value: (): void => undefined, writable: true })
     try {
-      expect(() => createValidatedConfig({ schema: named, source: { THEN_NAME: 'ok' } })).toThrow(
-        BymaxConfigValidationError
-      )
+      expect(
+        issuesOf(() => createValidatedConfig({ schema: named, source: { THEN_NAME: 'ok' } }))
+      ).toEqual([
+        {
+          path: 'then',
+          variable: 'THEN',
+          code: ConfigErrorCode.INVALID,
+          message:
+            'the validated configuration holds a callable or accessor `then`, which a promise would call'
+        }
+      ])
     } finally {
       unplant()
     }

@@ -336,18 +336,33 @@ export function tagged<T>(promise: Promise<T>): Promise<T> {
 }
 
 /**
- * Follow a promise the host produced through a new promise, so the value it fulfils with is taken as it is.
+ * Settle a pinned promise with its value in a box, by a native `await`: the pinned `constructor` is the
+ * intrinsic one, so that `await` reads neither `Symbol.species` nor a `then`.
  *
- * The follower subscribes with the `then` taken at load, called with `Reflect.apply`, which reads no `then`
- * from the promise. It settles with the value in a box that has no `then`: resolving it with the value itself
- * would read a `then` of that value a second time, and a value that answers differently on the second read
- * would not be the value the promise fulfilled with. The follower is tagged like any other promise the
- * library hands to an `await`.
+ * @param promise - A native promise whose `constructor` is pinned.
+ * @returns The fulfilment value, in a box with no `then`.
+ */
+async function boxedAwait<T>(promise: Promise<T>): Promise<{ readonly value: T }> {
+  return boxed(await promise)
+}
+
+/**
+ * Take what a promise the host produced settles with, in a box, so the value is read once and never for a
+ * `then`.
+ *
+ * A promise that takes the pin is awaited natively, which reads neither `Symbol.species` nor a `then`. One
+ * that cannot take it, being frozen or not extensible, is followed through a new promise that subscribes with
+ * the `then` taken at load, called with `Reflect.apply`: that call reads the species constructor, so a
+ * species getter the host planted can reject the follower, and the host's own rejection then has no handler.
+ * Both results are tagged like any other promise the library hands to an `await`.
  *
  * @param promise - A native promise returned by host code.
  * @returns A promise of the fulfilment value in a box, rejected with the reason `promise` rejects with.
  */
 export function followed<T>(promise: Promise<T>): Promise<{ readonly value: T }> {
+  if (defineProperty(promise, 'constructor', pin(PromiseIntrinsic))) {
+    return tagged(boxedAwait(promise))
+  }
   return tagged(
     new PromiseIntrinsic<{ readonly value: T }>((resolve, reject) => {
       apply(thenOf, promise, [(value: T): void => resolve(boxed(value)), reject])

@@ -322,6 +322,52 @@ describe('the promises the module hands to its callers', () => {
     expect(outcome.rejected?.cause).toBe(failure)
   })
 
+  it('leaves no unhandled rejection and keeps the cause when a species getter planted inside the factory throws', async () => {
+    /**
+     * Scenario: the factory returns a promise that rejects with its own failure and plants a one-shot
+     * Symbol.species getter on Promise that throws.
+     * Expectation: the module refuses with the factory's failure as the cause, and the host's rejection
+     * never reaches the process as unhandled.
+     */
+    await settled()
+    const failure = new Error('host-failed')
+    const unhandled: unknown[] = []
+    const listener = (reason: unknown): void => {
+      unhandled.push(reason)
+    }
+    const nativeSpecies = Reflect.getOwnPropertyDescriptor(Promise, Symbol.species)
+    process.on('unhandledRejection', listener)
+    const factory = factoryOf(
+      BymaxConfigModule.forRootAsync({
+        useFactory: () => {
+          const rejected = Promise.reject(failure)
+          Reflect.defineProperty(Promise, Symbol.species, {
+            configurable: true,
+            get() {
+              Reflect.defineProperty(Promise, Symbol.species, nativeSpecies as PropertyDescriptor)
+              throw new Error('species')
+            }
+          })
+          return rejected
+        }
+      }).providers ?? [],
+      BYMAX_CONFIG_OPTIONS
+    )
+
+    let outcome: { rejected?: BymaxConfigValidationError }
+    try {
+      outcome = (await tagged(outcomeOf(factory))) as typeof outcome
+      await new Promise((done) => setTimeout(done, 20))
+    } finally {
+      Reflect.defineProperty(Promise, Symbol.species, nativeSpecies as PropertyDescriptor)
+      process.off('unhandledRejection', listener)
+    }
+
+    expect(outcome.rejected).toBeInstanceOf(BymaxConfigValidationError)
+    expect(outcome.rejected?.cause).toBe(failure)
+    expect(unhandled).toEqual([])
+  })
+
   it('keeps what the options factory returned when the native promise it returns is frozen and answered for by accessors', async () => {
     /**
      * Scenario: the factory freezes its promise, so no own constructor can be pinned, and plants accessors

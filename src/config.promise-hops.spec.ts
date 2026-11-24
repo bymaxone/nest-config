@@ -100,6 +100,13 @@ async function settled(): Promise<void> {
   await Promise.resolve()
 }
 
+/** A factory that returns whatever the case needs, typed as the module takes it. */
+function returning(
+  useFactory: () => unknown
+): Parameters<typeof BymaxConfigModule.forRootAsync>[0] {
+  return { useFactory: useFactory as () => never }
+}
+
 /** Awaits what `call` returns the way Nest's injector awaits a factory result, and reports the outcome. */
 async function outcomeOf(call: () => unknown): Promise<unknown> {
   try {
@@ -392,6 +399,229 @@ describe('the promises the module hands to its callers', () => {
     expect(outcome.rejected).toBeInstanceOf(BymaxConfigValidationError)
     expect(outcome.rejected?.cause).toBe(failure)
     expect(unhandled).toEqual([])
+  })
+
+  it('refuses the result with the getter error as the cause when the promise constructor is a throwing getter that cannot be redefined', async () => {
+    /**
+     * Scenario: the factory returns a promise that rejects with its own failure and carries a
+     * non-configurable own `constructor` getter that throws, so no pin can be defined and the follower
+     * reads the constructor through the captured then.
+     * Expectation: the module refuses the factory's result with the getter's error as the cause. The host
+     * handles its own rejection first, because the test runner fails a test on an unhandled one.
+     */
+    await settled()
+    const failure = new Error('host-failed')
+    const getterError = new Error('constructor getter')
+    const factory = factoryOf(
+      BymaxConfigModule.forRootAsync({
+        useFactory: () => {
+          const rejected = Promise.reject(failure)
+          rejected.catch(() => undefined)
+          Reflect.defineProperty(rejected, 'constructor', {
+            configurable: false,
+            get() {
+              throw getterError
+            }
+          })
+          return rejected
+        }
+      }).providers ?? [],
+      BYMAX_CONFIG_OPTIONS
+    )
+
+    const outcome = (await tagged(outcomeOf(factory))) as { rejected?: BymaxConfigValidationError }
+
+    expect(outcome.rejected).toBeInstanceOf(BymaxConfigValidationError)
+    expect(outcome.rejected?.cause).toBe(getterError)
+  })
+
+  it('keeps what the options factory returned when it returns a plain object and plants a then on Object.prototype', async () => {
+    /**
+     * Scenario: the factory returns a plain options object, not a promise, and plants a one-shot `then` on
+     * Object.prototype that answers with other options when a promise is resolved with that object.
+     * Expectation: the options that reach the provider are the ones the factory returned.
+     */
+    await settled()
+    const real = { APP_NAME: 'real' }
+    const factory = factoryOf(
+      BymaxConfigModule.forRootAsync({
+        useFactory: () => {
+          Reflect.defineProperty(Object.prototype, 'then', {
+            configurable: true,
+            get() {
+              Reflect.deleteProperty(Object.prototype, 'then')
+              return (resolve: (value: unknown) => void) =>
+                resolve({ schema, source: { APP_NAME: 'forged' } })
+            }
+          })
+          return { schema, source: real }
+        }
+      }).providers ?? [],
+      BYMAX_CONFIG_OPTIONS
+    )
+
+    let resolved: { source?: unknown } | undefined
+    try {
+      resolved = (await factory()) as { source?: unknown }
+    } finally {
+      Reflect.deleteProperty(Object.prototype, 'then')
+    }
+
+    expect(resolved?.source).toEqual(real)
+  })
+
+  it('follows a thenable the factory returns through a data then, also when it is inherited', async () => {
+    /**
+     * Scenario: the factory returns an object whose `then` is a function held by its prototype.
+     * Expectation: the options it answers with reach the provider.
+     */
+    await settled()
+    const real = { APP_NAME: 'real' }
+    class Answering {
+      then(resolve: (value: unknown) => void): void {
+        resolve({ schema, source: real })
+      }
+    }
+    const factory = factoryOf(
+      BymaxConfigModule.forRootAsync(returning(() => new Answering())).providers ?? [],
+      BYMAX_CONFIG_OPTIONS
+    )
+
+    const resolved = (await factory()) as { source?: unknown }
+
+    expect(resolved.source).toEqual(real)
+  })
+
+  it('settles a promise a custom thenable resolves with, as an await would, so the options reach the provider', async () => {
+    /**
+     * Scenario: the factory returns a thenable that resolves with a promise of the options.
+     * Expectation: the options themselves, not the inner promise, reach the provider.
+     */
+    await settled()
+    const real = { APP_NAME: 'real' }
+    const factory = factoryOf(
+      BymaxConfigModule.forRootAsync(
+        returning(() => ({
+          then: (resolve: (value: unknown) => void) =>
+            resolve(Promise.resolve({ schema, source: real }))
+        }))
+      ).providers ?? [],
+      BYMAX_CONFIG_OPTIONS
+    )
+
+    const resolved = (await factory()) as { source?: unknown }
+
+    expect(resolved.source).toEqual(real)
+  })
+
+  it('refuses with the cause when the promise a custom thenable resolves with rejects', async () => {
+    /**
+     * Scenario: the factory returns a thenable that resolves with a promise that rejects.
+     * Expectation: the module refuses with that failure as the cause, and nothing is left unhandled.
+     */
+    await settled()
+    const failure = new Error('inner-failed')
+    const unhandled: unknown[] = []
+    const listener = (reason: unknown): void => {
+      unhandled.push(reason)
+    }
+    process.on('unhandledRejection', listener)
+    const factory = factoryOf(
+      BymaxConfigModule.forRootAsync(
+        returning(() => ({
+          then: (resolve: (value: unknown) => void) => resolve(Promise.reject(failure))
+        }))
+      ).providers ?? [],
+      BYMAX_CONFIG_OPTIONS
+    )
+
+    let outcome: { rejected?: BymaxConfigValidationError }
+    try {
+      outcome = (await tagged(outcomeOf(factory))) as typeof outcome
+      await new Promise((done) => setTimeout(done, 20))
+    } finally {
+      process.off('unhandledRejection', listener)
+    }
+
+    expect(outcome.rejected).toBeInstanceOf(BymaxConfigValidationError)
+    expect(outcome.rejected?.cause).toBe(failure)
+    expect(unhandled).toEqual([])
+  })
+
+  it('refuses a thenable the factory returns when it rejects', async () => {
+    /**
+     * Scenario: the factory returns a thenable that rejects with its own failure.
+     * Expectation: the module refuses with the failure as the cause.
+     */
+    await settled()
+    const failure = new Error('thenable-failed')
+    const factory = factoryOf(
+      BymaxConfigModule.forRootAsync(
+        returning(() => ({
+          then: (_resolve: unknown, reject: (reason: unknown) => void) => reject(failure)
+        }))
+      ).providers ?? [],
+      BYMAX_CONFIG_OPTIONS
+    )
+
+    const outcome = (await tagged(outcomeOf(factory))) as { rejected?: BymaxConfigValidationError }
+
+    expect(outcome.rejected).toBeInstanceOf(BymaxConfigValidationError)
+    expect(outcome.rejected?.cause).toBe(failure)
+  })
+
+  it('refuses options whose own then accessor answers with a function, without following it', async () => {
+    /**
+     * Scenario: the factory returns options that carry an accessor named then, which answers with a function
+     * that would resolve the promise with other options.
+     * Expectation: the answer is not followed, and the module refuses the result with the refusal of the
+     * accessor itself as the cause, not with an error raised later from the options it carried.
+     */
+    await settled()
+    let followed = 0
+    const factory = factoryOf(
+      BymaxConfigModule.forRootAsync(
+        returning(() => ({
+          schema,
+          source: {},
+          get then() {
+            return () => {
+              followed += 1
+            }
+          }
+        }))
+      ).providers ?? [],
+      BYMAX_CONFIG_OPTIONS
+    )
+
+    const outcome = (await tagged(outcomeOf(factory))) as { rejected?: BymaxConfigValidationError }
+
+    expect(outcome.rejected).toBeInstanceOf(BymaxConfigValidationError)
+    expect(outcome.rejected?.cause).toBeInstanceOf(TypeError)
+    expect((outcome.rejected?.cause as TypeError).message).toBe(
+      'the value returned by host code answers with a then that is not a data property'
+    )
+    expect(followed).toBe(0)
+  })
+
+  it.each([
+    ['a function', (): void => undefined],
+    ['null', null],
+    ['an object whose then is not callable', { then: 1 }]
+  ])('refuses %s the factory returns as options, without awaiting it', async (_title, returned) => {
+    /**
+     * Scenario: the factory returns a value that is not an options object.
+     * Expectation: the module refuses it with the library's error.
+     */
+    await settled()
+    const factory = factoryOf(
+      BymaxConfigModule.forRootAsync(returning(() => returned)).providers ?? [],
+      BYMAX_CONFIG_OPTIONS
+    )
+
+    const outcome = (await tagged(outcomeOf(factory))) as { rejected?: unknown }
+
+    expect(outcome.rejected).toBeInstanceOf(Error)
   })
 
   it('keeps what the options factory returned when the native promise it returns is frozen and answered for by accessors', async () => {

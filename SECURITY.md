@@ -60,6 +60,19 @@ exploitation forces an earlier publication.
 Reporters are credited in the GitHub Security Advisory and CHANGELOG entry
 unless they request anonymity.
 
+## Threat model: same-process code
+
+Code that runs in the same process as the library is trusted, as it is in Node itself: it can already read
+`process.env`, replace any built-in and call any function the library calls. The checks the library makes
+against such code are best-effort hardening that narrows the common accidents, not a security boundary, and
+a report whose attacker must already run code in the process is not a vulnerability in this package. Known
+limits, in one line: a data `then` planted on `Object.prototype` during a host call can still be followed,
+the built-ins the options are copied with are read live after the options factory returns, a Proxy placed
+in the prototype chain of a value a host returned answers to host code (a Proxy whose prototype is itself makes the
+lookup of its `then` loop), a thenable that resolves with itself, or two that resolve with each other,
+never settles (a native `await` behaves the same way), and a throwing
+`Promise[Symbol.species]` planted during a call refuses the result of a frozen promise.
+
 ## In-scope vulnerabilities
 
 The following classes are explicitly in scope:
@@ -90,6 +103,7 @@ These are not vulnerabilities in `@bymax-one/nest-config` itself:
 - Self-XSS, social engineering, denial of service via legitimate authenticated
   load
 - Theoretical attacks without a practical demonstration
+- Attacks that need code running in the same process as the library (see the threat model above)
 
 ## Security best practices for consumers
 

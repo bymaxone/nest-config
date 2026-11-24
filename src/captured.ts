@@ -10,6 +10,9 @@
 const apply = Reflect.apply
 const defineProperty = Reflect.defineProperty
 const create = Object.create
+const ownDescriptorOf = Object.getOwnPropertyDescriptor
+const prototypeOf = Object.getPrototypeOf
+const hasOwnOf = Object.hasOwn
 const PromiseIntrinsic = Promise
 const thenOf = Promise.prototype.then
 
@@ -344,6 +347,68 @@ export function tagged<T>(promise: Promise<T>): Promise<T> {
  */
 async function boxedAwait<T>(promise: Promise<T>): Promise<{ readonly value: T }> {
   return boxed(await promise)
+}
+
+/**
+ * Whether `value` is an object or a function, the only kinds that can own a property.
+ *
+ * @param value - What the host returned.
+ * @returns True for a non-null object or a function.
+ */
+function isObjectLike(value: unknown): value is object {
+  return (typeof value === 'object' && value !== null) || typeof value === 'function'
+}
+
+/**
+ * The `then` that resolving a promise with `value` would call, found by descriptor along the prototype chain
+ * so that no getter runs: only a data property that holds a function counts. A getter on the chain, such as
+ * one a host planted on `Object.prototype` to answer once, is not a `then` this library follows.
+ *
+ * @param value - What the host returned.
+ * @returns The function a data property named `then` holds, or undefined when the value is not a thenable.
+ */
+export function callableThen(value: unknown): ((...args: unknown[]) => unknown) | undefined {
+  if (!isObjectLike(value)) return undefined
+  let holder: object | null = value
+  while (holder !== null) {
+    const found = ownDescriptorOf(holder, 'then')
+    if (found !== undefined) {
+      return hasOwnOf(found, 'value') && typeof found.value === 'function' ? found.value : undefined
+    }
+    holder = prototypeOf(holder) as object | null
+  }
+  return undefined
+}
+
+/**
+ * Whether `value` carries an accessor named `then` of its own, which only host code can have put there.
+ *
+ * @param value - What the host returned.
+ * @returns True when the value owns a `then` that is a getter or a setter.
+ */
+export function ownsThenAccessor(value: unknown): boolean {
+  if (!isObjectLike(value)) return false
+  const found = ownDescriptorOf(value, 'then')
+  return found !== undefined && !hasOwnOf(found, 'value')
+}
+
+/**
+ * Follow a thenable the host returned into a promise this library built, calling the `then` found by
+ * {@link callableThen}, and hand back what it settles with in a box.
+ *
+ * @param value - The thenable.
+ * @param then - Its `then`, as {@link callableThen} found it.
+ * @returns A tagged promise of the box, rejected with the reason the thenable rejects with.
+ */
+export function adopted<T>(
+  value: unknown,
+  then: (...args: unknown[]) => unknown
+): Promise<{ readonly value: T }> {
+  return tagged(
+    new PromiseIntrinsic<{ readonly value: T }>((resolve, reject) => {
+      apply(then, value, [(settled: T): void => resolve(boxed(settled)), reject])
+    })
+  )
 }
 
 /**

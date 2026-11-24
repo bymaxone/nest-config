@@ -354,12 +354,15 @@ boot, so load polyfills first. The import checks that the global `Promise` is th
 redaction of the configuration uses the `Object.defineProperty` taken at load, so a replacement made while the
 validation runs cannot leave its values printable.
 
+These checks are best-effort hardening, not a security boundary: code in the same process is trusted, as it
+is in Node, and the threat model in `SECURITY.md` names the limits that remain.
+
 Not defended against: what zod and Node define with their own descriptors; a schema leaf that
 a host replaces with an accessor or a read-only property; and a `then` planted on `Object.prototype`, which
 every promise in the process, Nest's own among them, adopts, and which the validated configuration, an
 ordinary object, does not escape.
 
-A promise your options factory or `onValidationError` hook returns is pinned and awaited natively. One that cannot take a property, because it is frozen or not extensible, is followed through the `then` taken at load, which reads the species constructor: a throwing `Promise[Symbol.species]` planted inside that call then refuses the options factory's result, and the promise's own rejection is left without a handler.
+A promise your options factory or `onValidationError` hook returns is pinned and awaited natively. One that cannot take a property, because it is frozen, not extensible, or carries a non-configurable own `constructor`, is followed through the `then` taken at load, which reads the species constructor: a throwing `Promise[Symbol.species]` planted inside that call then refuses the options factory's result, and the promise's own rejection is left without a handler. A non-configurable own `constructor` getter that throws takes the same path, with the getter's error as the cause.
 
 The module, the config provider and an options provider that carries a factory, which the library rebuilds, have no prototype; the providers you bring in, and the objects Nest builds inside its own builder, are left as they are and are not covered.
 

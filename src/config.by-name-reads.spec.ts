@@ -272,6 +272,38 @@ describe('a validated configuration, whose root carries its own serializer', () 
     expect(new ConfigService(leafy as never).has('app.run' as never)).toBe(true)
   })
 
+  it('reads a hidden namespace whose value is undefined as a namespace of the service', () => {
+    const root = hidden({ app: { name: 'n' } }, 'extra', undefined)
+
+    expect(new ConfigService(root as never).toJSON().namespaces).toEqual(['app', 'extra'])
+  })
+
+  it('reads a hidden then that holds a value as a namespace of the service', () => {
+    const root = hidden({ app: { name: 'n' } }, 'then', { held: 1 })
+
+    expect(new ConfigService(root as never).toJSON().namespaces).toEqual(['app', 'then'])
+  })
+
+  it('reports a hidden override at the root whose value is undefined, as an unknown path', () => {
+    const ghost = hidden({ app: { name: 'x' } }, 'ghost', undefined)
+
+    const error = thrownBy(() => createTestConfig(schema, ghost as never))
+
+    expect((error as BymaxConfigValidationError).issues.map((issue) => issue.path)).toEqual([
+      'ghost'
+    ])
+  })
+
+  it('reports a hidden then at the root of the overrides that holds a value, as an unknown path', () => {
+    const held = hidden({ app: { name: 'x' } }, 'then', { held: 1 })
+
+    const error = thrownBy(() => createTestConfig(schema, held as never))
+
+    expect((error as BymaxConfigValidationError).issues.map((issue) => issue.path)).toEqual([
+      'then.held'
+    ])
+  })
+
   it('keeps a hidden toJSON that is not the root serializer: at a leaf, or not a function', () => {
     const atLeaf = thrownBy(() =>
       createTestConfig(schema, { app: hidden({}, 'toJSON', () => 1) } as never)

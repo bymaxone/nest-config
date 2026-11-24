@@ -15,7 +15,7 @@ import { inspect } from 'node:util'
 import { Logger } from '@nestjs/common'
 import type { FactoryProvider } from '@nestjs/common'
 
-import { assertBuiltinsIntact } from './builtins'
+import { assertBuiltinsIntact, fieldOf } from './builtins'
 import { pin, tagged } from './captured'
 import type { BymaxConfigModuleOptions } from './config.options'
 import { BYMAX_CONFIG, BYMAX_CONFIG_OPTIONS } from './config.tokens'
@@ -79,7 +79,12 @@ function redactRoot<T extends object>(root: T): T {
   // one, and a promise resolved with the root would call it.
   const held = ownDescriptor(root, 'then')
   if (held === undefined) defineProperty(root, 'then', pin(undefined))
-  else if (typeof held.value === 'function' || held.get !== undefined || held.set !== undefined) {
+  else if (
+    // Own fields only: a `value`, `get` or `set` planted on `Object.prototype` is not the descriptor's.
+    typeof fieldOf(held, 'value') === 'function' ||
+    typeof fieldOf(held, 'get') === 'function' ||
+    typeof fieldOf(held, 'set') === 'function'
+  ) {
     throw libraryError([
       {
         path: 'then',

@@ -36,7 +36,7 @@ const hasOwn = Object.hasOwn
  * @param field - Which field.
  * @returns The own field, or undefined when the descriptor has none.
  */
-function fieldOf(descriptor: PropertyDescriptor, field: 'get' | 'set' | 'value'): unknown {
+export function fieldOf(descriptor: PropertyDescriptor, field: 'get' | 'set' | 'value'): unknown {
   return hasOwn(descriptor, field) ? descriptor[field] : undefined
 }
 
@@ -98,6 +98,7 @@ const OWNER_GROUPS: ReadonlyArray<() => Group> = [
   ],
   (): Group => ['Reflect', Reflect, ['apply', 'get', 'set']],
   (): Group => ['Array', Array, ['isArray', Symbol.species]],
+  (): Group => ['Promise', Promise, [Symbol.species]],
   (): Group => ['ArrayBuffer', ArrayBuffer, ['isView']],
   (): Group => ['Number', Number, ['isInteger']],
   (): Group => ['Math', Math, ['ceil', 'floor', 'max', 'min']],

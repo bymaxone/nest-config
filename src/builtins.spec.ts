@@ -58,6 +58,7 @@ const EXPECTED = [
   'Reflect.set',
   'Array.isArray',
   'Array.Symbol(Symbol.species)',
+  'Promise.Symbol(Symbol.species)',
   'ArrayBuffer.isView',
   'Number.isInteger',
   'Math.ceil',
@@ -455,10 +456,10 @@ describe('the library is loaded while a built-in it builds its list with is repl
     expect(names).toContain('Object.keys')
     expect(names).not.toContain('Array.prototype.map')
     expect((refused as BymaxConfigValidationError).name).toBe('BymaxConfigValidationError')
-    // Nine groups name a Symbol key and five iterator prototypes are found through one, and none of them can be
+    // Ten groups name a Symbol key and five iterator prototypes are found through one, and none of them can be
     // recorded; the Symbol entry itself differs from the one recorded once the global is back.
     expect((refused as BymaxConfigValidationError).issues[0]?.message).toBe(
-      '15 of the built-ins the library calls were replaced after it loaded'
+      '16 of the built-ins the library calls were replaced after it loaded'
     )
     expect(getDescriptor(globalThis, 'Symbol')).toEqual(symbol)
   })
@@ -618,6 +619,43 @@ describe.each(BASELINE.map((entry) => [entry.name, entry] as const))(
     })
   }
 )
+
+describe('Promise[Symbol.species] replaced by an accessor of the host', () => {
+  it.each([
+    ['answers with a constructor of its own', (): unknown => class Fake {}],
+    [
+      'throws',
+      (): unknown => {
+        throw new Error('species')
+      }
+    ]
+  ])('is refused at every entry point when the getter %s', (_title, answer) => {
+    /**
+     * Scenario: a host replaces the accessor of Promise[Symbol.species] and leaves it there, so that every
+     * then, catch and finally made afterwards builds the promise the host chooses.
+     * Expectation: each entry point refuses with the count of replaced built-ins.
+     */
+    const config = createValidatedConfig({ schema, source: {} })
+    const native = getDescriptor(Promise, Symbol.species) as PropertyDescriptor
+    Reflect.defineProperty(Promise, Symbol.species, { get: answer, configurable: true })
+    try {
+      for (const [, start] of ENTRIES) {
+        let failure: unknown
+        try {
+          start(config)
+        } catch (error) {
+          failure = error
+        }
+        expect(failure).toBeInstanceOf(BymaxConfigValidationError)
+        expect((failure as BymaxConfigValidationError).issues[0]?.message).toBe(
+          '1 of the built-ins the library calls were replaced after it loaded'
+        )
+      }
+    } finally {
+      Reflect.defineProperty(Promise, Symbol.species, native)
+    }
+  })
+})
 
 describe('a built-in replaced by a function that answers wrongly', () => {
   it.each([

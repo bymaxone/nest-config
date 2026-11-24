@@ -28,6 +28,10 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // when the artifact shrinks.
 //
 // Calibration history (newest first):
+//   - The internal subpath measures 10.93 KiB brotli (11190 bytes): the engine below plus the lookup of the `then` a
+//     value the host returned would be resolved through, found by descriptor so that no getter runs, and the
+//     follower of a thenable with a data `then`, the one read of a `then` the host owns, which replace an `await` of a
+//     value that is not a promise. The budget, 11220 bytes (10.96 KiB), is that measurement plus 30 bytes.
 //   - The internal subpath measures 10.66 KiB brotli (10922 bytes): the engine below plus the follower of a promise the
 //     host returns and the check that the global `Promise` is the constructor of the promises of the engine, and `captured.ts`, the
 //     built-ins that decide a strict-mode refusal, an issue lookup, the layout of a report or the mark of a
@@ -101,7 +105,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 //     real public API lands and the built artifact stabilizes.
 const BUDGETS = [
   { name: 'root (schema, module, service)', path: 'dist/index.mjs', brotli: 5.25 * 1024 },
-  { name: 'internal (validation engine)', path: 'dist/internal/index.mjs', brotli: 10952 },
+  { name: 'internal (validation engine)', path: 'dist/internal/index.mjs', brotli: 11220 },
   { name: 'testing (test doubles)', path: 'dist/testing/index.mjs', brotli: 7 * 1024 }
 ]
 

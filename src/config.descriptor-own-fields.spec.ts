@@ -80,4 +80,38 @@ describe('descriptor fields are read as own fields', () => {
       Reflect.deleteProperty(Object.prototype, 'value')
     }
   })
+
+  it('lists a name the root reports but holds no descriptor for, as a namespace with no leaves', () => {
+    /**
+     * Scenario: a root whose own names include one that answers no descriptor, as a Proxy over an
+     * extensible target can.
+     * Expectation: the service is built, and the name is listed as a namespace with no leaves.
+     */
+    const root = new Proxy(
+      {},
+      {
+        ownKeys: () => ['ghost'],
+        getOwnPropertyDescriptor: () => undefined
+      }
+    )
+
+    const service = new ConfigService(root as never)
+
+    expect(service.toJSON().namespaces).toEqual(['ghost'])
+  })
+
+  it('lists an enumerable data toJSON and then as namespaces, as only the non-enumerable pinned pair is skipped', () => {
+    /**
+     * Scenario: a root whose own data properties named toJSON and then are enumerable, which the
+     * validated root never defines them as.
+     * Expectation: both are namespaces of the service.
+     */
+    const root = Object.create(null) as Record<string, unknown>
+    Reflect.defineProperty(root, 'toJSON', { value: () => ({}), enumerable: true })
+    Reflect.defineProperty(root, 'then', { value: undefined, enumerable: true })
+
+    const service = new ConfigService(root as never)
+
+    expect(service.toJSON().namespaces).toEqual(['toJSON', 'then'])
+  })
 })

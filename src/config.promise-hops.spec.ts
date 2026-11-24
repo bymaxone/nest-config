@@ -521,6 +521,11 @@ describe('the promises the module hands to its callers', () => {
      */
     await settled()
     const failure = new Error('inner-failed')
+    const unhandled: unknown[] = []
+    const listener = (reason: unknown): void => {
+      unhandled.push(reason)
+    }
+    process.on('unhandledRejection', listener)
     const factory = factoryOf(
       BymaxConfigModule.forRootAsync(
         returning(() => ({
@@ -530,10 +535,17 @@ describe('the promises the module hands to its callers', () => {
       BYMAX_CONFIG_OPTIONS
     )
 
-    const outcome = (await tagged(outcomeOf(factory))) as { rejected?: BymaxConfigValidationError }
+    let outcome: { rejected?: BymaxConfigValidationError }
+    try {
+      outcome = (await tagged(outcomeOf(factory))) as typeof outcome
+      await new Promise((done) => setTimeout(done, 20))
+    } finally {
+      process.off('unhandledRejection', listener)
+    }
 
     expect(outcome.rejected).toBeInstanceOf(BymaxConfigValidationError)
     expect(outcome.rejected?.cause).toBe(failure)
+    expect(unhandled).toEqual([])
   })
 
   it('refuses a thenable the factory returns when it rejects', async () => {
@@ -562,7 +574,8 @@ describe('the promises the module hands to its callers', () => {
     /**
      * Scenario: the factory returns options that carry an accessor named then, which answers with a function
      * that would resolve the promise with other options.
-     * Expectation: the answer is not followed, and the module refuses the result.
+     * Expectation: the answer is not followed, and the module refuses the result with the refusal of the
+     * accessor itself as the cause, not with an error raised later from the options it carried.
      */
     await settled()
     let followed = 0
@@ -581,9 +594,13 @@ describe('the promises the module hands to its callers', () => {
       BYMAX_CONFIG_OPTIONS
     )
 
-    const outcome = (await tagged(outcomeOf(factory))) as { rejected?: unknown }
+    const outcome = (await tagged(outcomeOf(factory))) as { rejected?: BymaxConfigValidationError }
 
     expect(outcome.rejected).toBeInstanceOf(BymaxConfigValidationError)
+    expect(outcome.rejected?.cause).toBeInstanceOf(TypeError)
+    expect((outcome.rejected?.cause as TypeError).message).toBe(
+      'the value returned by host code answers with a then that is not a data property'
+    )
     expect(followed).toBe(0)
   })
 

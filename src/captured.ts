@@ -30,8 +30,8 @@ function mapIteratorUnavailable(): never {
 }
 
 // Read from an iterator itself, not through `Object.getPrototypeOf`, so a replaced `getPrototypeOf` at load
-// cannot stop the import. A `keys` replaced before the import is a counted difference that every entry point
-// refuses before this step is used, so the import itself must not throw over it.
+// cannot stop the import. A `keys` replaced before the import is the baseline, so no entry check can see it;
+// the import must not throw over it, and a step that throws on first use keeps the cases that throw closed.
 const mapIteratorNextOf = ((): (() => IteratorResult<unknown>) => {
   try {
     return (new Map<string, string>().keys() as { next: () => IteratorResult<unknown> }).next

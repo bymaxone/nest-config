@@ -4,7 +4,9 @@
  * Layer: unit.
  * Goal: prove that the baseline records whatever `Promise` the host installed before the module loaded,
  * so that a later validation neither counts that stand-in as a replacement nor refuses to start, and that
- * a stand-in swapped in after the load is still counted.
+ * a stand-in swapped in after the load is still counted. The validation these rows run is also the only
+ * test that evaluates the module's constants (its messages, the identifier pattern, the kinds refused
+ * as a source) while a test is running, so each is asserted here by what it decides.
  * Mocks: none. The global is replaced for one case, the modules are evaluated in an isolated registry,
  * and the global is put back afterwards.
  */
@@ -16,6 +18,7 @@ interface Loaded {
   readonly builtins: typeof import('./builtins')
   readonly define: typeof import('./define-env')
   readonly validator: typeof import('./env-validator')
+  readonly formatter: typeof import('./report-formatter')
 }
 
 /** Evaluates the modules while the global `Promise` is `standIn`, leaving the global as it found it. */
@@ -34,7 +37,8 @@ function loadWithPromise(
       loaded = {
         builtins: require('./builtins') as typeof import('./builtins'),
         define: require('./define-env') as typeof import('./define-env'),
-        validator: require('./env-validator') as typeof import('./env-validator')
+        validator: require('./env-validator') as typeof import('./env-validator'),
+        formatter: require('./report-formatter') as typeof import('./report-formatter')
       }
     })
   } catch (thrown) {
@@ -114,5 +118,137 @@ describe('the baseline of built-ins when the global Promise was replaced before 
     Object.defineProperty(stand, Symbol.species, { get: () => class Other {}, configurable: true })
 
     expect(loaded.builtins.replacedBuiltins()).toBe(1)
+  })
+})
+
+/** The issues a validation of `source` reports, from the modules evaluated under the stand-in. */
+function issuesOf(
+  schema: ReturnType<Loaded['define']['defineEnv']>,
+  source: object,
+  loaded: Loaded,
+  strict = false
+): ReadonlyArray<{ readonly variable: string; readonly message: string }> {
+  try {
+    loaded.validator.validateEnv(schema, source as Record<string, string>, { strict })
+  } catch (error) {
+    return (error as { issues: ReadonlyArray<{ variable: string; message: string }> }).issues
+  }
+  return []
+}
+
+/** A class whose name is exactly `name`, whatever characters it holds. */
+function errorNamed(name: string): new () => Error {
+  return Object.defineProperty(class extends Error {}, 'name', { value: name }) as new () => Error
+}
+
+describe('the constants a validation decides with, read through the modules evaluated in isolation', () => {
+  it('words a missing leaf, an unknown variable and a message-less custom check as the report does', () => {
+    /**
+     * Scenario: strict validation of a source that lacks a required leaf, names an undeclared variable
+     * and trips a custom check that wrote no message.
+     * Expectation: each issue carries the report's own wording, not an empty or the library's default text.
+     */
+    const { loaded, restore } = loadWithPromise(zoneLike(), true)
+    let issues: ReturnType<typeof issuesOf> | undefined
+    try {
+      const schema = loaded.define.defineEnv({
+        app: z.object({ name: z.string() }),
+        limits: z.object({ cap: z.string() }).check((ctx) => {
+          ctx.issues.push({ code: 'custom', input: ctx.value.cap, path: ['cap'] })
+        })
+      })
+      issues = issuesOf(schema, { APP_EXTRA: 'x', LIMITS_CAP: 'a' }, loaded, true)
+    } finally {
+      restore()
+    }
+
+    expect((issues ?? []).map((issue) => [issue.variable, issue.message])).toEqual(
+      expect.arrayContaining([
+        ['APP_NAME', 'missing required value'],
+        ['APP_EXTRA', 'unknown variable not declared in the schema'],
+        ['LIMITS_CAP', 'invalid value']
+      ])
+    )
+  })
+
+  it.each([
+    ['ValidError', 'ValidError'],
+    ['A', 'A'],
+    ['_$x9', '_$x9'],
+    ['A B', undefined],
+    [' A', undefined],
+    ['A!', undefined],
+    ['1A', undefined],
+    ['', undefined]
+  ])('names a thrown Error class %j as %j', (className, named) => {
+    /**
+     * Scenario: a rule throws an Error whose class carries the given name.
+     * Expectation: the issue names the class only when the name is plain code, in full, and says the
+     * thrown value is not an Error otherwise.
+     */
+    const { loaded, restore } = loadWithPromise(zoneLike(), true)
+    let issues: ReturnType<typeof issuesOf> | undefined
+    try {
+      const Thrown = errorNamed(className)
+      const schema = loaded.define.defineEnv({
+        app: z.object({ name: z.string() }).check(() => {
+          throw new Thrown()
+        })
+      })
+      issues = issuesOf(schema, { APP_NAME: 'x' }, loaded)
+    } finally {
+      restore()
+    }
+
+    expect(issues?.[0]?.message).toBe(
+      named === undefined
+        ? 'a rule threw a value that is not an Error; the value is withheld because it can carry the value'
+        : `a rule threw ${named}; its message is withheld because it can carry the value`
+    )
+  })
+
+  it.each([
+    [
+      'an arguments object',
+      (): object =>
+        (function (..._args: unknown[]) {
+          return arguments
+        })()
+    ],
+    ['a Date', (): object => new Date(0)],
+    ['a RegExp', (): object => /x/u],
+    ['an Error', (): object => new Error('x')],
+    ['a boxed number', (): object => Object(1) as object]
+  ])('refuses %s as a source although it carries no toStringTag', (_name, make) => {
+    /**
+     * Scenario: the host passes a built-in kind with no `Symbol.toStringTag` as the source.
+     * Expectation: the validation refuses it as an object that is not a record of variables.
+     */
+    const { loaded, restore } = loadWithPromise(zoneLike(), true)
+    let issues: ReturnType<typeof issuesOf> | undefined
+    try {
+      const schema = loaded.define.defineEnv({ app: z.object({ name: z.string() }) })
+      issues = issuesOf(schema, make(), loaded)
+    } finally {
+      restore()
+    }
+
+    expect((issues ?? []).map((issue) => issue.message)).toEqual([
+      'the source must be an object of variables, received an object that is not a record of variables'
+    ])
+  })
+
+  it('closes a report made only of overrides with the footer about the test', () => {
+    /**
+     * Scenario: an issue with no variable, as a test helper reports for an override that matches nothing.
+     * Expectation: the report asks for a fix in the test, and not for a restart of the process.
+     */
+    const { loaded, restore } = loadWithPromise(zoneLike(), false)
+    restore()
+    const report = loaded.formatter.formatIssueReport([
+      { path: 'ghost.x', variable: '', code: 'INVALID', message: 'm' } as never
+    ])
+
+    expect(report.endsWith('Fix the overrides above in the test.')).toBe(true)
   })
 })

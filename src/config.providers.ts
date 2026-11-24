@@ -23,6 +23,7 @@ import { deepFreeze } from './deep-freeze'
 import { guarded, toWithheldIssue, validateEnv, withCause } from './env-validator'
 import { ConfigErrorCode, isLibraryError, libraryError } from './errors'
 import type { BymaxConfigValidationError, ConfigIssue } from './errors'
+import { pinHostPromise } from './host-promise'
 import { bare, hasOption, readOption } from './option-read'
 import type { EnvOutput, EnvSchema, EnvShape } from './types'
 
@@ -125,7 +126,7 @@ async function reportIssues(
 ): Promise<void> {
   if (hook === undefined) return
   try {
-    await hook(error.issues)
+    await pinHostPromise(hook(error.issues))
   } catch (hookError) {
     // A refused host read already carries what the host threw as its cause, even `undefined`, and keeps it.
     if (!('cause' in error)) withCause(error, hookError)

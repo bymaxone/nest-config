@@ -241,6 +241,73 @@ describe('a built-in replaced inside the validation', () => {
     }
   })
 
+  /** Evaluates `./captured` while the global `Promise` is `fake`, and reports what that threw, if anything. */
+  function loadWithPromise(fake: unknown): unknown {
+    const held = Object.getOwnPropertyDescriptor(globalThis, 'Promise') as PropertyDescriptor
+    Object.defineProperty(globalThis, 'Promise', { ...held, value: fake })
+    try {
+      jest.isolateModules(() => {
+        require('./captured')
+      })
+      return undefined
+    } catch (thrown) {
+      return thrown
+    } finally {
+      Object.defineProperty(globalThis, 'Promise', held)
+    }
+  }
+
+  it.each([
+    ['a class of its own', class Foreign {}],
+    [
+      'a function that took the intrinsic prototype',
+      Object.assign(function Promise() {}, {
+        prototype: Reflect.getPrototypeOf((async (): Promise<void> => {})())
+      })
+    ]
+  ])('stops the import and names the cause when the global Promise is %s', (_name, standIn) => {
+    /**
+     * Scenario: the global `Promise` is replaced before the module is evaluated.
+     * Expectation: the import throws a TypeError that says it is not the constructor of the promises of
+     * the engine, since the prototype of those promises still names the intrinsic one.
+     */
+    expect(loadWithPromise(standIn)).toEqual(
+      new TypeError(
+        'Promise was replaced before the import: it is not the constructor of the promises of the engine'
+      )
+    )
+  })
+
+  it('loads when the global Promise and the constructor of its prototype are both replaced', () => {
+    /**
+     * Scenario: a stand-in takes the place of the global `Promise` and of `Promise.prototype.constructor`.
+     * Expectation: the import does not throw; this is the before-load limit the README states.
+     */
+    const prototype = Reflect.getPrototypeOf((async (): Promise<void> => {})()) as object
+    const held = Object.getOwnPropertyDescriptor(prototype, 'constructor') as PropertyDescriptor
+    const standIn = Object.assign(function Promise() {}, { prototype })
+    Object.defineProperty(prototype, 'constructor', { ...held, value: standIn })
+    try {
+      expect(loadWithPromise(standIn)).toBeUndefined()
+    } finally {
+      Object.defineProperty(prototype, 'constructor', held)
+    }
+  })
+
+  it('loads when the global Promise is the intrinsic one', () => {
+    /**
+     * Scenario: nothing was replaced before the import.
+     * Expectation: the module evaluates, and a tagged promise carries the intrinsic as its constructor.
+     */
+    let loaded: typeof import('./captured') | undefined
+    jest.isolateModules(() => {
+      loaded = require('./captured') as typeof import('./captured')
+    })
+
+    const promise = loaded?.tagged(Promise.resolve(1)) as Promise<number>
+    expect(Reflect.get(promise, 'constructor')).toBe(Promise)
+  })
+
   it('names the cause when the keys of a map are asked for after a pre-import replacement', () => {
     /**
      * Scenario: the module loaded while `Map.prototype.keys` was replaced, and a map's keys are asked for.

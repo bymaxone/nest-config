@@ -11,6 +11,18 @@ const apply = Reflect.apply
 const defineProperty = Reflect.defineProperty
 const create = Object.create
 const PromiseIntrinsic = Promise
+
+// The pin value of `tagged` has to be the engine's own `Promise`, since an `await` compares a promise's
+// `constructor` with it. The promise an async function returns inherits its `constructor` from the intrinsic
+// prototype whatever the global `Promise` was replaced with, so a global that is not that constructor is a
+// stand-in, and the import fails here, naming the cause, instead of pinning a promise to it. The read goes
+// through the promise and not through `Object.getPrototypeOf`, which a host may have replaced and which the
+// import has to survive.
+if ((async (): Promise<void> => {})().constructor !== PromiseIntrinsic) {
+  throw new TypeError(
+    'Promise was replaced before the import: it is not the constructor of the promises of the engine'
+  )
+}
 const startsWithOf = String.prototype.startsWith
 const padStartOf = String.prototype.padStart
 const padEndOf = String.prototype.padEnd

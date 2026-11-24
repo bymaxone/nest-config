@@ -21,10 +21,11 @@ import { BymaxConfigValidationError } from './errors'
 const schema = defineEnv({ app: z.object({ name: z.string() }) })
 const nativeThen = Promise.prototype.then
 const nativeConstructor = Reflect.getOwnPropertyDescriptor(Promise.prototype, 'constructor')
+const nativeThenDescriptor = Reflect.getOwnPropertyDescriptor(Promise.prototype, 'then')
 
 /** Puts back what a hijack replaced, so a failing row cannot leak into the next one. */
 function restore(): void {
-  Promise.prototype.then = nativeThen
+  Reflect.defineProperty(Promise.prototype, 'then', nativeThenDescriptor as PropertyDescriptor)
   Reflect.defineProperty(Promise.prototype, 'constructor', nativeConstructor as PropertyDescriptor)
 }
 
@@ -49,6 +50,33 @@ function hijackPromises(answer: unknown): void {
     )
   } as typeof Promise.prototype.then
   queueMicrotask(restore)
+}
+
+/**
+ * Plants accessors on `Promise.prototype` for `constructor` and `then` that each put the native property
+ * back the first time it is read. An `await` of a native promise reads `constructor`, and when that is not
+ * the intrinsic it reads `then`, so the pair answers for the promise with the given value and leaves
+ * nothing behind for the runner's own awaits to trip on.
+ */
+function plantSelfRestoringAnswer(answer: unknown): void {
+  Reflect.defineProperty(Promise.prototype, 'constructor', {
+    configurable: true,
+    get() {
+      Reflect.defineProperty(
+        Promise.prototype,
+        'constructor',
+        nativeConstructor as PropertyDescriptor
+      )
+      return function Foreign() {}
+    }
+  })
+  Reflect.defineProperty(Promise.prototype, 'then', {
+    configurable: true,
+    get() {
+      Reflect.defineProperty(Promise.prototype, 'then', nativeThenDescriptor as PropertyDescriptor)
+      return (onFulfilled: (value: unknown) => unknown) => onFulfilled(answer)
+    }
+  })
 }
 
 /** A source whose `APP_NAME` getter hijacks promise resolution and reads as missing. */
@@ -242,6 +270,56 @@ describe('the promises the module hands to its callers', () => {
     const root = createValidatedConfig({ schema: named, source: { THEN_NAME: 'ok' } })
 
     expect(root.then).toEqual({ name: 'ok' })
+  })
+
+  it('keeps what the options factory returned when a native promise it returns is answered for by accessors planted inside it', async () => {
+    await settled()
+    const real = { APP_NAME: 'real' }
+    const factory = factoryOf(
+      BymaxConfigModule.forRootAsync({
+        useFactory: () => {
+          plantSelfRestoringAnswer({ schema, source: { APP_NAME: 'forged' } })
+          return Promise.resolve({ schema, source: real })
+        }
+      }).providers ?? [],
+      BYMAX_CONFIG_OPTIONS
+    )
+
+    let outcome: { resolved?: { source?: unknown } }
+    try {
+      outcome = (await tagged(outcomeOf(factory))) as typeof outcome
+    } finally {
+      restore()
+    }
+
+    expect(outcome.resolved?.source).toEqual(real)
+  })
+
+  it('keeps the cause a hook rejected with when a native promise it returns is answered for by accessors planted inside it', async () => {
+    await settled()
+    const failure = new Error('the hook failed')
+    const onValidationError = (): Promise<void> => {
+      const rejected = Promise.reject(failure)
+      nativeThen.call(rejected, undefined, () => undefined)
+      plantSelfRestoringAnswer(undefined)
+      return rejected
+    }
+    const factory = factoryOf(
+      BymaxConfigModule.forRoot({ schema, source: {}, onValidationError }).providers ?? [],
+      BYMAX_CONFIG
+    )
+
+    let outcome: { rejected?: BymaxConfigValidationError }
+    try {
+      outcome = (await tagged(
+        outcomeOf(() => factory({ schema, source: {}, onValidationError }))
+      )) as typeof outcome
+    } finally {
+      restore()
+    }
+
+    expect(outcome.rejected).toBeInstanceOf(BymaxConfigValidationError)
+    expect(outcome.rejected?.cause).toBe(failure)
   })
 
   it('keeps the provider token resolvable when nothing is hijacked', async () => {

@@ -17,6 +17,7 @@ import type { z } from 'zod'
 
 import { assertBuiltinsIntact } from './builtins'
 import {
+  append,
   concatenated,
   mapGet,
   mapHas,
@@ -367,16 +368,14 @@ function detectUnknownKeys(
     if (mapGet(source, key) === undefined) continue // absent, not stray
     const match = longestMatchingPrefix(prefixes, key)
     if (match === undefined) continue
-    // The namespace declared itself open: the rest of its prefix belongs to a
-    // library or tool that reads those variables natively, so an undeclared one
-    // is not evidence of an operator mistake.
+    // An open namespace shares its prefix with a library that reads those variables itself.
     if (match.open) continue
-    issues[issues.length] = {
+    append(issues, {
       path: match.namespace,
       variable: key,
       code: ConfigErrorCode.UNKNOWN_KEY,
       message: UNKNOWN_KEY_MESSAGE
-    }
+    })
   }
   // Sort by variable in code-point order (locale-independent) so the aggregated
   // report is stable across platforms regardless of the source key-enumeration

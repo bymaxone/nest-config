@@ -8,6 +8,8 @@
  */
 
 const apply = Reflect.apply
+const defineProperty = Reflect.defineProperty
+const create = Object.create
 const startsWithOf = String.prototype.startsWith
 const padStartOf = String.prototype.padStart
 const padEndOf = String.prototype.padEnd
@@ -222,7 +224,7 @@ export function mapKeys<TKey, TValue>(map: ReadonlyMap<TKey, TValue>): TKey[] {
   for (;;) {
     const step = apply(mapIteratorNextOf, iterator, []) as IteratorResult<TKey>
     if (step.done === true) return keys
-    keys[keys.length] = step.value
+    append(keys, step.value)
   }
 }
 
@@ -236,7 +238,7 @@ export function concatenated<T>(lists: ReadonlyArray<readonly T[]>): T[] {
   const all: T[] = []
   for (let at = 0; at < lists.length; at += 1) {
     const list = lists[at] as readonly T[]
-    for (let inner = 0; inner < list.length; inner += 1) all[all.length] = list[inner] as T
+    for (let inner = 0; inner < list.length; inner += 1) append(all, list[inner] as T)
   }
   return all
 }
@@ -255,4 +257,22 @@ export function setOfBy<TItem, TValue>(
   const set = setOf<TValue>([])
   for (let at = 0; at < items.length; at += 1) setAdd(set, pick(items[at] as TItem))
   return set
+}
+
+/**
+ * Add an item at the end of an array as an own element, even where an index setter is inherited.
+ *
+ * An assignment to a new index reaches a setter planted on `Array.prototype`, and `push` is replaceable;
+ * defining the element reaches neither.
+ *
+ * @param list - The array to grow.
+ * @param item - The item to add.
+ */
+export function append<T>(list: T[], item: T): void {
+  const descriptor = create(null) as PropertyDescriptor
+  descriptor.value = item
+  descriptor.writable = true
+  descriptor.enumerable = true
+  descriptor.configurable = true
+  defineProperty(list, list.length, descriptor)
 }

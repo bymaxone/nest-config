@@ -122,6 +122,43 @@ describe('a built-in replaced inside the validation', () => {
     }
   )
 
+  it('refuses a plain undeclared variable when an index setter is inherited by every array', () => {
+    /**
+     * Scenario: a getter of a declared variable puts a setter on `Array.prototype[0]`, so an assignment
+     * to a new array's first element reaches the setter and creates no element.
+     * Expectation: the validation is still refused and the refusal still carries its issue; a setter
+     * that dropped the issue would leave an error that reports zero.
+     */
+    let restore: (() => void) | undefined
+    let swallowed = 0
+    const source = {
+      get APP_PORT(): string {
+        Object.defineProperty(Array.prototype, 0, {
+          configurable: true,
+          set() {
+            swallowed += 1
+          }
+        })
+        restore = () => {
+          Reflect.deleteProperty(Array.prototype, 0)
+        }
+        return '1'
+      },
+      APP_STRAY: 'x'
+    }
+    let error: BymaxConfigValidationError | undefined
+    try {
+      validateEnv(schema, source, { strict: true })
+    } catch (thrown) {
+      error = thrown as BymaxConfigValidationError
+    } finally {
+      restore?.()
+    }
+
+    expect(swallowed).toBeGreaterThan(0)
+    expect(error?.issues.length).toBeGreaterThan(0)
+  })
+
   it('keeps the report layout when Math.max, Math.min and padEnd are replaced', () => {
     /**
      * Scenario: the public constructor formats a report while the three layout built-ins answer

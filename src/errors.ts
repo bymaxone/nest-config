@@ -8,7 +8,7 @@
  * @layer Error
  */
 
-import { padStart, weakSetAdd, weakSetHas } from './captured'
+import { append, padStart, weakSetAdd, weakSetHas } from './captured'
 import { bare } from './option-read'
 import { formatIssueReport } from './report-formatter'
 
@@ -48,7 +48,6 @@ const codePointAt = String.prototype.codePointAt
 const fromCodePoint = String.fromCodePoint
 const execUnsafe = RegExp.prototype.exec
 const reflectGet = Reflect.get
-const reflectSet = Reflect.set
 const nativeApplyAtLoad = Reflect.apply
 
 /**
@@ -190,7 +189,7 @@ function copyIssues(issues: ReadonlyArray<ConfigIssue>): ReadonlyArray<ConfigIss
     if (typeof issue !== 'object' || issue === null) {
       throw new TypeError(`BymaxConfigValidationError: issue ${index} must be an object`)
     }
-    reflectSet(copy, index, copyIssue(issue, index))
+    append(copy, copyIssue(issue, index))
   }
   return copy
 }

@@ -657,6 +657,33 @@ describe('Promise[Symbol.species] replaced by an accessor of the host', () => {
   })
 })
 
+describe('the descriptor of Promise[Symbol.species] compared while a get is planted', () => {
+  it('tells a data property from the accessor it replaced: fields are read as own fields', () => {
+    /**
+     * Scenario: the species accessor was replaced by a data property holding undefined, and a `get` that is
+     * the native getter is planted on Object.prototype. Nothing global is read while it is planted: a
+     * `get` there makes the jest context abort when a global's descriptor is read.
+     * Expectation: the data property is not the accessor, as it is without the plant.
+     */
+    const native = getDescriptor(Promise, Symbol.species) as PropertyDescriptor
+    const replaced: PropertyDescriptor = { value: undefined, configurable: true }
+    Reflect.defineProperty(Object.prototype, 'get', {
+      value: native.get,
+      configurable: true,
+      writable: true
+    })
+    let same: boolean
+    try {
+      same = sameDescriptor(replaced, native)
+    } finally {
+      Reflect.deleteProperty(Object.prototype, 'get')
+    }
+
+    expect(same).toBe(false)
+    expect(sameDescriptor(replaced, native)).toBe(false)
+  })
+})
+
 describe('a built-in replaced by a function that answers wrongly', () => {
   it.each([
     ['Object.defineProperty', Object, 'defineProperty'],

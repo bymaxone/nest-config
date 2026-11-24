@@ -60,7 +60,7 @@ const REDACTED_ROOT = '[BymaxConfig: values redacted]'
  * `assertNamespaces` keeps a namespace from taking the name `toJSON`. It also carries an own, non-enumerable
  * `then` of `undefined`, so that a `then` planted on `Object.prototype` is never found when a promise
  * resolves with the root. A callable or accessor own `then` that validation left on the root is refused; a
- * planted non-callable value can remain (#250).
+ * planted non-callable value can remain.
  *
  * @param root - The validated output, not yet frozen.
  * @returns The same reference.

@@ -9,17 +9,6 @@
  */
 
 /**
- * Narrow an unknown value to a freezable object (non-null, `typeof object`).
- *
- * @param value - The value to test.
- * @returns True when the value is a non-null object or array.
- */
-function isFreezable(value: unknown): value is Record<string, unknown> {
-  // Stryker disable next-line ConditionalExpression,LogicalOperator: equivalent — these mutants make the guard admit more inputs (primitives and `null`), but `deepFreeze` guards with `!isFreezable(value) || Object.isFrozen(value)`, and `Object.isFrozen` is `true` for every input they newly admit. The same early `return value` is reached, nothing is frozen or recursed differently, and the returned reference is unchanged.
-  return typeof value === 'object' && value !== null
-}
-
-/**
  * Deep-freeze a value through every nested level at runtime.
  *
  * Freezes the value and every nested object and array reachable through its own
@@ -49,13 +38,16 @@ function isFreezable(value: unknown): value is Record<string, unknown> {
  * ```
  */
 export function deepFreeze<T>(value: T): Readonly<T> {
-  if (!isFreezable(value) || Object.isFrozen(value) || ArrayBuffer.isView(value)) {
+  // `Object.isFrozen` answers true for null and every primitive, so only an object, an array or a function
+  // that is neither frozen nor a view gets past this guard; a function is not an object by `typeof` and is
+  // returned as it is.
+  if (typeof value !== 'object' || Object.isFrozen(value) || ArrayBuffer.isView(value)) {
     return value as Readonly<T>
   }
 
   // Freeze before recursing so a cycle hits the already-frozen guard above.
   Object.freeze(value)
-  for (const nested of Object.values(value)) {
+  for (const nested of Object.values(value as Record<string, unknown>)) {
     deepFreeze(nested)
   }
 

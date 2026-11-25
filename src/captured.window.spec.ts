@@ -74,6 +74,14 @@ function strictAfterInstall(target: Target): BymaxConfigValidationError {
 }
 
 describe('a built-in replaced inside the validation', () => {
+  /**
+   * The warm-up makes the rows measure a schema that has been parsed once. A first parse of a
+   * schema under a replaced built-in is not covered by these rows.
+   */
+  beforeAll(() => {
+    validateEnv(schema, { APP_PORT: '1' }, { strict: true })
+  })
+
   it.each(TARGETS)(
     'does not change the strict refusal of an undeclared variable when $name is replaced',
     (target) => {

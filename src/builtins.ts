@@ -40,7 +40,6 @@ export function fieldOf(descriptor: PropertyDescriptor, field: 'get' | 'set' | '
   return hasOwn(descriptor, field) ? descriptor[field] : undefined
 }
 
-// Stryker disable next-line ArrayDeclaration: a getter takes no arguments, so one extra argument is not observable and a getter that read it would be a different built-in
 const NO_ARGUMENTS: readonly unknown[] = []
 
 /** How many built-ins could not be recorded at load, which counts as replaced when the check runs. */
@@ -242,9 +241,7 @@ const OWNER_GROUPS: ReadonlyArray<() => Group> = [
   ]
 ]
 
-// Stryker disable next-line ArrayDeclaration: every array iterates with the same prototype, so the content of this one is not observable; the case that replaces the next of the Array iterator shows the entry works
 const SOME_ARRAY: readonly unknown[] = []
-// Stryker disable next-line StringLiteral: every string iterates with the same prototype, so the content of this one is not observable; the case that replaces the next of the String iterator shows the entry works
 const SOME_STRING = ''
 
 /**

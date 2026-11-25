@@ -28,9 +28,8 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // when the artifact shrinks.
 //
 // Calibration history (newest first):
-//   - The internal subpath measures 11.08 KiB brotli (11348 bytes): the engine below with five `as` casts moved onto
-//     bare bindings so that the mutation tool can see the logic beside them, and the guard that checks the built-ins
-//     before an options factory of the host runs. The budget, 11378 bytes (11.11 KiB), is that measurement plus 30 bytes.
+//   - The internal subpath measures 11.00 KiB brotli (11266 bytes). The budget, 11296 bytes (11.03 KiB), is that
+//     measurement plus 30 bytes, so a shrink tightens it.
 //   - The internal subpath measures 11.04 KiB brotli (11308 bytes): the engine below plus the capture of the engine's
 //     `Promise` and its `then` from the prototype of an async function's promise, and the refusal of a `then` accessor held by a prototype other than `Object.prototype`. The budget,
 //     11340 bytes (11.07 KiB), is that measurement plus 32 bytes.
@@ -111,7 +110,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 //     real public API lands and the built artifact stabilizes.
 const BUDGETS = [
   { name: 'root (schema, module, service)', path: 'dist/index.mjs', brotli: 5.25 * 1024 },
-  { name: 'internal (validation engine)', path: 'dist/internal/index.mjs', brotli: 11378 },
+  { name: 'internal (validation engine)', path: 'dist/internal/index.mjs', brotli: 11296 },
   { name: 'testing (test doubles)', path: 'dist/testing/index.mjs', brotli: 7 * 1024 }
 ]
 

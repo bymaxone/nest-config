@@ -141,17 +141,13 @@ export function some<TItem>(list: readonly TItem[], test: (item: TItem) => boole
 }
 
 /**
- * Sort the list in place, as `Array.prototype.sort` does.
+ * Sort a list of strings in place by UTF-16 code unit, as `Array.prototype.sort` does with no comparator.
  *
- * @param list - The list.
- * @param compare - The comparator.
+ * @param list - The strings.
  * @returns The same list, sorted.
  */
-export function sortInPlace<TItem>(
-  list: TItem[],
-  compare: (left: TItem, right: TItem) => number
-): TItem[] {
-  return apply(sortOf, list, [compare]) as TItem[]
+export function sortStrings(list: string[]): string[] {
+  return apply(sortOf, list, []) as string[]
 }
 
 /**

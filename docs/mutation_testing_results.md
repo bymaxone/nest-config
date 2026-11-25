@@ -96,9 +96,9 @@ non-equivalent survivors:
 | `errors.ts`                          | 100.00 % | 0                      |
 | `report-formatter.ts`                | 100.00 % | 0                      |
 | `testing/create-test-config.ts`      | 100.00 % | 0                      |
-| `testing/placeholder-synthesizer.ts` | 100.00 % | 0 (1 silenced)         |
-| `env-validator.ts`                   | 100.00 % | 0 (5 silenced)         |
-| `deep-freeze.ts`                     | 100.00 % | 0 (4 silenced)         |
+| `testing/placeholder-synthesizer.ts` | 100.00 % | 0                      |
+| `env-validator.ts`                   | 100.00 % | 0                      |
+| `deep-freeze.ts`                     | 100.00 % | 0                      |
 | `source-mapping.ts`                  | 100.00 % | 0                      |
 
 `config.module-definition.ts`, `config.options.ts`, `config.tokens.ts`,
@@ -111,53 +111,31 @@ runtime mutants to score.
 Each of the following is an equivalent mutant: no test can observe a behavioral
 difference, so it is silenced with an inline reason and is not a coverage gap.
 
-### `deep-freeze.ts:17` - `isFreezable` guard (4 mutants)
+Entries that stood here were measured on 2026-11-24 by applying every mutant of the named
+mutators by hand and running the specs of the file, and they did not hold. They were removed
+together with their directives:
 
-`ConditionalExpression` and `LogicalOperator` mutants that make `isFreezable`
-return `true` for more inputs (primitives and `null`). `deepFreeze` guards with
-`if (!isFreezable(value) || Object.isFrozen(value)) return value`. For every input
-these mutants newly admit (primitives and `null`), `Object.isFrozen` returns
-`true`, so the guard reaches the same early `return value`. No object is frozen or
-recursed differently, and the returned reference is unchanged, so the observable
-result is identical.
-
-### `env-validator.ts:218` - longest-prefix tie (`>` to `>=`, 1 mutant)
-
-`longestMatchingPrefix` keeps the first match unless a later prefix is strictly
-longer. The `>` to `>=` mutant only changes behavior when two declared namespaces
-produce equal-length prefixes that both prefix the same source key. Two distinct
-namespaces can only yield equal-length prefixes if those prefixes are identical,
-which also collides their leaf variable names - a degenerate schema outside the
-supported two-level convention. Within the convention the tie is never taken, so
-`>` and `>=` agree.
-
-### `env-validator.ts:261` - unknown-key sort comparator (4 mutants)
-
-The comparator is
-`Number(l.variable > r.variable) - Number(l.variable < r.variable)`.
-
-- The two `EqualityOperator` mutants (`>` to `>=`, `<` to `<=`) only differ when
-  `l.variable === r.variable`. The compared values are distinct source keys (Map
-  keys are unique), so the equal case never occurs and the operators agree.
-- The two `ConditionalExpression` mutants (one term forced to `0`, the other to
-  `1`) both reduce the comparator to "return negative when `l < r`, else `0`".
-  That still orders every realistic unknown-key list ascending under the stable
-  sort: verified across all permutations up to length 32. A divergence would
-  require dozens of reversed keys and would depend on the engine's internal
-  sort-algorithm selection, which is not a documented contract - so no stable
-  behavioral assertion can distinguish it.
-
-### `testing/placeholder-synthesizer.ts:220` - plain-string clamp (`>` to `>=`, 1 mutant)
-
-`const bounded = target > lengths.max ? lengths.max : target`. The `>` to `>=`
-mutant only changes the chosen branch when `target === lengths.max`, and in that
-case both branches evaluate to the same number (`lengths.max === target`), so the
-filler length is identical.
+- **`deep-freeze.ts` guard.** Three of the mutants the directive covered (the guard forced to
+  `true`, `&&` turned into `||`, `typeof value === 'object'` forced to `true`) admit a function,
+  which `Object.isFrozen` does not short-circuit, so it was frozen. A function held by the
+  configuration is now asserted to stay unfrozen. Only `value !== null` forced to `true` was
+  equivalent (`Object.isFrozen(null)` is `true`), and the helper that held it is gone.
+- **Longest-prefix tie.** `>` to `>=` is not equivalent: two namespaces whose names derive the same
+  prefix (`appCache` and `app_cache`) are accepted, and the one declared first decides whether a
+  stray variable is waived. A row now states that behaviour. The directive also covered `>` to `<=`
+  and `===` to `!==`, which are killable; the first is now killed by a row with an open namespace
+  nested inside a closed one, in both orders.
+- **Unknown-key sort comparator.** Several of its mutants made the comparator constant, so nothing
+  was sorted, and the suite had no row with the keys out of order. The comparator is gone: the
+  source keys are sorted before the loop with the engine's own `sort` and no comparator, which
+  orders by UTF-16 code unit as the old comparator did, and a row supplies them out of order.
+- **Plain-string clamp.** The `>` to `<=` mutant under that directive was killable and was already
+  killed. The clamp now reuses `clampLength`.
 
 ## Residual survivors
 
-None. The mutants once argued equivalent now carry an inline directive with their reason, except
-the one in `toScreamingSnake`, which was removed by rewriting the converter.
+None. Each remaining directive carries its reason inline; the equivalence once argued for
+`toScreamingSnake` was removed by rewriting the converter.
 
 ---
 

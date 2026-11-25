@@ -170,4 +170,22 @@ describe('deepFreeze', () => {
 
     expect(bytes[0]).toBe(9)
   })
+
+  it('leaves a function as it is, whether it is the value or a property of it', () => {
+    /**
+     * Scenario: a function is passed as the value, and another is held by an object that is frozen.
+     * Expectation: the object is frozen and neither function is, since `typeof` is not `object` for a function.
+     */
+    const held = (): void => undefined
+    const alone = (): void => undefined
+    const root = deepFreeze({ held })
+
+    deepFreeze(alone)
+
+    expect([Object.isFrozen(root), Object.isFrozen(held), Object.isFrozen(alone)]).toEqual([
+      true,
+      false,
+      false
+    ])
+  })
 })

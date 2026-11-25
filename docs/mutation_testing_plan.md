@@ -86,9 +86,8 @@ mutants that produce runnable, type-valid programs.
 - **Formatter string and boundary mutants (`report-formatter.ts`).** The report
   is part of the public contract, so column-width and pluralization boundaries
   are pinned by asserting the rendered lines.
-- **Deep-freeze guard (`deep-freeze.ts`).** The guard is
-  `typeof value !== 'object' || Object.isFrozen(value) || ArrayBuffer.isView(value)`; a function
-  passing through it unfrozen is asserted, and no mutant of it is silenced.
+- **Deep-freeze guard (`deep-freeze.ts`).** A function passes through the guard unfrozen, and the
+  suite asserts it.
 - **Placeholder synthesizer boundaries (`testing/placeholder-synthesizer.ts`).**
   The synthesizer picks constraint-boundary values (canonical-versus-resized
   strings, exclusive integer edges, exact lengths). Inclusive bounds and the

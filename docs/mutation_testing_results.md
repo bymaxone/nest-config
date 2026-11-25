@@ -111,28 +111,26 @@ runtime mutants to score.
 Each of the following is an equivalent mutant: no test can observe a behavioral
 difference, so it is silenced with an inline reason and is not a coverage gap.
 
-Four entries that stood here were measured on 2026-11-24 by applying every mutant of the named
+Entries that stood here were measured on 2026-11-24 by applying every mutant of the named
 mutators by hand and running the specs of the file, and they did not hold. They were removed
 together with their directives:
 
-- **`deep-freeze.ts` guard.** The directive covered five mutants, not four, and three of them
-  (the guard forced to `true`, `&&` turned into `||`, `typeof value === 'object'` forced to
-  `true`) admit a function, which `Object.isFrozen` does not short-circuit, so it was frozen.
-  A function held by the configuration is now asserted to stay unfrozen. A fourth, the guard forced to
-  `false`, was already killed by the suite. Only `value !== null` forced to `true` was equivalent
-  (`Object.isFrozen(null)` is `true`), and the helper that held it is gone: the guard is
-  `typeof value !== 'object' || Object.isFrozen(value) || ArrayBuffer.isView(value)`.
+- **`deep-freeze.ts` guard.** Three of the mutants the directive covered (the guard forced to
+  `true`, `&&` turned into `||`, `typeof value === 'object'` forced to `true`) admit a function,
+  which `Object.isFrozen` does not short-circuit, so it was frozen. A function held by the
+  configuration is now asserted to stay unfrozen. Only `value !== null` forced to `true` was
+  equivalent (`Object.isFrozen(null)` is `true`), and the helper that held it is gone.
 - **Longest-prefix tie.** `>` to `>=` is not equivalent: two namespaces whose names derive the same
   prefix (`appCache` and `app_cache`) are accepted, and the one declared first decides whether a
   stray variable is waived. A row now states that behaviour. The directive also covered `>` to `<=`
   and `===` to `!==`, which are killable; the first is now killed by a row with an open namespace
   nested inside a closed one, in both orders.
-- **Unknown-key sort comparator.** Four of its eight mutants made the comparator constant, so
-  nothing was sorted, and the suite had no row with the keys out of order. The comparator is gone:
-  the source keys are sorted before the loop with the engine's own `sort` and no comparator, which
+- **Unknown-key sort comparator.** Several of its mutants made the comparator constant, so nothing
+  was sorted, and the suite had no row with the keys out of order. The comparator is gone: the
+  source keys are sorted before the loop with the engine's own `sort` and no comparator, which
   orders by UTF-16 code unit as the old comparator did, and a row supplies them out of order.
 - **Plain-string clamp.** The `>` to `<=` mutant under that directive was killable and was already
-  killed. The clamp now reuses `clampLength`, so there is no conditional left to silence.
+  killed. The clamp now reuses `clampLength`.
 
 ## Residual survivors
 

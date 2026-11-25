@@ -134,8 +134,8 @@ together with their directives:
 
 ## Residual survivors
 
-None. The mutants once argued equivalent now carry an inline directive with their reason, except
-the one in `toScreamingSnake`, which was removed by rewriting the converter.
+None. The only directives left in `src` are the three in `builtins.ts`, each with its reason
+inline; the equivalence once argued for `toScreamingSnake` was removed by rewriting the converter.
 
 ---
 

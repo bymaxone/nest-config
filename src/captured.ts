@@ -21,7 +21,8 @@ const ObjectPrototype = Object.prototype
  * intrinsic. It is read through `Reflect` because `Object.getPrototypeOf` is one of the built-ins a host may
  * have replaced and the import has to survive.
  */
-const enginePromisePrototype = Reflect.getPrototypeOf((async (): Promise<void> => {})()) as {
+const engineAsyncResult = (async (): Promise<void> => {})()
+const enginePromisePrototype = Reflect.getPrototypeOf(engineAsyncResult) as {
   constructor: unknown
   then: Promise<unknown>['then']
 }

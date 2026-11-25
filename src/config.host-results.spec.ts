@@ -73,7 +73,14 @@ async function optionsRejection(
   const factory = Reflect.get(provider as object, 'useFactory') as (
     ...args: unknown[]
   ) => Promise<unknown>
-  return factory(...args).then(
+  let pending: Promise<unknown>
+  try {
+    pending = factory(...args)
+  } catch {
+    /** A throw that escapes here would reach the test as a rejection carrying the host's value, which a failing matcher then prints. */
+    throw new Error('the options provider threw instead of returning a rejection')
+  }
+  return pending.then(
     () => {
       throw new Error('the options provider was expected to reject')
     },
@@ -266,12 +273,14 @@ describe('an options factory whose result runs host code that throws', () => {
 
     const error = await optionsRejection(registration)
 
+    /** Compared by identity first: a matcher that printed the thrown proxy would run its throwing trap and hide this failure. */
+    expect(error === thrown).toBe(false)
     expect(error).toBeInstanceOf(BymaxConfigValidationError)
     expect((error as BymaxConfigValidationError).issues[0]?.message).toMatch(
       /threw a value that is not an Error; the value is withheld/
     )
     expect((error as BymaxConfigValidationError).message).not.toContain('HOST RAW SECRET')
-    expect((error as BymaxConfigValidationError).cause).toBe(thrown)
+    expect((error as BymaxConfigValidationError).cause === thrown).toBe(true)
   })
 
   it('refuses a validation error the host built itself, with that error as the cause', async () => {
@@ -417,6 +426,7 @@ describe('an answer of the schema that runs host code which throws', () => {
       onValidationError: hook
     }).catch((rejected: unknown) => rejected)
 
+    expect(error === thrown).toBe(false)
     expect(error).toBeInstanceOf(BymaxConfigValidationError)
     expect((error as BymaxConfigValidationError).message).not.toContain('HOST RAW SECRET')
     expect(hook).toHaveBeenCalledTimes(1)

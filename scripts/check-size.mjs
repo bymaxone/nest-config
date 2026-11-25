@@ -28,10 +28,8 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // when the artifact shrinks.
 //
 // Calibration history (newest first):
-//   - The internal subpath measures 11.00 KiB brotli (11266 bytes), 42 bytes under the previous measurement: the
-//     unknown-variable report is ordered by sorting the source keys with no comparator, and the freeze guard and the
-//     string clamp lost their helper and their conditional. The budget, 11296 bytes (11.03 KiB), is that measurement
-//     plus 30 bytes, so a shrink tightens it.
+//   - The internal subpath measures 11.00 KiB brotli (11266 bytes). The budget, 11296 bytes (11.03 KiB), is that
+//     measurement plus 30 bytes, so a shrink tightens it.
 //   - The internal subpath measures 11.04 KiB brotli (11308 bytes): the engine below plus the capture of the engine's
 //     `Promise` and its `then` from the prototype of an async function's promise, and the refusal of a `then` accessor held by a prototype other than `Object.prototype`. The budget,
 //     11340 bytes (11.07 KiB), is that measurement plus 32 bytes.

@@ -76,7 +76,8 @@ const MAX_WRAPPER_DEPTH = 64
  * @returns The wrapped node (`innerType`, or `in` for a pipe), or undefined when the node wraps none.
  */
 function wrappedBy<TNode>(definition: object): TNode | undefined {
-  return (readOption(definition, 'innerType') ?? readOption(definition, 'in')) as TNode | undefined
+  const wrapped = readOption(definition, 'innerType') ?? readOption(definition, 'in')
+  return wrapped as TNode | undefined
 }
 
 /**

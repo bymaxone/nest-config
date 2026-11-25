@@ -382,11 +382,9 @@ function fixed(value: unknown, enumerable: boolean): PropertyDescriptor {
  */
 export function runtimeRefusal(count: number): BymaxConfigValidationError {
   const text = `${count} of the built-ins the library calls were replaced after it loaded`
-  const error = nativeConstruct(
-    nativeError,
-    [REFUSAL_BEFORE + text + REFUSAL_AFTER],
-    BymaxConfigValidationError
-  ) as BymaxConfigValidationError
+  const message = REFUSAL_BEFORE + text + REFUSAL_AFTER
+  const constructed = nativeConstruct(nativeError, [message], BymaxConfigValidationError)
+  const error = constructed as BymaxConfigValidationError
   const issue: ConfigIssue = {
     path: '',
     variable: '(runtime)',

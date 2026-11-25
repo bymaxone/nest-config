@@ -264,6 +264,14 @@ describe('synthesizePlaceholderSource', () => {
     expect(() => validateEnv(schema, source)).not.toThrow()
   })
 
+  it('lets the maximum win over the minimum when a plain string declares min above max', () => {
+    // Scenario: min(5).max(2) is unsatisfiable; the filler is sized to the maximum, as the
+    // clamp applies the minimum first and the maximum last.
+    const schema = defineEnv({ code: z.object({ value: z.string().min(5).max(2) }) })
+    const source = synthesizePlaceholderSource(schema)
+    expect(source.CODE_VALUE).toBe('aa')
+  })
+
   it('clamps the filler down to a zero maximum length', () => {
     // Scenario: a max(0) string admits only the empty value, so the default
     // filler is clamped away rather than violating the bound.

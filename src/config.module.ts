@@ -53,11 +53,8 @@ function appendTo<TItem>(list: readonly TItem[] | undefined, ...items: TItem[]):
  * @returns The same entries without the undefined and null ones.
  */
 function withoutNullish<TValues extends object>(values: TValues): Partial<TValues> {
-  return bare(
-    Object.fromEntries(
-      Object.entries(values).filter(([, value]) => value !== undefined && value !== null)
-    ) as Partial<TValues>
-  )
+  const kept = Object.entries(values).filter(([, value]) => value !== undefined && value !== null)
+  return bare(Object.fromEntries(kept) as Partial<TValues>)
 }
 
 /**
@@ -217,7 +214,7 @@ function readOptionsOf(provider: Provider): Provider {
   if (Reflect.get(provider, 'provide') !== BYMAX_CONFIG_OPTIONS) return provider
   const factory = Reflect.get(provider, 'useFactory')
   if (typeof factory !== 'function') return provider
-  return bare({
+  const wrapped = bare({
     ...provider,
     useFactory: (...args: unknown[]) =>
       tagged(
@@ -229,7 +226,8 @@ function readOptionsOf(provider: Provider): Provider {
           return readModuleOptions(value as BymaxConfigModuleOptions, 'forRootAsync')
         })()
       )
-  }) as Provider
+  })
+  return wrapped as Provider
 }
 
 /**

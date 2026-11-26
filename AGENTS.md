@@ -8,8 +8,9 @@ npm release, so the public surface and the error output are the two things a cha
 to break.
 
 This repository has no `CLAUDE.md`. The contract is spread across `CONTRIBUTING.md`, `README.md`
-(the API reference, the security model and the error catalog) and `docs/technical_specification.md`.
-This file does not restate them. What follows is the review layer.
+(the API reference, the security model and the error catalog) and the published type declarations;
+`docs/technical_specification.md` is a historical design document. This file does not restate them.
+What follows is the review layer.
 
 ## Code Review Rules
 
@@ -269,6 +270,11 @@ without either `meta({ open: true })` on that namespace or a stated reason for c
 whole. The trade-off the flag makes — an open namespace cannot tell a foreign variable from a
 misspelled local one — is documented under **Strict mode and shared prefixes** in `README.md`, and
 a review that proposes closing that hole should read it first.
+
+## Release authority
+
+For every release, the project manager's GO that names the full commit SHA is the repository owner's
+decision on the version number, the merge, the tag and the publish.
 
 ## Session memory (Obsidian vault)
 

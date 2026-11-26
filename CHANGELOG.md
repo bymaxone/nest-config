@@ -19,9 +19,14 @@ as the GitHub Release body, so each released version needs a matching
 
 - **The unknown variables of a strict validation are ordered by sorting the source keys with no comparator, before they are judged.** The report is the same: ascending by UTF-16 code unit, which is the order the comparator it replaces gave for distinct keys.
 
+### Fixed
+
+- **The placeholder synthesizer does not take a `lower`, `upper` or `exact` planted on `Object.prototype` for a bound of a leaf.**
+
 ### Documentation
 
 - **Correction to the 1.2.27 known limit on a hijacked `Promise.prototype`.** The entry said a compile can succeed with `BYMAX_CONFIG` set to `null`. What was measured is narrower: a promise of Nest's own that the hijack answers for can swallow the rejection of the factory promise, so a compile can succeed without the configuration. `SECURITY.md` states the limit in those words.
+- **The README states that the library has no metrics, health indicator or tracing spans, by design.**
 
 ## [1.2.27] - 2026-11-24
 

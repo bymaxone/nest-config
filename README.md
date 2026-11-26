@@ -1136,6 +1136,10 @@ runs. Nest drops the promise a host-installed logger returns, so a logger whose 
 promise leaves an unhandled rejection that ends the process unless your application handles
 `unhandledRejection`; handle the rejection inside that logger.
 
+The library has no metrics, health indicator or tracing spans, by design: validation runs once, while
+the application boots. A failed validation is observed through the event above, the thrown error and
+the `onValidationError` hook.
+
 ## 🚫 What This Library Does NOT Do
 
 1. **Two-level namespace convention.** The path-inference utilities

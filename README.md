@@ -213,6 +213,14 @@ whole; a native constraint doing so reads the same. Anything else your rule
 writes there, and a message you write yourself, described next, is your text and
 is printed, even if you built it from a value.
 
+The shorter a variable's value, the more constraint texts contain it: a value of one letter or
+digit withholds most of them. `z.enum(['dev', 'prod', 'test'])` given `e` reads `invalid value`
+rather than listing its options.
+
+One known limit: a rule that writes an object with no prototype into a field of an issue it raises
+collapses the whole report into a single `(schema)` line saying that reading the schema threw
+`TypeError`. The other violations are not listed.
+
 A rule you write yourself — a `.check`, `.refine` or `.superRefine` raising a
 `custom` issue — has no structural constraint to describe, so its own message is
 what the report prints:

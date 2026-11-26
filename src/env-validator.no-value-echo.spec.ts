@@ -170,3 +170,137 @@ describe('no refusal or validation issue prints a source value', () => {
     for (const text of surfacesOf(error)) expect(text).not.toContain(SENTINEL)
   })
 })
+
+/** Run a failing validation of `schema` over `source` and return the thrown error. */
+function refused(schema: z.ZodType, source: Record<string, string>): BymaxConfigValidationError {
+  return thrownBy(() => validateEnv(schema as never, source))
+}
+
+/** A leaf whose own rule raises a non-custom issue built from the value it received. */
+function raising(issue: (value: string) => object): z.ZodType {
+  return z.string().superRefine((value, ctx) => {
+    ctx.addIssue(issue(value) as never)
+  })
+}
+
+/** One structural field a hand-raised issue can fill with the value, per row. */
+const ECHOES: ReadonlyArray<readonly [string, (value: string) => object]> = [
+  ['values', (value) => ({ code: 'invalid_value', values: ['other', value] })],
+  ['expected', (value) => ({ code: 'invalid_type', expected: `got ${value}` })],
+  ['format', (value) => ({ code: 'invalid_format', format: value })],
+  ['string minimum', (value) => ({ code: 'too_small', origin: 'string', minimum: value })],
+  ['number minimum', (value) => ({ code: 'too_small', origin: 'number', minimum: value })],
+  ['minimum origin', (value) => ({ code: 'too_small', origin: value, minimum: 1 })],
+  ['maximum', (value) => ({ code: 'too_big', origin: 'string', maximum: value })],
+  ['maximum origin', (value) => ({ code: 'too_big', origin: value, maximum: 1 })]
+]
+
+describe('a constraint that would repeat a source value is withheld', () => {
+  it.each(ECHOES)(
+    'a hand-raised issue that holds the value in its %s is reported without it',
+    (_field, issue) => {
+      /**
+       * The structural fields of an issue are printed as constraints. A rule can raise an issue
+       * itself and fill one of them with what it received, so the field is compared with the value.
+       */
+      const error = refused(defineEnv({ app: z.object({ secret: raising(issue) }) }), {
+        APP_SECRET: SENTINEL
+      })
+
+      expect(error.issues.map((entry) => entry.message)).toEqual(['invalid value'])
+      for (const text of surfacesOf(error)) expect(text).not.toContain(SENTINEL)
+    }
+  )
+
+  it('withholds a field that is the value of another leaf', () => {
+    const schema = defineEnv({
+      app: z.object({ name: z.string(), secret: z.string() }).superRefine((app, ctx) => {
+        ctx.addIssue({ code: 'invalid_value', values: [app.secret], path: ['name'] })
+      })
+    })
+
+    const error = refused(schema, { APP_NAME: 'x', APP_SECRET: SENTINEL })
+
+    expect(error.issues.map((entry) => entry.message)).toEqual(['invalid value'])
+    for (const text of surfacesOf(error)) expect(text).not.toContain(SENTINEL)
+  })
+
+  it('withholds a field of a namespace rule that is the value of a leaf', () => {
+    const schema = defineEnv({
+      app: z.object({ secret: z.string() }).superRefine((app, ctx) => {
+        ctx.addIssue({ code: 'invalid_format', format: app.secret })
+      })
+    })
+
+    const error = refused(schema, { APP_SECRET: SENTINEL })
+
+    expect(error.issues.map((entry) => [entry.variable, entry.message])).toEqual([
+      ['APP_*', 'invalid value']
+    ])
+    for (const text of surfacesOf(error)) expect(text).not.toContain(SENTINEL)
+  })
+
+  it('keeps the constraint of a leaf whose value is empty', () => {
+    /** Every text contains the empty string, so an empty value must not withhold anything. */
+    const error = refused(defineEnv({ app: z.object({ secret: z.string().min(1) }) }), {
+      APP_SECRET: ''
+    })
+
+    expect(error.issues.map((entry) => entry.message)).toEqual([
+      'too short (expected: string, minimum 1 characters)'
+    ])
+  })
+
+  it.each([
+    ['is part of', '1'],
+    ['reads the same as', '100']
+  ])('keeps a numeric bound that another leaf value %s', (_relation, flag) => {
+    /** A neighbour's value is a string and a native bound is a number, so it is no echo of it. */
+    const schema = defineEnv({
+      app: z.object({ flag: z.string(), port: z.coerce.number().max(100) })
+    })
+
+    const error = refused(schema, { APP_FLAG: flag, APP_PORT: '200' })
+
+    expect(error.issues.map((entry) => entry.message)).toEqual([
+      'out of range (expected: number <= 100)'
+    ])
+  })
+
+  it('renders a field once, so a second rendering cannot differ from the compared one', () => {
+    /** The raised issue carries a message, so zod does not render the field before the library does. */
+    let renderings = 0
+    const shifting = { toString: () => ((renderings += 1) === 1 ? 'a-format' : SENTINEL) }
+
+    const error = refused(
+      defineEnv({
+        app: z.object({
+          secret: raising(() => ({ code: 'invalid_format', format: shifting, message: 'x' }))
+        })
+      }),
+      { APP_SECRET: SENTINEL }
+    )
+
+    expect(error.issues.map((entry) => entry.message)).toEqual([
+      'invalid format (expected: a-format)'
+    ])
+  })
+})
+
+describe('the comparison with the source values', () => {
+  it('is not decided by a String.prototype.includes the schema replaced during the parse', () => {
+    const original = String.prototype.includes
+    const leaf = z.string().superRefine((value, ctx) => {
+      ctx.addIssue({ code: 'invalid_format', format: `got ${value}` })
+      String.prototype.includes = () => false
+    })
+    let error: BymaxConfigValidationError
+    try {
+      error = refused(defineEnv({ app: z.object({ secret: leaf }) }), { APP_SECRET: SENTINEL })
+    } finally {
+      String.prototype.includes = original
+    }
+
+    expect(error.issues.map((entry) => entry.message)).toEqual(['invalid value'])
+  })
+})

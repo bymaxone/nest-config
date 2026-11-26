@@ -31,6 +31,7 @@ import {
   sortStrings,
   startsWith
 } from './captured'
+import { constraintMessage } from './constraint-message'
 import { ConfigErrorCode, isLibraryError, libraryError } from './errors'
 import type { BymaxConfigValidationError, ConfigIssue } from './errors'
 import { awaitHost } from './host-promise'
@@ -146,47 +147,6 @@ function buildCandidate(
 }
 
 /**
- * Render the allowed enum options as a value-free option list.
- *
- * @param values - The declared enum options (schema constants, never input).
- * @returns The options joined for a human-readable message.
- */
-function formatEnumValues(values: ReadonlyArray<unknown>): string {
-  return values.map(String).join(', ')
-}
-
-/**
- * Describe a Zod issue as a value-free constraint message.
- *
- * Reads only the structural constraint fields (expected type, bounds, format,
- * enum options), never the received value, so the message can never leak a
- * secret.
- *
- * @param issue - The Zod issue for a present-but-invalid leaf.
- * @returns A human-readable description of the expected constraint.
- */
-function describeConstraint(issue: ZodValidationIssue): string {
-  switch (issue.code) {
-    case 'invalid_type':
-      return `invalid value (expected: ${issue.expected})`
-    case 'invalid_format':
-      return `invalid format (expected: ${issue.format})`
-    case 'invalid_value':
-      return `invalid value (expected one of: ${formatEnumValues(issue.values)})`
-    case 'too_small':
-      return issue.origin === 'string'
-        ? `too short (expected: string, minimum ${issue.minimum} characters)`
-        : `out of range (expected: ${issue.origin} >= ${issue.minimum})`
-    case 'too_big':
-      return issue.origin === 'string'
-        ? `too long (expected: string, maximum ${issue.maximum} characters)`
-        : `out of range (expected: ${issue.origin} <= ${issue.maximum})`
-    default:
-      return 'invalid value'
-  }
-}
-
-/**
  * Extract the message a schema author attached to a `custom` issue.
  *
  * A `custom` issue carries no structural constraint to describe: the rule lives
@@ -216,7 +176,8 @@ function authoredMessage(issue: ZodValidationIssue): string | undefined {
  *
  * @param binding - The leaf binding the issue belongs to.
  * @param issue - The Zod issue reported at the binding's path.
- * @param source - The source values, used to classify missing versus invalid.
+ * @param source - The source values: they classify missing versus invalid, and a generated message
+ * that would repeat one of them is withheld.
  * @returns The issue with resolved variable name and code; its message is a
  * generated, value-free description unless the author wrote one.
  */
@@ -225,13 +186,14 @@ function toConfigIssue(
   issue: ZodValidationIssue,
   source: ReadonlyMap<string, string | undefined>
 ): ConfigIssue {
-  const isMissing = source.get(binding.variable) === undefined
+  const value = mapGet(source, binding.variable)
   const authored = authoredMessage(issue)
   return {
     path: binding.path,
     variable: binding.variable,
-    code: isMissing ? ConfigErrorCode.MISSING : ConfigErrorCode.INVALID,
-    message: authored ?? (isMissing ? MISSING_MESSAGE : describeConstraint(issue))
+    code: value === undefined ? ConfigErrorCode.MISSING : ConfigErrorCode.INVALID,
+    message:
+      authored ?? (value === undefined ? MISSING_MESSAGE : constraintMessage(issue, value, source))
   }
 }
 
@@ -245,14 +207,21 @@ function toConfigIssue(
  * @param path - The namespace key, or the empty string for the whole schema.
  * @param variable - The text for the variable column.
  * @param issue - The Zod issue that named no leaf.
+ * @param source - The source values a generated message must not repeat.
  * @returns The ConfigIssue for the report.
  */
-function toNamespaceIssue(path: string, variable: string, issue: ZodValidationIssue): ConfigIssue {
+function toNamespaceIssue(
+  path: string,
+  variable: string,
+  issue: ZodValidationIssue,
+  source: ReadonlyMap<string, string | undefined>
+): ConfigIssue {
   return {
     path,
     variable,
     code: ConfigErrorCode.INVALID,
-    message: authoredMessage(issue) ?? describeConstraint(issue)
+    // No leaf of its own, so only a field that is a source value whole is withheld.
+    message: authoredMessage(issue) ?? constraintMessage(issue, undefined, source)
   }
 }
 
@@ -307,10 +276,10 @@ function translateIssues(
   for (const entry of prefixes) {
     const issue = mapGet(issueByNamespace, entry.namespace)
     if (issue === undefined) continue
-    result.push(toNamespaceIssue(entry.namespace, `${entry.prefix}*`, issue))
+    result.push(toNamespaceIssue(entry.namespace, `${entry.prefix}*`, issue, source))
   }
   const wholeSchema = mapGet(issueByNamespace, '')
-  if (wholeSchema !== undefined) result.push(toNamespaceIssue('', '(schema)', wholeSchema))
+  if (wholeSchema !== undefined) result.push(toNamespaceIssue('', '(schema)', wholeSchema, source))
   return result
 }
 

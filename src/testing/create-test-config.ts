@@ -319,7 +319,7 @@ export function prepareTestConfig<TShape extends EnvShape>(
 /**
  * Build a validated, frozen test configuration from a schema and overrides.
  *
- * Synthesizes a complete constraint-compliant source, applies the selective
+ * Synthesizes a source from the declared constraints, applies the selective
  * overrides, and runs the production validation and deep-freeze pipeline, so the
  * returned object is exactly what a running application would receive. A test
  * never touches `process.env`, yet an override that breaks a declared constraint

@@ -1,9 +1,9 @@
 /**
  * @fileoverview Deterministic placeholder synthesizer for the testing subpath.
  * Walks a two-level `defineEnv` schema and produces a complete flat source
- * record whose values satisfy every declared constraint that any value can
- * satisfy (string min/max/exact lengths, url and email formats, integer ranges,
- * enum membership, booleans). A constraint no value can meet, such as a url
+ * record built from the declared constraints it reads (string min/max/exact
+ * lengths, url and email formats, number ranges, enum membership, booleans); a
+ * regex, a custom rule or a multiple-of check is not read. A constraint no value can meet, such as a url
  * `max` below the shortest valid URL or an empty integer window, gets the nearest
  * value and is rejected by validation with the variable named. Placeholders
  * never invent meaningful secrets: they are obvious repeated filler or fixed

@@ -35,7 +35,7 @@ import type { ConfigOverrides } from './create-test-config'
  * @example
  * ```typescript
  * const moduleRef = await Test.createTestingModule({
- *   imports: [configTestingModule(envSchema, { server: { port: 0 } })],
+ *   imports: [configTestingModule(envSchema, { server: { port: 8080 } })],
  *   providers: [InvoiceService],
  * }).compile();
  * ```

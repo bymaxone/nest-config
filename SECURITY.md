@@ -2,9 +2,24 @@
 
 `@bymax-one/nest-config` validates `process.env` once at bootstrap and exposes a
 deep-frozen typed configuration object to the rest of the application. Its hard
-security contract is that no raw environment value ever appears in a thrown
-error, a report, or a serialized output. We take vulnerability reports seriously
-and triage them ahead of feature work.
+security contract is that the library never prints a leaf's raw value: not in the
+report, `message` or `stack` of the error it throws, not in the issues, and not in
+what the validation hook receives.
+
+Outside that contract is host text, yours to keep value-free:
+
+- The message of your own `custom` rule is printed with no value removed from it.
+- A value your code transformed before writing it into a field of an issue it raised
+  itself (sliced or re-encoded, say, or another variable's value inside longer text)
+  is printed.
+- An error your own code threw, kept as the `cause` of the library's error (from a
+  source or options accessor, an options factory or the hook, for example), carries
+  whatever you put in it. `util.inspect` and an uncaught-exception report print it.
+- A configuration namespace, a leaf or a copy of the configuration that you print or
+  serialize shows its values. See the
+  [Security Model](README.md#-security-model).
+
+We take vulnerability reports seriously and triage them ahead of feature work.
 
 ## Supported versions
 
@@ -81,8 +96,8 @@ the hijack answers for can swallow the rejection of the factory promise, so a co
 The following classes are explicitly in scope:
 
 - **Raw value leakage** - any path where a validation error, log line, or
-  serialized report echoes a source environment value instead of the sentinel
-  redaction the package guarantees
+  serialized report prints a leaf's raw value, outside the host text described
+  above
 - **Type confusion in the frozen config** - a mutation path that bypasses the
   deep-freeze guarantee on the exposed configuration object
 - **Schema bypass** - input that should fail Zod validation but is accepted and

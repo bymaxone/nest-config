@@ -299,6 +299,15 @@ function synthesizeString(def: LeafDefinition): string {
   return fixed ?? synthesizePlainString(lengths)
 }
 
+/** The bounds a number leaf declares. A flag that is absent reads as false. */
+interface NumberBounds {
+  lower?: number
+  upper?: number
+  lowerExclusive?: boolean
+  upperExclusive?: boolean
+  integer?: boolean
+}
+
 /**
  * Choose an in-range number from the resolved inclusive bounds.
  *
@@ -306,13 +315,7 @@ function synthesizeString(def: LeafDefinition): string {
  * @param upper - The inclusive upper bound, when declared.
  * @returns The bounded midpoint, a present bound, or the fixed default.
  */
-function selectNumber(bounds: {
-  lower?: number
-  upper?: number
-  lowerExclusive: boolean
-  upperExclusive: boolean
-  integer: boolean
-}): number {
+function selectNumber(bounds: NumberBounds): number {
   const { lower, upper, integer } = bounds
   if (lower !== undefined && upper !== undefined) {
     if (integer) {
@@ -345,13 +348,7 @@ function selectNumber(bounds: {
  * @returns The string form of a constraint-compliant number.
  */
 function synthesizeNumber(def: LeafDefinition): string {
-  const bounds = { lowerExclusive: false, upperExclusive: false, integer: false } as {
-    lower?: number
-    upper?: number
-    lowerExclusive: boolean
-    upperExclusive: boolean
-    integer: boolean
-  }
+  const bounds: NumberBounds = {}
   for (const wrapper of checksOf(def)) {
     const check = readCheck(wrapper)
     if (check.check === 'greater_than') {

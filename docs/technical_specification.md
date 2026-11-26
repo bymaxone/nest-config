@@ -2,7 +2,7 @@
 
 > **Version:** 1.0.0
 > **Last updated:** 2026-07-06
-> **Status:** Draft for implementation
+> **Status:** Historical. The design the package was first built from, not kept up to date: `README.md` is the API reference and `package.json` the manifest.
 > **Type:** Public npm package (`@bymax-one/nest-config`)
 
 ---

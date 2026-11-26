@@ -22,6 +22,7 @@ as the GitHub Release body, so each released version needs a matching
 ### Documentation
 
 - **Correction to the 1.2.27 known limit on a hijacked `Promise.prototype`.** The entry said a compile can succeed with `BYMAX_CONFIG` set to `null`. What was measured is narrower: a promise of Nest's own that the hijack answers for can swallow the rejection of the factory promise, so a compile can succeed without the configuration. `SECURITY.md` states the limit in those words.
+- **The README states that the library has no metrics, health indicator or tracing spans, by design.**
 
 ## [1.2.27] - 2026-11-24
 

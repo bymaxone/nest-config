@@ -11,7 +11,7 @@ Outside that contract is host text, yours to keep value-free:
 - The message of your own `custom` rule is printed with no value removed from it.
 - A value your code transformed before writing it into a field of an issue it raised
   itself (sliced or re-encoded, say, or another variable's value inside longer text)
-  is printed as you wrote it.
+  is printed.
 - An error your own code threw, kept as the `cause` of the library's error (from a
   source or options accessor, an options factory or the hook, for example), carries
   whatever you put in it. `util.inspect` and an uncaught-exception report print it.
@@ -96,8 +96,8 @@ the hijack answers for can swallow the rejection of the factory promise, so a co
 The following classes are explicitly in scope:
 
 - **Raw value leakage** - any path where a validation error, log line, or
-  serialized report echoes a source environment value instead of the sentinel
-  redaction the package guarantees
+  serialized report prints a leaf's raw value, outside the host text described
+  above
 - **Type confusion in the frozen config** - a mutation path that bypasses the
   deep-freeze guarantee on the exposed configuration object
 - **Schema bypass** - input that should fail Zod validation but is accepted and

@@ -1,7 +1,7 @@
 /**
  * @fileoverview The generated message of a failed constraint. It is built from the structural fields of a
- * Zod issue, and it is withheld when one of the fields it would print repeats a source value: a rule can
- * raise an issue itself and fill a field with what it received.
+ * Zod issue, which a rule can fill itself when it raises one, so it is withheld when a field holds the
+ * value of the issue's variable or is another variable's value whole.
  * @layer Utility
  */
 
@@ -68,12 +68,12 @@ function repeatsSource(
 }
 
 /**
- * The message of a present but invalid value, which states the expected constraint and no source value.
+ * The generated message of an issue, which states the expected constraint.
  *
  * @param issue - The Zod issue.
  * @param own - The value of the issue's variable, or undefined for a rule that names no leaf.
  * @param source - The source values by variable.
- * @returns The constraint, or `invalid value` when a field of it repeats a source value.
+ * @returns The constraint, or `invalid value` when a field is withheld.
  */
 export function constraintMessage(
   issue: ZodValidationIssue,

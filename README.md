@@ -205,9 +205,13 @@ one Zod lists, and fixing it can reveal the next on the following start. A `meta
 cannot name a variable adds its own line for that leaf, before the line about its value, because it
 is a different mistake: merging the two would hide the one that explains the other.
 
-In a message this package generates, raw values are never printed — not
-truncated, not masked, absent. That is a hard guarantee, verified by tests. The
-one exception is a message you write yourself, described next.
+The library does not put a source value into a message itself — not truncated,
+not masked — and tests hold it to that. A rule that raises a non-`custom` issue
+itself chooses what its printed fields hold, so the line reads `invalid value`
+when one holds its own variable's value or is another declared variable's,
+whole; a native constraint doing so reads the same. Anything else your rule
+writes there, and a message you write yourself, described next, is your text and
+is printed, even if you built it from a value.
 
 A rule you write yourself — a `.check`, `.refine` or `.superRefine` raising a
 `custom` issue — has no structural constraint to describe, so its own message is

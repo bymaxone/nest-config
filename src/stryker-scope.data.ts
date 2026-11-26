@@ -29,7 +29,7 @@ export const EXPECTED = {
     'src/env-validator.ts',
     'src/testing/placeholder-synthesizer.ts'
   ],
-  shipped: 23
+  shipped: 24
 } as const
 
 /** Shipped files that are data rather than code: none, this package ships bundles only. */

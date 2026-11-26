@@ -47,6 +47,7 @@ const PromiseIntrinsic = ((): PromiseConstructor => {
   return candidate
 })()
 const startsWithOf = String.prototype.startsWith
+const stringIncludesOf = String.prototype.includes
 const padStartOf = String.prototype.padStart
 const padEndOf = String.prototype.padEnd
 const includesOf = Array.prototype.includes
@@ -93,6 +94,17 @@ export const min = Math.min
  */
 export function startsWith(text: string, prefix: string): boolean {
   return apply(startsWithOf, text, [prefix]) as boolean
+}
+
+/**
+ * Whether the text holds the part anywhere, as `String.prototype.includes` answers.
+ *
+ * @param text - The text.
+ * @param part - The part.
+ * @returns True when the text holds the part.
+ */
+export function holds(text: string, part: string): boolean {
+  return apply(stringIncludesOf, text, [part]) as boolean
 }
 
 /**

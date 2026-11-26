@@ -33,7 +33,7 @@ export const ConfigErrorCode = Object.freeze({
   MISSING: 'BYMAX_CONFIG_MISSING',
   /** Issue code: a variable is present but violates its constraint. */
   INVALID: 'BYMAX_CONFIG_INVALID',
-  /** Issue code: strict mode found a source variable matching no declared leaf. */
+  /** Issue code: a name matches nothing declared (strict source variable, module option or test override). */
   UNKNOWN_KEY: 'BYMAX_CONFIG_UNKNOWN_KEY'
 } as const)
 
@@ -221,7 +221,10 @@ export type ConfigIssueCode =
  * to print ends with an ellipsis.
  */
 export interface ConfigIssue {
-  /** Nested config path, e.g. `database.url`; the namespace alone (e.g. `database`) for an unknown-key issue. */
+  /**
+   * Nested config path, e.g. `database.url`. An unknown-key issue of strict mode holds the namespace alone
+   * (e.g. `database`), one of a module option holds the option key, and one of a test override its path.
+   */
   readonly path: string
   /** Resolved environment variable name, e.g. `DATABASE_URL`. */
   readonly variable: string
@@ -247,7 +250,7 @@ export interface ConfigIssue {
  * @example
  * ```typescript
  * try {
- *   validateEnv(schema, source);
+ *   await NestFactory.createApplicationContext(AppModule, { abortOnError: false });
  * } catch (error) {
  *   if (error instanceof BymaxConfigValidationError) {
  *     for (const issue of error.issues) report(issue.variable, issue.code);

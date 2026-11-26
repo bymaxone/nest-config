@@ -27,6 +27,11 @@ as the GitHub Release body, so each released version needs a matching
 
 - **Correction to the 1.2.27 known limit on a hijacked `Promise.prototype`.** The entry said a compile can succeed with `BYMAX_CONFIG` set to `null`. What was measured is narrower: a promise of Nest's own that the hijack answers for can swallow the rejection of the factory promise, so a compile can succeed without the configuration. `SECURITY.md` states the limit in those words.
 - **The README states that the library has no metrics, health indicator or tracing spans, by design.**
+- **`SECURITY.md` states what the value-free contract covers and what stays with the host.** It covers what the library writes about a failure: the report, `message`, `stack`, the issues and what the hook receives. Your own `custom` message, an error your own code threw (kept as `cause`) and a configuration you print or serialize are outside it.
+- **`BYMAX_CONFIG_UNKNOWN_KEY` is documented for its three sources**: a strict source variable, a misspelled module option and an unmatched test override.
+- **Statements corrected:** placeholders say nothing about secret strength; the `z.coerce.boolean()` refusal does not look inside a union, array or lazy schema; a test override is typed as the leaf's parsed output.
+- **Now stated:** when `resolveSourceNames` throws, and that a leaf schema chain longer than 64 is refused.
+- **Examples fixed:** the `ConfigIssue` error example no longer calls an unexported function, the `configTestingModule` example uses a port a bounded schema accepts, `BYMAX_CONFIG_OPTIONS` no longer shows an injection a consumer cannot make, a broken section link and the sample report's schema.
 
 ## [1.2.27] - 2026-11-24
 

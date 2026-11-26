@@ -14,10 +14,8 @@
  * options object under this token; the config provider factory injects it to
  * read the schema, source, hook, and strict flag.
  *
- * @example
- * ```typescript
- * constructor(@Inject(BYMAX_CONFIG_OPTIONS) options: BymaxConfigModuleOptions) {}
- * ```
+ * It is provided inside the module only, so a provider in another module cannot
+ * inject it, and the options it holds include the raw `source` record.
  */
 export const BYMAX_CONFIG_OPTIONS = Symbol('BYMAX_CONFIG_OPTIONS')
 

@@ -187,7 +187,8 @@ export class FeatureProvider {
 ```
 
 A process started with an incomplete environment exits immediately with the
-aggregated report, never one violation at a time:
+aggregated report, never one violation at a time. For a schema that also declares
+`auth.jwtSecret` as `z.string().min(32)`:
 
 ```
 BymaxConfigValidationError: environment validation failed (3 issues)
@@ -707,7 +708,7 @@ Each item names what goes wrong and the fix. The sections linked from it hold th
   [Strict mode and shared prefixes](#strict-mode-and-shared-prefixes) before enabling it.
 - **Report a failed rule with `.refine` or `ctx.issues.push`, not a `throw`.** A rule that throws
   still fails the boot, but as one issue for the whole schema with its message withheld, and the
-  leaves after it are not reported. See [Failing fast](#failing-fast-is-the-security-property).
+  leaves after it are not reported. See [`defineEnv`](#defineenvshape).
 - **The real environment wins over a `.env` file.** With Node's `--env-file` (measured on Node
   24), a variable already set in the process environment is not replaced by the file, so a value
   set by the orchestrator shadows a stale `.env` baked into an image. A blank `NAME=` line in the
@@ -843,8 +844,8 @@ const moduleRef = await Test.createTestingModule({
 }).compile()
 ```
 
-Overrides mirror the `namespace.leaf` shape with every key optional and typed from the schema. Each value is converted with `String(value)` before validation, so give
-a leaf what its environment variable would hold; an object becomes `'[object Object]'`, and an override
+Overrides mirror the `namespace.leaf` shape with every key optional and typed from the schema. A value is typed as the leaf's parsed output and converted with `String(value)` before validation
+(`false` for a `z.stringbool()` leaf is validated as `'false'`), so the leaf has to accept that text; an object becomes `'[object Object]'`, and an override
 of `undefined` is ignored, so a defaulted leaf cannot be unset. An override whose path matches no leaf
 of the schema throws, listing every such path, even when its value is `undefined`; a namespace given
 something other than a plain object is reported once, by name, and so is an overrides argument that is
@@ -853,8 +854,9 @@ custom `source`, a hook or `isGlobal`: `configTestingModule` registers the modul
 failure case (a missing variable, a strict violation) is built with
 `BymaxConfigModule.forRoot({ schema, source, strict: true })` and a source you write.
 
-Placeholder synthesis never fabricates values that could accidentally pass a
-secret-strength constraint; length and format constraints are honored. The
+A placeholder is filler built from the declared constraints: a `z.string().min(32)` leaf gets 32 repeated
+characters. It satisfies a length or format rule and says nothing about secret strength, so never use one
+as a secret. The
 subpath has no Jest dependency and works with any runner, though the family
 standard is Jest.
 
@@ -872,9 +874,9 @@ consumer choices. Leaves use `z.coerce.*` because the source arrives as
 strings (the shape of `process.env`).
 
 Two things follow from that. `z.coerce.boolean()` is `Boolean(value)`: any non-empty string,
-including `'false'`, becomes `true`, so the boot refuses a leaf built on it, under any wrapper
-(`.default`, `.optional`, `.pipe`), as an issue that names the leaf; use `z.stringbool()` for a
-flag. And a variable set to the empty string is present, not missing: `z.string()` accepts it and
+including `'false'`, becomes `true`, so the boot refuses a leaf built on it, directly or under a wrapper
+such as `.default`, `.optional` or `.pipe`, as an issue that names the leaf. One inside a union, array or
+lazy schema is not detected. Use `z.stringbool()` for a flag. And a variable set to the empty string is present, not missing: `z.string()` accepts it and
 `z.coerce.number()` turns it into `0`, so add `.min(1)` or a bound where empty should fail.
 
 A leaf that ends in `.catch(fallback)` replaces an invalid value with its fallback and reports no
@@ -1060,7 +1062,9 @@ order. A leaf reads its `meta({ env })` override when that is a non-empty string
 `NAMESPACE_LEAF` in SCREAMING_SNAKE_CASE, with a camelCase key split into words, when it has no
 `env` at all.
 It reads the schema only, never a source record, so it works on a schema exported as a
-value.
+value. It throws a `BymaxConfigValidationError` for a top-level key that is not a namespace or is named
+`toJSON`, for a leaf whose schema chain is longer than 64, and when a built-in the library calls was
+replaced after the library loaded.
 
 ```typescript
 // For the Quick Start schema:
@@ -1108,12 +1112,17 @@ it('documents every variable the schema reads in .env.example', () => {
 | `BYMAX_CONFIG_VALIDATION`  | One or more schema violations (top-level error code).     |
 | `BYMAX_CONFIG_MISSING`     | Required variable absent from the source (issue code).    |
 | `BYMAX_CONFIG_INVALID`     | Failed its constraint, or shares a variable (issue code). |
-| `BYMAX_CONFIG_UNKNOWN_KEY` | Strict mode: source variable matches no declared leaf.    |
+| `BYMAX_CONFIG_UNKNOWN_KEY` | A name matches nothing declared (issue code).             |
 
-These codes are raised at boot, in the aggregated `BymaxConfigValidationError` (code `BYMAX_CONFIG_VALIDATION`)
+These codes are raised at boot and by the testing helpers; at boot they come in the aggregated `BymaxConfigValidationError` (code `BYMAX_CONFIG_VALIDATION`)
 that stops the process: the library has no HTTP status. `BYMAX_CONFIG_INVALID` also covers a namespace named
-`toJSON`, a top-level key that is not a namespace, an unusable `meta({ env })`, a refused `z.coerce.boolean()`
-and a rule that threw. For `BYMAX_CONFIG_UNKNOWN_KEY` the issue's `path` is the namespace alone.
+`toJSON`, a top-level key that is not a namespace, an unusable `meta({ env })`, a refused `z.coerce.boolean()`,
+a rule that threw and a leaf whose schema chain is longer than 64 (63 wrappers around the base schema).
+
+`BYMAX_CONFIG_UNKNOWN_KEY` has three sources, told apart by the issue's fields. Under `strict`, a source variable that
+matches no declared leaf: `path` is the namespace alone. A key of a plain options object that `forRoot` or
+`forRootAsync` does not read: `path` is the key and `variable` is `(options)`. A test override that matches no leaf:
+`path` is the override's `namespace.leaf` and `variable` is empty.
 
 ## 📋 Log Events
 

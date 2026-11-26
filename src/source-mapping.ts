@@ -245,6 +245,8 @@ export function assertNamespaces(schema: SchemaView): void {
  * @typeParam TShape - The two-level shape the schema was composed from.
  * @param schema - A schema produced by `defineEnv`.
  * @returns The ordered list of leaf-to-variable bindings, typed `readonly`.
+ * @throws {BymaxConfigValidationError} When a top-level key is not a namespace or is named `toJSON`, a leaf
+ * schema chain is longer than 64, or a built-in the library calls was replaced after it loaded.
  * @example
  * ```typescript
  * const schema = defineEnv({ database: z.object({ url: z.url() }) });

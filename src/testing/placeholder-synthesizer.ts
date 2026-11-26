@@ -92,10 +92,10 @@ interface LeafInternals {
 }
 
 /**
- * Copy what a definition holds of its own into an object with no prototype, so a name planted on the root
- * prototype is not taken for a field zod did not put there.
+ * Copy what an object holds of its own into an object with no prototype, so a name planted on the root
+ * prototype is not taken for one of its fields.
  *
- * @param definition - A definition object zod built.
+ * @param definition - The object to copy, such as a definition zod built.
  * @returns A prototype-less copy of its own enumerable fields.
  */
 function ownCopy<TDefinition extends object>(definition: TDefinition): TDefinition {
@@ -157,7 +157,7 @@ function readStringLengths(def: LeafDefinition): { min: number; max: number; exa
     if (check.check === 'max_length') max = check.maximum
     if (check.check === 'length_equals') exact = check.length
   }
-  return exact === undefined ? { min, max } : { min, max, exact }
+  return ownCopy(exact === undefined ? { min, max } : { min, max, exact })
 }
 
 /** The scheme of a synthesized URL; `http` keeps the shortest value small. */
@@ -348,7 +348,7 @@ function selectNumber(bounds: NumberBounds): number {
  * @returns The string form of a constraint-compliant number.
  */
 function synthesizeNumber(def: LeafDefinition): string {
-  const bounds: NumberBounds = {}
+  const bounds = ownCopy<NumberBounds>({})
   for (const wrapper of checksOf(def)) {
     const check = readCheck(wrapper)
     if (check.check === 'greater_than') {

@@ -92,7 +92,12 @@ describe('a diamond of pipes', () => {
 
 describe('the placeholder synthesizer with names planted on the root prototype', () => {
   const schema = defineEnv({
-    app: z.object({ name: z.string().min(3), mail: z.string(), count: z.coerce.number().int() })
+    app: z.object({
+      name: z.string().min(3),
+      mail: z.string(),
+      count: z.coerce.number().int(),
+      ratio: z.coerce.number().min(1.1).max(1.4)
+    })
   })
 
   it.each([
@@ -105,6 +110,26 @@ describe('the placeholder synthesizer with names planted on the root prototype',
     const before = synthesizePlaceholderSource(schema as never)
 
     const after = planted(key, value, () => synthesizePlaceholderSource(schema as never))
+
+    expect(after).toEqual(before)
+  })
+
+  it.each([
+    ['lower', 50],
+    ['upper', -50],
+    ['integer', true]
+  ])('does not take a planted %s for a bound of a number leaf', (key, value) => {
+    const before = synthesizePlaceholderSource(schema as never)
+
+    const after = planted(key, value, () => synthesizePlaceholderSource(schema as never))
+
+    expect(after).toEqual(before)
+  })
+
+  it('does not take a planted exact length for a bound of a string leaf', () => {
+    const before = synthesizePlaceholderSource(schema as never)
+
+    const after = planted('exact', 7, () => synthesizePlaceholderSource(schema as never))
 
     expect(after).toEqual(before)
   })

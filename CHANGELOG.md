@@ -15,6 +15,8 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.28] - 2026-11-26
+
 ### Changed
 
 - **The unknown variables of a strict validation are ordered by sorting the source keys with no comparator, before they are judged.** The report is the same: ascending by UTF-16 code unit, which is the order the comparator it replaces gave for distinct keys.
@@ -22,7 +24,7 @@ as the GitHub Release body, so each released version needs a matching
 ### Fixed
 
 - **A generated message withholds a field a rule filled with a source value, as described here.** A rule that raises a non-`custom` issue itself (`ctx.addIssue`) chooses what the printed fields hold, and 1.2.27 and earlier printed them, so the value reached the message, the report and the issues. The line now reads `invalid value` when a printed field holds its own variable's non-empty value anywhere inside it, or is, whole, another declared variable's non-empty value (a numeric bound does not match a source string). A native constraint that happens to contain the value is withheld too: `prod` against `z.enum(['development', 'production'])` reads `invalid value`. Any other text in a field is printed, as a `custom` message is.
-- **A testing placeholder for an integer leaf is an integer.** A single fractional inclusive bound was taken as the value (`min(1.5)` gave `1.5`), a `float64` check was treated as an integer format, and the format `z.int()` records on the leaf itself was not read.
+- **A testing placeholder for a number leaf with an integer format is an integer.** A single fractional inclusive bound was taken as the value (`min(1.5)` gave `1.5`), a `float64` check was treated as an integer format, and the format `z.int()` records on the leaf itself was not read.
 - **The placeholder synthesizer does not take a `lower`, `upper` or `exact` planted on `Object.prototype` for a bound of a leaf.**
 
 ### Documentation
@@ -33,7 +35,9 @@ as the GitHub Release body, so each released version needs a matching
 - **`BYMAX_CONFIG_UNKNOWN_KEY` is documented for its sources**: a strict source variable, a misspelled module option and an unmatched test override.
 - **Statements corrected:** placeholders say nothing about secret strength; the `z.coerce.boolean()` refusal does not look inside a union, array or lazy schema; a test override is typed as the leaf's parsed output.
 - **Now stated:** when `resolveSourceNames` throws, and that a leaf schema chain longer than 64 is refused.
-- **Examples fixed:** the `ConfigIssue` error example no longer calls an unexported function, the `configTestingModule` example uses a port a bounded schema accepts, `BYMAX_CONFIG_OPTIONS` no longer shows an injection a consumer cannot make, a broken section link and the sample report's schema.
+- **Examples fixed:** the `ConfigIssue` error example no longer calls an unexported function, the `configTestingModule` example uses a port a bounded schema accepts, `BYMAX_CONFIG_OPTIONS` no longer shows an injection a consumer cannot make, a misdirected section link and the sample report's schema.
+
+No declaration change: there is nothing to apply to a derived backend.
 
 ## [1.2.27] - 2026-11-24
 
@@ -1273,6 +1277,7 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.16]: https://github.com/bymaxone/nest-config/compare/v1.2.15...v1.2.16
 [1.2.17]: https://github.com/bymaxone/nest-config/compare/v1.2.16...v1.2.17
 [1.2.18]: https://github.com/bymaxone/nest-config/compare/v1.2.17...v1.2.18
+[1.2.28]: https://github.com/bymaxone/nest-config/compare/v1.2.27...v1.2.28
 [1.2.27]: https://github.com/bymaxone/nest-config/compare/v1.2.26...v1.2.27
 [1.2.26]: https://github.com/bymaxone/nest-config/compare/v1.2.25...v1.2.26
 [1.2.25]: https://github.com/bymaxone/nest-config/compare/v1.2.24...v1.2.25
@@ -1282,4 +1287,4 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.21]: https://github.com/bymaxone/nest-config/compare/v1.2.20...v1.2.21
 [1.2.20]: https://github.com/bymaxone/nest-config/compare/v1.2.19...v1.2.20
 [1.2.19]: https://github.com/bymaxone/nest-config/compare/v1.2.18...v1.2.19
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.27...HEAD
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.28...HEAD

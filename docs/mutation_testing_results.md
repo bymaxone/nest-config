@@ -1,6 +1,6 @@
 # Mutation Testing Results: @bymax-one/nest-config
 
-> **Last run:** 2026-11-13
+> **Last run:** 2026-11-26
 > **Command:** `pnpm mutation:full` (Stryker 9, jest runner, `coverageAnalysis: perTest`, `ignoreStatic: true`, `break: 100`) — the cold command, which the release gate requires; `pnpm mutation` reuses stored verdicts and cannot establish it
 > **Report:** [`../reports/mutation/mutation.html`](../reports/mutation/mutation.html)
 > **Plan:** [`mutation_testing_plan.md`](./mutation_testing_plan.md)
@@ -12,14 +12,17 @@
 | **Global mutation score**                          | **100.00 %**               |
 | Break threshold (`thresholds.break`)               | 100 % -> **PASS (exit 0)** |
 | Aspirational target (`thresholds.high`)            | 100 % -> **reached**       |
-| Killed                                             | 444                        |
+| Killed                                             | 1262                       |
 | Survived                                           | 0                          |
-| Timeout (counts as detected)                       | 2                          |
-| Type-invalid mutants (checker-discarded, excluded) | 249                        |
+| Timeout (counts as detected)                       | 28                         |
+| Type-invalid mutants (checker-discarded, excluded) | 653                        |
+| Runtime errors (excluded)                          | 30                         |
+| Ignored static mutants (`ignoreStatic`, excluded)  | 49                         |
 
-Score = `(killed + timeout) / (killed + timeout + survived)` = `446 / 446` = **100.00 %**, up
-from **95.74 %** and a **89.11 %** baseline. `pnpm mutation` exits green against `break: 100`,
-which is also the `high` and `low` target.
+Score = `(killed + timeout) / (killed + timeout + survived)` = `1290 / 1290` = **100.00 %**.
+`pnpm mutation` exits green against `break: 100`, which is also the `high` and `low` target.
+
+The history below starts from a **95.74 %** score and an **89.11 %** baseline.
 
 The moves that produced that number are different in kind.
 
@@ -59,9 +62,9 @@ from 95 to 100 once a cold run on `main` read 341 of 341. See the dated re-run a
 Equivalent mutants carry their reason on the line they apply to, as
 `// Stryker disable next-line <Mutator>: <reason>`, which is the convention shared across
 the `@bymax-one/nest-*` libraries — see `mutation_testing_plan.md §Suppression policy`.
-The argument for each is reproduced below, because the entries here carry context an
-inline note cannot: what the supported two-level convention rules out, and what was
-verified by running the mutant rather than reading it.
+An entry under Equivalent mutants carries what an inline note cannot: what the
+supported two-level convention rules out, and what was verified by running the mutant
+rather than reading it.
 
 The one in `toScreamingSnake` could not carry a directive, so it stayed a counted survivor until
 the converter was rewritten without the construct that made it equivalent; it is no longer in the
@@ -88,28 +91,31 @@ non-equivalent survivors:
 
 ## Per-file scores
 
-| File                                 | Score    | Survivors (equivalent) |
-| ------------------------------------ | -------- | ---------------------- |
-| `config.module.ts`                   | 100.00 % | 0                      |
-| `config.providers.ts`                | 100.00 % | 0                      |
-| `config.service.ts`                  | 100.00 % | 0                      |
-| `errors.ts`                          | 100.00 % | 0                      |
-| `report-formatter.ts`                | 100.00 % | 0                      |
-| `testing/create-test-config.ts`      | 100.00 % | 0                      |
-| `testing/placeholder-synthesizer.ts` | 100.00 % | 0                      |
-| `env-validator.ts`                   | 100.00 % | 0                      |
-| `deep-freeze.ts`                     | 100.00 % | 0                      |
-| `source-mapping.ts`                  | 100.00 % | 0                      |
+| File                                 | Score    | Detected | Survivors |
+| ------------------------------------ | -------- | -------- | --------- |
+| `builtins.ts`                        | 100.00 % | 252      | 0         |
+| `captured.ts`                        | 100.00 % | 96       | 0         |
+| `config.module-definition.ts`        | 100.00 % | 4        | 0         |
+| `config.module.ts`                   | 100.00 % | 93       | 0         |
+| `config.providers.ts`                | 100.00 % | 76       | 0         |
+| `config.service.ts`                  | 100.00 % | 38       | 0         |
+| `constraint-message.ts`              | 100.00 % | 43       | 0         |
+| `deep-freeze.ts`                     | 100.00 % | 9        | 0         |
+| `env-validator.ts`                   | 100.00 % | 178      | 0         |
+| `errors.ts`                          | 100.00 % | 87       | 0         |
+| `host-promise.ts`                    | 100.00 % | 13       | 0         |
+| `option-read.ts`                     | 100.00 % | 15       | 0         |
+| `report-formatter.ts`                | 100.00 % | 35       | 0         |
+| `source-mapping.ts`                  | 100.00 % | 106      | 0         |
+| `testing/create-test-config.ts`      | 100.00 % | 112      | 0         |
+| `testing/placeholder-synthesizer.ts` | 100.00 % | 133      | 0         |
 
-`config.module-definition.ts`, `config.options.ts`, `config.tokens.ts`,
-`define-env.ts`, `types.ts`, and `testing/config-testing.module.ts` produce only
-type-invalid or type-guarded mutants (the checker discards them), so they carry no
-runtime mutants to score.
+`define-env.ts` and `testing/config-testing.module.ts` produce only type-invalid
+mutants, so they carry no runtime mutant to score.
 
 ## Equivalent mutants
 
-Each of the following is an equivalent mutant: no test can observe a behavioral
-difference, so it is silenced with an inline reason and is not a coverage gap.
+`src/` holds no `// Stryker disable` directive, so no mutant is listed as equivalent.
 
 Entries that stood here were measured on 2026-11-24 by applying every mutant of the named
 mutators by hand and running the specs of the file, and they did not hold. They were removed
@@ -134,7 +140,7 @@ together with their directives:
 
 ## Residual survivors
 
-None. Each remaining directive carries its reason inline; the equivalence once argued for
+None. `src/` holds no `// Stryker disable` directive; the equivalence once argued for
 `toScreamingSnake` was removed by rewriting the converter.
 
 ---
@@ -610,3 +616,25 @@ files left out.
 | CompileError (type-invalid) | 299           |
 
 Score = `561 / 561`.
+
+## Re-run — 2026-11-26 (1.2.28)
+
+The release gate for `v1.2.28`. Command: **`pnpm mutation:full`**, run cold on a hosted runner by the
+`Mutation (full)` workflow dispatched on `main` at `e2e9062`. Run
+[45767013446](https://github.com/bymaxone/nest-config/actions/runs/45767013446); the job concluded
+`success`, and the inventory check passed: all 1509 unit tests ran in the mutation run, with 12 exempt spec
+files left out.
+
+| Metric                      | Value         |
+| --------------------------- | ------------- |
+| **Mutation score**          | **100.00 %**  |
+| Killed                      | 1262          |
+| Surviving mutants           | 0             |
+| Timeout                     | 28            |
+| Ignored                     | 49            |
+| Break threshold             | 100 % -> PASS |
+| CompileError (type-invalid) | 653           |
+| RuntimeError                | 30            |
+
+Score = `1290 / 1290`. The 49 ignored mutants are all static ones dropped by `ignoreStatic`; none is
+silenced by a directive.

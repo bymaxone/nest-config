@@ -6,7 +6,7 @@ security contract is that nothing the library writes about a failure carries a r
 environment value: not the report, `message` or `stack` of the error it throws, not
 the issues, and not what the validation hook receives.
 
-Three things are outside that contract and are the host's to keep value-free:
+Outside that contract, and the host's to keep value-free:
 
 - The message of your own `custom` rule is printed as written.
 - An error your own code threw, kept as the `cause` of the library's error (from a

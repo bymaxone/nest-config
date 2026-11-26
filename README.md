@@ -845,7 +845,7 @@ const moduleRef = await Test.createTestingModule({
 ```
 
 Overrides mirror the `namespace.leaf` shape with every key optional and typed from the schema. A value is typed as the leaf's parsed output and converted with `String(value)` before validation
-(`false` for a `z.stringbool()` leaf is validated as `'false'`), so the leaf has to accept that text; an object becomes `'[object Object]'`, and an override
+(`false` for a `z.stringbool()` leaf is validated as `'false'`), so the leaf has to accept that text; a plain object becomes `'[object Object]'`, and an override
 of `undefined` is ignored, so a defaulted leaf cannot be unset. An override whose path matches no leaf
 of the schema throws, listing every such path, even when its value is `undefined`; a namespace given
 something other than a plain object is reported once, by name, and so is an overrides argument that is
@@ -855,7 +855,7 @@ failure case (a missing variable, a strict violation) is built with
 `BymaxConfigModule.forRoot({ schema, source, strict: true })` and a source you write.
 
 A placeholder is filler built from the declared constraints: a `z.string().min(32)` leaf gets 32 repeated
-characters. It satisfies a length or format rule and says nothing about secret strength, so never use one
+characters. It says nothing about secret strength, so never use one
 as a secret. The
 subpath has no Jest dependency and works with any runner, though the family
 standard is Jest.
@@ -1063,7 +1063,7 @@ order. A leaf reads its `meta({ env })` override when that is a non-empty string
 `env` at all.
 It reads the schema only, never a source record, so it works on a schema exported as a
 value. It throws a `BymaxConfigValidationError` for a top-level key that is not a namespace or is named
-`toJSON`, for a leaf whose schema chain is longer than 64, and when a built-in the library calls was
+`toJSON`, for a leaf whose search for `meta({ env })` goes past 64 nested schemas without finding one, and when a built-in the library calls was
 replaced after the library loaded.
 
 ```typescript
@@ -1117,9 +1117,9 @@ it('documents every variable the schema reads in .env.example', () => {
 These codes are raised at boot and by the testing helpers; at boot they come in the aggregated `BymaxConfigValidationError` (code `BYMAX_CONFIG_VALIDATION`)
 that stops the process: the library has no HTTP status. `BYMAX_CONFIG_INVALID` also covers a namespace named
 `toJSON`, a top-level key that is not a namespace, an unusable `meta({ env })`, a refused `z.coerce.boolean()`,
-a rule that threw and a leaf whose schema chain is longer than 64 (63 wrappers around the base schema).
+a rule that threw and a leaf whose schema chain is longer than 64.
 
-`BYMAX_CONFIG_UNKNOWN_KEY` has three sources, told apart by the issue's fields. Under `strict`, a source variable that
+The sources of `BYMAX_CONFIG_UNKNOWN_KEY` are told apart by the issue's fields. Under `strict`, a source variable that
 matches no declared leaf: `path` is the namespace alone. A key of a plain options object that `forRoot` or
 `forRootAsync` does not read: `path` is the key and `variable` is `(options)`. A test override that matches no leaf:
 `path` is the override's `namespace.leaf` and `variable` is empty.

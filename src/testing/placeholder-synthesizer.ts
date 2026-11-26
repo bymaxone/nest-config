@@ -369,7 +369,7 @@ function synthesizeNumber(def: LeafDefinition): string {
       bounds.upper = check.value
       bounds.upperExclusive = check.inclusive !== true
     }
-    if (check.check === 'number_format' && INTEGER_FORMATS.has(check.format)) integer = true
+    if (INTEGER_FORMATS.has(check.format)) integer = true
   }
   return String(integer ? selectInteger(bounds) : selectNumber(bounds))
 }

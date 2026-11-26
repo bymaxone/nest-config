@@ -21,7 +21,7 @@ as the GitHub Release body, so each released version needs a matching
 
 ### Fixed
 
-- **The placeholder synthesizer does not take a `lower`, `upper`, `integer` or `exact` planted on `Object.prototype` for a bound of a leaf.**
+- **The placeholder synthesizer does not take a `lower`, `upper` or `exact` planted on `Object.prototype` for a bound of a leaf.**
 
 ### Documentation
 

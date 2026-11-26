@@ -208,8 +208,8 @@ is a different mistake: merging the two would hide the one that explains the oth
 The library does not put a source value into a message itself — not truncated,
 not masked — and tests hold it to that. A rule that raises a non-`custom` issue
 itself chooses what its printed fields hold, so the line reads `invalid value`
-when one holds its own variable's value or is another declared variable's,
-whole; a native constraint doing so reads the same. Anything else your rule
+when one holds its own variable's non-empty value or is another declared
+variable's, whole; a native constraint doing so reads the same. Anything else your rule
 writes there, and a message you write yourself, described next, is your text and
 is printed, even if you built it from a value.
 
@@ -217,7 +217,7 @@ The shorter a variable's value, the more constraint texts contain it: a value of
 digit can withhold many of them. `z.enum(['dev', 'prod', 'test'])` given `e` reads `invalid value`
 rather than listing its options.
 
-One known limit: a rule that writes an object with no prototype into the message or a constraint field of an issue it raises
+One known limit: a rule that writes an object with no prototype into the message of a `custom` issue it raises, or into a constraint field the line would print,
 collapses the whole report into a single `(schema)` line saying that reading the schema threw
 `TypeError`. The other violations are not listed.
 

@@ -187,8 +187,8 @@ export class FeatureProvider {
 ```
 
 A process started with an incomplete environment exits immediately with the
-aggregated report, never one violation at a time. For a schema that also declares
-`auth.jwtSecret` as `z.string().min(32)`:
+aggregated report, never one violation at a time. For a schema that declares
+`database.url`, then `auth.jwtSecret` as `z.string().min(32)`, then `server.port`:
 
 ```
 BymaxConfigValidationError: environment validation failed (3 issues)

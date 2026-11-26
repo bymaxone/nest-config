@@ -8,7 +8,7 @@ the issues, and not what the validation hook receives.
 
 Outside that contract, and the host's to keep value-free:
 
-- The message of your own `custom` rule is printed as written.
+- The message of your own `custom` rule is printed with no value removed from it.
 - An error your own code threw, kept as the `cause` of the library's error (from a
   source or options accessor, an options factory or the hook, for example), carries
   whatever you put in it. `util.inspect` and an uncaught-exception report print it.

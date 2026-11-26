@@ -22,8 +22,6 @@
 Score = `(killed + timeout) / (killed + timeout + survived)` = `1290 / 1290` = **100.00 %**.
 `pnpm mutation` exits green against `break: 100`, which is also the `high` and `low` target.
 
-The history below starts from a **95.74 %** score and an **89.11 %** baseline.
-
 The moves that produced that number are different in kind.
 
 **95.74 % -> 99.59 % was not new tests.** The equivalents were already argued here and
@@ -140,8 +138,7 @@ together with their directives:
 
 ## Residual survivors
 
-None. `src/` holds no `// Stryker disable` directive; the equivalence once argued for
-`toScreamingSnake` was removed by rewriting the converter.
+None. The equivalence once argued for `toScreamingSnake` was removed by rewriting the converter.
 
 ---
 

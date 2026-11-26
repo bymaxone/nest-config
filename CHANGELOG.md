@@ -18,6 +18,7 @@ as the GitHub Release body, so each released version needs a matching
 ### Fixed
 
 - **A testing placeholder for a number leaf stays inside the range of its number format.** A bound declared outside that range was taken as written: `uint32` with `min(-10).max(2)` gave a negative value, which validation refused.
+- **A testing placeholder meets every bound a leaf declares on one side.** Of two minimums or two maximums, of a number or of a string length, only the one declared last was read.
 
 ### Documentation
 

@@ -153,8 +153,8 @@ function readStringLengths(def: LeafDefinition): { min: number; max: number; exa
   let exact: number | undefined
   for (const wrapper of checksOf(def)) {
     const check = readCheck(wrapper)
-    if (check.check === 'min_length') min = check.minimum
-    if (check.check === 'max_length') max = check.maximum
+    if (check.check === 'min_length') min = Math.max(min, check.minimum)
+    if (check.check === 'max_length') max = Math.min(max, check.maximum)
     if (check.check === 'length_equals') exact = check.length
   }
   return ownCopy(exact === undefined ? { min, max } : { min, max, exact })
@@ -347,6 +347,38 @@ function selectNumber(bounds: NumberBounds): number {
 /** The number formats whose values are integers; zod's float formats are not among them. */
 const INTEGER_FORMATS: ReadonlySet<string | undefined> = new Set(['safeint', 'int32', 'uint32'])
 
+/**
+ * Take a lower bound if it is tighter than the one held: zod enforces every check, so the greater
+ * of two decides, and of two equal ones the exclusive.
+ *
+ * @param bounds - The bounds read so far, narrowed in place.
+ * @param value - The lower bound a check declares.
+ * @param exclusive - Whether the check refuses the bound itself.
+ */
+function tightenLower(bounds: NumberBounds, value: number, exclusive: boolean): void {
+  const held = bounds.lower ?? Number.NEGATIVE_INFINITY
+  if (value > held || (value === held && exclusive)) {
+    bounds.lower = value
+    bounds.lowerExclusive = exclusive
+  }
+}
+
+/**
+ * Take an upper bound if it is tighter than the one held: the smaller of two decides, and of two
+ * equal ones the exclusive.
+ *
+ * @param bounds - The bounds read so far, narrowed in place.
+ * @param value - The upper bound a check declares.
+ * @param exclusive - Whether the check refuses the bound itself.
+ */
+function tightenUpper(bounds: NumberBounds, value: number, exclusive: boolean): void {
+  const held = bounds.upper ?? Number.POSITIVE_INFINITY
+  if (value < held || (value === held && exclusive)) {
+    bounds.upper = value
+    bounds.upperExclusive = exclusive
+  }
+}
+
 /** The range each bounded number format admits, as zod enforces it; a double has no narrower one. */
 const FORMAT_RANGES: ReadonlyMap<string | undefined, readonly [number, number]> = new Map([
   ['safeint', [Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER]],
@@ -392,14 +424,9 @@ function synthesizeNumber(def: LeafDefinition): string {
   const formats: (string | undefined)[] = [def.format]
   for (const wrapper of checksOf(def)) {
     const check = readCheck(wrapper)
-    if (check.check === 'greater_than') {
-      bounds.lower = check.value
-      bounds.lowerExclusive = check.inclusive !== true
-    }
-    if (check.check === 'less_than') {
-      bounds.upper = check.value
-      bounds.upperExclusive = check.inclusive !== true
-    }
+    const exclusive = check.inclusive !== true
+    if (check.check === 'greater_than') tightenLower(bounds, check.value, exclusive)
+    if (check.check === 'less_than') tightenUpper(bounds, check.value, exclusive)
     formats.push(check.format)
   }
   for (const format of formats) narrowToFormat(bounds, format)

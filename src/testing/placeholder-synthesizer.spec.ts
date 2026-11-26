@@ -569,3 +569,25 @@ describe('synthesizePlaceholderSource number format ranges', () => {
     expect(config).toEqual({ sample: { value: expected } })
   })
 })
+
+describe('synthesizePlaceholderSource repeated bounds', () => {
+  it.each<[string, z.ZodType, number | string]>([
+    ['min(5).min(-10)', z.coerce.number().min(5).min(-10), 5],
+    ['min(-10).min(5)', z.coerce.number().min(-10).min(5), 5],
+    ['max(2).max(10)', z.coerce.number().max(2).max(10), 2],
+    ['max(10).max(2)', z.coerce.number().max(10).max(2), 2],
+    ['positive().min(-5)', z.coerce.number().int().positive().min(-5), 1],
+    ['gt(5).min(5)', z.coerce.number().int().gt(5).min(5), 6],
+    ['min(5).gt(5)', z.coerce.number().int().min(5).gt(5), 6],
+    ['lt(5).max(5)', z.coerce.number().int().lt(5).max(5), 4],
+    ['max(5).lt(5)', z.coerce.number().int().max(5).lt(5), 4],
+    ['string min(10).min(2)', z.string().min(10).min(2), 'aaaaaaaaaa'],
+    ['url max(12).max(100)', z.url().max(12).max(100), 'http://aaaaa']
+  ])('gives a leaf with %s a value that meets both', (_name, leaf, expected) => {
+    // Scenario: zod enforces every check on a leaf, so of two bounds on one side the tighter
+    // one decides, whichever was declared last.
+    const schema = defineEnv({ sample: z.object({ value: leaf }) })
+    const config = validateEnv(schema, synthesizePlaceholderSource(schema))
+    expect(config).toEqual({ sample: { value: expected } })
+  })
+})

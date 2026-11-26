@@ -207,10 +207,10 @@ is a different mistake: merging the two would hide the one that explains the oth
 The library does not put a source value into a message itself — not truncated,
 not masked — and tests hold it to that. A rule that raises a non-`custom` issue
 itself chooses what its printed fields hold, so the line reads `invalid value`
-when one holds its own variable's value or is another's, whole; a native
-constraint doing so reads the same. Anything else your rule writes there, and a
-message you write yourself, described next, is your text and is printed, even if
-you built it from a value.
+when one holds its own variable's value or is another declared variable's,
+whole; a native constraint doing so reads the same. Anything else your rule
+writes there, and a message you write yourself, described next, is your text and
+is printed, even if you built it from a value.
 
 A rule you write yourself — a `.check`, `.refine` or `.superRefine` raising a
 `custom` issue — has no structural constraint to describe, so its own message is

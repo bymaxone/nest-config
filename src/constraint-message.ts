@@ -1,19 +1,22 @@
 /**
  * @fileoverview The generated message of a failed constraint. It is built from the structural fields of a
  * Zod issue, which a rule can fill itself when it raises one, so it is withheld when a field holds the
- * value of the issue's variable or is another variable's value whole.
+ * value of the issue's variable or is a declared variable's value whole.
  * @layer Utility
  */
 
 import type { z } from 'zod'
 
-import { holds, mapGet, mapKeys, some } from './captured'
+import { holds } from './captured'
 
 /** A single issue as produced by a failed Zod parse. */
 type ZodValidationIssue = z.ZodError['issues'][number]
 
 /** Renders one field of an issue for the message. */
 type Show = (field: unknown) => string
+
+/** Whether a string is the source value of a variable the schema declares. */
+export type IsDeclaredValue = (field: string) => boolean
 
 /**
  * Describe a Zod issue by its structural constraint fields (expected type, bounds, format, enum options).
@@ -46,25 +49,28 @@ function describeConstraint(issue: ZodValidationIssue, show: Show): string {
 
 /**
  * Whether a field repeats a source value: the value of the issue's own variable anywhere inside its
- * rendering, or a field that is another variable's value whole. Source values are strings and that
- * comparison is strict, so a numeric bound is never taken for a neighbour's value. Another variable's
- * value is not searched for inside a field, because a short one is part of many constraints.
+ * rendering, or a field that is a declared variable's value whole. The comparison of the second is
+ * between strings and strict, so neither a numeric bound nor a field the issue lacks matches. Another
+ * variable's value is not searched for inside a field, because a short one is part of many constraints.
+ * Variables the schema does not declare are not compared: the source is the whole environment by
+ * default, and no rule receives them through the parse.
  *
  * @param field - The field as the issue holds it.
  * @param text - The field as it is printed.
- * @param own - The value of the issue's variable, or undefined when it has none.
- * @param source - The source values by variable.
+ * @param own - The value of the issue's variable, or undefined when it has none. A source can hold a
+ * value outside its type, which is not searched for.
+ * @param isDeclaredValue - Answers for the second comparison.
  * @returns True when the field must not be printed.
  */
 function repeatsSource(
   field: unknown,
   text: string,
   own: string | undefined,
-  source: ReadonlyMap<string, string | undefined>
+  isDeclaredValue: IsDeclaredValue
 ): boolean {
   // Every text holds the empty string, so an empty value is not searched for.
-  if (own && holds(text, own)) return true
-  return some(mapKeys(source), (variable) => mapGet(source, variable) === field)
+  if (typeof own === 'string' && own !== '' && holds(text, own)) return true
+  return typeof field === 'string' && isDeclaredValue(field)
 }
 
 /**
@@ -72,18 +78,18 @@ function repeatsSource(
  *
  * @param issue - The Zod issue.
  * @param own - The value of the issue's variable, or undefined for a rule that names no leaf.
- * @param source - The source values by variable.
+ * @param isDeclaredValue - Whether a string is a declared variable's value.
  * @returns The constraint, or `invalid value` when a field is withheld.
  */
 export function constraintMessage(
   issue: ZodValidationIssue,
   own: string | undefined,
-  source: ReadonlyMap<string, string | undefined>
+  isDeclaredValue: IsDeclaredValue
 ): string {
   let repeats = false
   const message = describeConstraint(issue, (field) => {
     const text = String(field)
-    if (repeatsSource(field, text, own, source)) repeats = true
+    if (repeatsSource(field, text, own, isDeclaredValue)) repeats = true
     return text
   })
   return repeats ? 'invalid value' : message

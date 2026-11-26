@@ -267,6 +267,45 @@ describe('a constraint that would repeat a source value is withheld', () => {
     ])
   })
 
+  it.each([
+    ['stringbool beside SHLVL', z.stringbool(), { SHLVL: '1' }],
+    ['enum beside NODE_ENV', z.enum(['development', 'production']), { NODE_ENV: 'production' }]
+  ])('keeps the options of a %s, which the schema does not declare', (_case, leaf, neighbour) => {
+    /** The source is the whole environment, and only a declared variable reaches a rule. */
+    const error = refused(defineEnv({ app: z.object({ flag: leaf }) }), {
+      APP_FLAG: 'maybe',
+      ...neighbour
+    })
+
+    expect(error.issues[0]?.message).toMatch(/^invalid value \(expected one of: /)
+  })
+
+  it.each([
+    ['an object with no prototype', Object.create(null) as unknown],
+    ['a symbol', Symbol('s') as unknown]
+  ])('reports every line when a declared variable holds %s', (_kind, value) => {
+    const schema = defineEnv({ app: z.object({ name: z.string(), other: z.string() }) })
+
+    const error = refused(schema, { APP_NAME: value as string })
+
+    expect(error.issues.map((entry) => entry.variable)).toEqual(['APP_NAME', 'APP_OTHER'])
+  })
+
+  it('does not take a field the issue lacks for a declared variable the source lacks', () => {
+    const schema = defineEnv({
+      app: z.object({
+        name: raising(() => ({ code: 'too_small', minimum: 5, message: 'x' })),
+        other: z.string().optional()
+      })
+    })
+
+    const error = refused(schema, { APP_NAME: 'q' })
+
+    expect(error.issues.map((entry) => entry.message)).toEqual([
+      'out of range (expected: undefined >= 5)'
+    ])
+  })
+
   it('renders a field once, so a second rendering cannot differ from the compared one', () => {
     /** The raised issue carries a message, so zod does not render the field before the library does. */
     let renderings = 0

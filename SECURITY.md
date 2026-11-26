@@ -2,13 +2,16 @@
 
 `@bymax-one/nest-config` validates `process.env` once at bootstrap and exposes a
 deep-frozen typed configuration object to the rest of the application. Its hard
-security contract is that nothing the library writes about a failure carries a raw
-environment value: not the report, `message` or `stack` of the error it throws, not
-the issues, and not what the validation hook receives.
+security contract is that the library never prints a leaf's raw value: not in the
+report, `message` or `stack` of the error it throws, not in the issues, and not in
+what the validation hook receives.
 
-Outside that contract, and the host's to keep value-free:
+Outside that contract is host text, yours to keep value-free:
 
 - The message of your own `custom` rule is printed with no value removed from it.
+- A value your code transformed before writing it into a field of an issue it raised
+  itself (sliced or re-encoded, say, or another variable's value inside longer text)
+  is printed as you wrote it.
 - An error your own code threw, kept as the `cause` of the library's error (from a
   source or options accessor, an options factory or the hook, for example), carries
   whatever you put in it. `util.inspect` and an uncaught-exception report print it.

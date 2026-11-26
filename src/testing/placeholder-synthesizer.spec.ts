@@ -532,3 +532,70 @@ describe('synthesizePlaceholderSource integer leaves', () => {
     expect(config).toEqual({ sample: { value: expected } })
   })
 })
+
+describe('synthesizePlaceholderSource number format ranges', () => {
+  // Held in a variable because zod accepts `coerce` here but does not declare it for these.
+  const coercing = { abort: false, coerce: true }
+
+  it.each<[string, z.ZodType, number]>([
+    ['uint32() with a minimum below the format', z.uint32(coercing).min(-10).max(2), 1],
+    ['a uint32() check', z.coerce.number().check(z.uint32()).min(-10).max(2), 1],
+    ['uint32() with an exclusive minimum on the format edge', z.uint32(coercing).gt(0), 1],
+    [
+      'uint32() with an exclusive maximum on the format edge',
+      z.uint32(coercing).lt(4294967295),
+      4294967294
+    ],
+    ['uint32() with only a minimum below the format', z.uint32(coercing).min(-10), 0],
+    ['uint32() with an exclusive minimum below it', z.uint32(coercing).gt(-10).lt(1), 0],
+    [
+      'int32() with a minimum below the format',
+      z.int32(coercing).min(-3e9).max(-2147483646),
+      -2147483647
+    ],
+    ['int32() with a maximum above the format', z.int32(coercing).max(5e9), 2147483647],
+    [
+      'int32() with an exclusive maximum above it',
+      z.int32(coercing).min(2147483646).lt(5e9),
+      2147483646
+    ],
+    ['int() with a maximum above the safe range', z.int(coercing).max(1e300), 9007199254740991],
+    [
+      'float32() with a minimum below the format',
+      z.float32(coercing).min(-1e39).max(3.4028234663852886e38),
+      0
+    ],
+    ['uint32() with an exclusive minimum at its edge', z.uint32(coercing).gt(0).max(2), 1],
+    ['uint32() with no bound of its own', z.uint32(coercing), 1]
+  ])('gives %s a value it accepts', (_name, leaf, expected) => {
+    // Scenario: a number format admits only its own range, so a declared bound outside that
+    // range is not where the value is chosen from.
+    const schema = defineEnv({ sample: z.object({ value: leaf }) })
+    const config = validateEnv(schema, synthesizePlaceholderSource(schema))
+    expect(config).toEqual({ sample: { value: expected } })
+  })
+})
+
+describe('synthesizePlaceholderSource repeated bounds', () => {
+  it.each<[string, z.ZodType, number | string]>([
+    ['min(5).min(-10)', z.coerce.number().min(5).min(-10), 5],
+    ['min(-10).min(5)', z.coerce.number().min(-10).min(5), 5],
+    ['max(2).max(10)', z.coerce.number().max(2).max(10), 2],
+    ['max(10).max(2)', z.coerce.number().max(10).max(2), 2],
+    ['positive().min(-5)', z.coerce.number().int().positive().min(-5), 1],
+    ['gt(5).min(5)', z.coerce.number().int().gt(5).min(5), 6],
+    ['min(5).gt(5)', z.coerce.number().int().min(5).gt(5), 6],
+    ['lt(5).max(5)', z.coerce.number().int().lt(5).max(5), 4],
+    ['max(5).lt(5)', z.coerce.number().int().max(5).lt(5), 4],
+    ['min(5).gt(-10)', z.coerce.number().int().min(5).gt(-10), 5],
+    ['max(2).lt(10)', z.coerce.number().int().max(2).lt(10), 2],
+    ['string min(10).min(2)', z.string().min(10).min(2), 'aaaaaaaaaa'],
+    ['url max(12).max(100)', z.url().max(12).max(100), 'http://aaaaa']
+  ])('gives a leaf with %s a value that meets both', (_name, leaf, expected) => {
+    // Scenario: zod enforces every check on a leaf, so of two bounds on one side the tighter
+    // one decides, whichever was declared last.
+    const schema = defineEnv({ sample: z.object({ value: leaf }) })
+    const config = validateEnv(schema, synthesizePlaceholderSource(schema))
+    expect(config).toEqual({ sample: { value: expected } })
+  })
+})

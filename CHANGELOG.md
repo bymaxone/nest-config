@@ -15,6 +15,11 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+### Fixed
+
+- **A testing placeholder for a number leaf stays inside the range of its number format.** A bound declared outside that range was taken as written: `uint32` with `min(-10).max(2)` gave a negative value, which validation refused.
+- **A testing placeholder meets every bound a leaf declares on one side.** Of two minimums or two maximums, of a number or of a string length, only the one declared last was read.
+
 ### Documentation
 
 - **README states a known limit: another variable's value that a rule wraps in an array or a `toString` object, and writes into a constraint field the line would print, can be printed.**

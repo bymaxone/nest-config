@@ -306,6 +306,53 @@ describe('a constraint that would repeat a source value is withheld', () => {
     ])
   })
 
+  it.each([
+    ['a number', 48213377],
+    ['a bigint', 48213377n],
+    ['a boolean', true]
+  ])('withholds %s the source holds outside its type, as it is or as text', (_kind, value) => {
+    /** A value of any type is validated, so a rule can receive one and write it into a field. */
+    for (const written of [value, `got ${value}`]) {
+      const leaf = z.any().superRefine((_value, ctx) => {
+        ctx.addIssue({ code: 'invalid_type', expected: written } as never)
+      })
+
+      const error = refused(defineEnv({ app: z.object({ pin: leaf }) }), {
+        APP_PIN: value as never
+      })
+
+      expect(error.issues.map((entry) => entry.message)).toEqual(['invalid value'])
+    }
+  })
+
+  it.each([
+    ['as it is', 48213377],
+    ['as text', '48213377']
+  ])('withholds another variable number written %s', (_how, written) => {
+    const schema = defineEnv({
+      app: z.object({ name: z.string(), pin: z.any() }).superRefine((_app, ctx) => {
+        ctx.addIssue({ code: 'invalid_type', expected: written, path: ['name'] } as never)
+      })
+    })
+
+    const error = refused(schema, { APP_NAME: 'x', APP_PIN: 48213377 as never })
+
+    expect(error.issues.map((entry) => entry.message)).toEqual(['invalid value'])
+  })
+
+  it('keeps the options of an enum that has an empty one beside an empty variable', () => {
+    /** An empty value carries nothing, so no field is taken for it. */
+    const schema = defineEnv({
+      app: z.object({ mode: z.enum(['', 'ssl']), other: z.string() })
+    })
+
+    const error = refused(schema, { APP_MODE: 'bad', APP_OTHER: '' })
+
+    expect(error.issues.map((entry) => entry.message)).toEqual([
+      'invalid value (expected one of: , ssl)'
+    ])
+  })
+
   it('renders a field once, so a second rendering cannot differ from the compared one', () => {
     /** The raised issue carries a message, so zod does not render the field before the library does. */
     let renderings = 0

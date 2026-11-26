@@ -31,7 +31,7 @@ import {
   sortStrings,
   startsWith
 } from './captured'
-import { constraintMessage, type IsDeclaredValue } from './constraint-message'
+import { constraintMessage, type SomeDeclared } from './constraint-message'
 import { ConfigErrorCode, isLibraryError, libraryError } from './errors'
 import type { BymaxConfigValidationError, ConfigIssue } from './errors'
 import { awaitHost } from './host-promise'
@@ -178,7 +178,7 @@ function authoredMessage(issue: ZodValidationIssue): string | undefined {
  * @param issue - The Zod issue reported at the binding's path.
  * @param source - The source values: they classify missing versus invalid, and a generated message
  * that would repeat the binding's is withheld.
- * @param isDeclaredValue - Finds another declared variable's value in a printed field.
+ * @param someDeclared - Tests the declared variables' values against a printed field.
  * @returns The issue with resolved variable name and code; its message is a
  * generated description of the constraint unless the author wrote one.
  */
@@ -186,7 +186,7 @@ function toConfigIssue(
   binding: SourceBinding,
   issue: ZodValidationIssue,
   source: ReadonlyMap<string, string | undefined>,
-  isDeclaredValue: IsDeclaredValue
+  someDeclared: SomeDeclared
 ): ConfigIssue {
   const value = mapGet(source, binding.variable)
   const authored = authoredMessage(issue)
@@ -196,7 +196,7 @@ function toConfigIssue(
     code: value === undefined ? ConfigErrorCode.MISSING : ConfigErrorCode.INVALID,
     message:
       authored ??
-      (value === undefined ? MISSING_MESSAGE : constraintMessage(issue, value, isDeclaredValue))
+      (value === undefined ? MISSING_MESSAGE : constraintMessage(issue, value, someDeclared))
   }
 }
 
@@ -210,21 +210,21 @@ function toConfigIssue(
  * @param path - The namespace key, or the empty string for the whole schema.
  * @param variable - The text for the variable column.
  * @param issue - The Zod issue that named no leaf.
- * @param isDeclaredValue - Finds a declared variable's value, which a generated message must not repeat.
+ * @param someDeclared - Tests the declared variables' values, which a generated message must not repeat.
  * @returns The ConfigIssue for the report.
  */
 function toNamespaceIssue(
   path: string,
   variable: string,
   issue: ZodValidationIssue,
-  isDeclaredValue: IsDeclaredValue
+  someDeclared: SomeDeclared
 ): ConfigIssue {
   return {
     path,
     variable,
     code: ConfigErrorCode.INVALID,
     // No leaf of its own, so only a field that is a declared variable's value whole is withheld.
-    message: authoredMessage(issue) ?? constraintMessage(issue, undefined, isDeclaredValue)
+    message: authoredMessage(issue) ?? constraintMessage(issue, undefined, someDeclared)
   }
 }
 
@@ -270,22 +270,22 @@ function translateIssues(
     const key = namespace ? String(issue.path[0]) : ''
     if (!mapHas(issueByNamespace, key)) mapSet(issueByNamespace, key, issue)
   }
-  const isDeclaredValue: IsDeclaredValue = (field) =>
-    some(bindings, (binding) => mapGet(source, binding.variable) === field)
+  const someDeclared: SomeDeclared = (test) =>
+    some(bindings, (binding) => test(mapGet(source, binding.variable)))
   const result: ConfigIssue[] = []
   for (const binding of bindings) {
     const issue = mapGet(issueByPath, binding.path)
     if (issue === undefined) continue
-    result.push(toConfigIssue(binding, issue, source, isDeclaredValue))
+    result.push(toConfigIssue(binding, issue, source, someDeclared))
   }
   for (const entry of prefixes) {
     const issue = mapGet(issueByNamespace, entry.namespace)
     if (issue === undefined) continue
-    result.push(toNamespaceIssue(entry.namespace, `${entry.prefix}*`, issue, isDeclaredValue))
+    result.push(toNamespaceIssue(entry.namespace, `${entry.prefix}*`, issue, someDeclared))
   }
   const wholeSchema = mapGet(issueByNamespace, '')
   if (wholeSchema !== undefined)
-    result.push(toNamespaceIssue('', '(schema)', wholeSchema, isDeclaredValue))
+    result.push(toNamespaceIssue('', '(schema)', wholeSchema, someDeclared))
   return result
 }
 

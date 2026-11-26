@@ -3,10 +3,10 @@
  * onto the nested schema through the resolved source-name bindings, runs exactly
  * one Zod parse, and either returns the typed parsed output or throws a
  * BymaxConfigValidationError aggregating every violation. Zod issues are
- * translated into value-free ConfigIssue descriptions that state only the
- * expected constraint, never the received value. The one exception is the
- * message a schema author attaches to a `custom` issue (`.check`, `.refine`,
- * `.superRefine`), which is reported as written: it is schema text, not input,
+ * translated into ConfigIssue descriptions of the expected constraint, never
+ * of the received value (see constraint-message for a field a rule filled).
+ * The message a schema author attaches to a `custom` issue (`.check`, `.refine`,
+ * `.superRefine`) is reported as written: it is schema text, not input,
  * and it is the only place a conditional or cross-field rule can explain itself.
  * @layer Service
  */
@@ -31,6 +31,7 @@ import {
   sortStrings,
   startsWith
 } from './captured'
+import { constraintMessage, type SomeDeclared } from './constraint-message'
 import { ConfigErrorCode, isLibraryError, libraryError } from './errors'
 import type { BymaxConfigValidationError, ConfigIssue } from './errors'
 import { awaitHost } from './host-promise'
@@ -146,47 +147,6 @@ function buildCandidate(
 }
 
 /**
- * Render the allowed enum options as a value-free option list.
- *
- * @param values - The declared enum options (schema constants, never input).
- * @returns The options joined for a human-readable message.
- */
-function formatEnumValues(values: ReadonlyArray<unknown>): string {
-  return values.map(String).join(', ')
-}
-
-/**
- * Describe a Zod issue as a value-free constraint message.
- *
- * Reads only the structural constraint fields (expected type, bounds, format,
- * enum options), never the received value, so the message can never leak a
- * secret.
- *
- * @param issue - The Zod issue for a present-but-invalid leaf.
- * @returns A human-readable description of the expected constraint.
- */
-function describeConstraint(issue: ZodValidationIssue): string {
-  switch (issue.code) {
-    case 'invalid_type':
-      return `invalid value (expected: ${issue.expected})`
-    case 'invalid_format':
-      return `invalid format (expected: ${issue.format})`
-    case 'invalid_value':
-      return `invalid value (expected one of: ${formatEnumValues(issue.values)})`
-    case 'too_small':
-      return issue.origin === 'string'
-        ? `too short (expected: string, minimum ${issue.minimum} characters)`
-        : `out of range (expected: ${issue.origin} >= ${issue.minimum})`
-    case 'too_big':
-      return issue.origin === 'string'
-        ? `too long (expected: string, maximum ${issue.maximum} characters)`
-        : `out of range (expected: ${issue.origin} <= ${issue.maximum})`
-    default:
-      return 'invalid value'
-  }
-}
-
-/**
  * Extract the message a schema author attached to a `custom` issue.
  *
  * A `custom` issue carries no structural constraint to describe: the rule lives
@@ -216,22 +176,27 @@ function authoredMessage(issue: ZodValidationIssue): string | undefined {
  *
  * @param binding - The leaf binding the issue belongs to.
  * @param issue - The Zod issue reported at the binding's path.
- * @param source - The source values, used to classify missing versus invalid.
+ * @param source - The source values: they classify missing versus invalid, and a generated message
+ * that would repeat the binding's is withheld.
+ * @param someDeclared - Tests the declared variables' values.
  * @returns The issue with resolved variable name and code; its message is a
- * generated, value-free description unless the author wrote one.
+ * generated description of the constraint unless the author wrote one.
  */
 function toConfigIssue(
   binding: SourceBinding,
   issue: ZodValidationIssue,
-  source: ReadonlyMap<string, string | undefined>
+  source: ReadonlyMap<string, string | undefined>,
+  someDeclared: SomeDeclared
 ): ConfigIssue {
-  const isMissing = source.get(binding.variable) === undefined
+  const value = mapGet(source, binding.variable)
   const authored = authoredMessage(issue)
   return {
     path: binding.path,
     variable: binding.variable,
-    code: isMissing ? ConfigErrorCode.MISSING : ConfigErrorCode.INVALID,
-    message: authored ?? (isMissing ? MISSING_MESSAGE : describeConstraint(issue))
+    code: value === undefined ? ConfigErrorCode.MISSING : ConfigErrorCode.INVALID,
+    message:
+      authored ??
+      (value === undefined ? MISSING_MESSAGE : constraintMessage(issue, value, someDeclared))
   }
 }
 
@@ -245,14 +210,21 @@ function toConfigIssue(
  * @param path - The namespace key, or the empty string for the whole schema.
  * @param variable - The text for the variable column.
  * @param issue - The Zod issue that named no leaf.
+ * @param someDeclared - Tests the declared variables' values.
  * @returns The ConfigIssue for the report.
  */
-function toNamespaceIssue(path: string, variable: string, issue: ZodValidationIssue): ConfigIssue {
+function toNamespaceIssue(
+  path: string,
+  variable: string,
+  issue: ZodValidationIssue,
+  someDeclared: SomeDeclared
+): ConfigIssue {
   return {
     path,
     variable,
     code: ConfigErrorCode.INVALID,
-    message: authoredMessage(issue) ?? describeConstraint(issue)
+    // No leaf of its own, so only a field that is a declared variable's value whole is withheld.
+    message: authoredMessage(issue) ?? constraintMessage(issue, undefined, someDeclared)
   }
 }
 
@@ -298,19 +270,22 @@ function translateIssues(
     const key = namespace ? String(issue.path[0]) : ''
     if (!mapHas(issueByNamespace, key)) mapSet(issueByNamespace, key, issue)
   }
+  const someDeclared: SomeDeclared = (test) =>
+    some(bindings, (binding) => test(mapGet(source, binding.variable)))
   const result: ConfigIssue[] = []
   for (const binding of bindings) {
     const issue = mapGet(issueByPath, binding.path)
     if (issue === undefined) continue
-    result.push(toConfigIssue(binding, issue, source))
+    result.push(toConfigIssue(binding, issue, source, someDeclared))
   }
   for (const entry of prefixes) {
     const issue = mapGet(issueByNamespace, entry.namespace)
     if (issue === undefined) continue
-    result.push(toNamespaceIssue(entry.namespace, `${entry.prefix}*`, issue))
+    result.push(toNamespaceIssue(entry.namespace, `${entry.prefix}*`, issue, someDeclared))
   }
   const wholeSchema = mapGet(issueByNamespace, '')
-  if (wholeSchema !== undefined) result.push(toNamespaceIssue('', '(schema)', wholeSchema))
+  if (wholeSchema !== undefined)
+    result.push(toNamespaceIssue('', '(schema)', wholeSchema, someDeclared))
   return result
 }
 

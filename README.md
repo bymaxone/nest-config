@@ -217,7 +217,11 @@ The shorter a variable's value, the more constraint texts contain it: a value of
 digit can withhold many of them. `z.enum(['dev', 'prod', 'test'])` given `e` reads `invalid value`
 rather than listing its options.
 
-One known limit: a rule that writes an object with no prototype into the message of a `custom` issue it raises, or into a constraint field the line would print,
+One known limit: another variable's value that your rule wraps in an array, or in an object with a
+`toString`, and writes into `maximum`, `minimum`, `expected` or `format` is not recognised, and the
+line prints it.
+
+Another known limit: a rule that writes an object with no prototype into the message of a `custom` issue it raises, or into a constraint field the line would print,
 collapses the whole report into a single `(schema)` line saying that reading the schema threw
 `TypeError`. The other violations are not listed.
 

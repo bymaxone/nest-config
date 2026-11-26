@@ -17,7 +17,7 @@ as the GitHub Release body, so each released version needs a matching
 
 ### Documentation
 
-- **README states a known limit: another variable's value that a rule wraps in an array or a `toString` object, and writes into `maximum`, `minimum`, `expected` or `format`, is printed.** The 1.2.28 entry on withheld fields now says that a bound written as a number is not compared with other variables' values.
+- **README states a known limit: another variable's value that a rule wraps in an array or a `toString` object, and writes into a constraint field the line would print, can be printed.**
 
 ## [1.2.28] - 2026-11-26
 
@@ -27,7 +27,7 @@ as the GitHub Release body, so each released version needs a matching
 
 ### Fixed
 
-- **A generated message withholds a field a rule filled with a source value, as described here.** A rule that raises a non-`custom` issue itself (`ctx.addIssue`) chooses what the printed fields hold, and 1.2.27 and earlier printed them, so the value reached the message, the report and the issues. The line now reads `invalid value` when a printed field holds its own variable's non-empty value anywhere inside it, or is, whole, another declared variable's non-empty value (a bound written as a number is not compared with other variables' values). A native constraint that happens to contain the value is withheld too: `prod` against `z.enum(['development', 'production'])` reads `invalid value`. Any other text in a field is printed, as a `custom` message is.
+- **A generated message withholds a field a rule filled with a source value, as described here.** A rule that raises a non-`custom` issue itself (`ctx.addIssue`) chooses what the printed fields hold, and 1.2.27 and earlier printed them, so the value reached the message, the report and the issues. The line now reads `invalid value` when a printed field holds its own variable's non-empty value anywhere inside it, or is, whole, another declared variable's non-empty value (a bound written as a number does not match another variable's string value). A native constraint that happens to contain the value is withheld too: `prod` against `z.enum(['development', 'production'])` reads `invalid value`. Any other text in a field is printed, as a `custom` message is.
 - **A testing placeholder for a number leaf with an integer format is an integer.** A single fractional inclusive bound was taken as the value (`min(1.5)` gave `1.5`), a `float64` check was treated as an integer format, and the format `z.int()` records on the leaf itself was not read.
 - **The placeholder synthesizer does not take a `lower`, `upper` or `exact` planted on `Object.prototype` for a bound of a leaf.**
 

@@ -508,3 +508,27 @@ describe('synthesizePlaceholderSource formats beyond url and email', () => {
     expect(validateEnv(schema, source)).toEqual({ gate: { on: true } })
   })
 })
+
+describe('synthesizePlaceholderSource integer leaves', () => {
+  // Held in a variable because zod accepts `coerce` here but does not declare it for these.
+  const coercing = { abort: false, coerce: true }
+
+  it.each<[string, z.ZodType, number]>([
+    ['int() with two bounds', z.int(coercing).min(1).max(2), 1],
+    ['int32() with two bounds', z.int32(coercing).min(1).max(2), 1],
+    ['uint32() with two bounds', z.uint32(coercing).min(1).max(2), 1],
+    ['a fractional minimum', z.coerce.number().int().min(1.5), 2],
+    ['a fractional exclusive minimum', z.coerce.number().int().gt(1.5), 2],
+    ['a fractional maximum', z.coerce.number().int().max(-1.5), -2],
+    ['a fractional exclusive maximum', z.coerce.number().int().lt(-1.5), -2],
+    ['an int() check', z.coerce.number().check(z.int()).min(1.5), 2],
+    ['a float64() check', z.coerce.number().check(z.float64()).min(0.1).max(0.9), 0.5],
+    ['float64() with two bounds', z.float64(coercing).min(1).max(2), 1.5]
+  ])('gives a number leaf with %s a value it accepts', (_name, leaf, expected) => {
+    // Scenario: whether a leaf is an integer comes from its number format, which sits on
+    // the leaf for `z.int()` and in a check for `.int()`; a float format is not an integer.
+    const schema = defineEnv({ sample: z.object({ value: leaf }) })
+    const config = validateEnv(schema, synthesizePlaceholderSource(schema))
+    expect(config).toEqual({ sample: { value: expected } })
+  })
+})

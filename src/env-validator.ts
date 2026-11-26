@@ -178,7 +178,7 @@ function authoredMessage(issue: ZodValidationIssue): string | undefined {
  * @param issue - The Zod issue reported at the binding's path.
  * @param source - The source values: they classify missing versus invalid, and a generated message
  * that would repeat the binding's is withheld.
- * @param someDeclared - Tests the declared variables' values against a printed field.
+ * @param someDeclared - Tests the declared variables' values.
  * @returns The issue with resolved variable name and code; its message is a
  * generated description of the constraint unless the author wrote one.
  */
@@ -210,7 +210,7 @@ function toConfigIssue(
  * @param path - The namespace key, or the empty string for the whole schema.
  * @param variable - The text for the variable column.
  * @param issue - The Zod issue that named no leaf.
- * @param someDeclared - Tests the declared variables' values, which a generated message must not repeat.
+ * @param someDeclared - Tests the declared variables' values.
  * @returns The ConfigIssue for the report.
  */
 function toNamespaceIssue(

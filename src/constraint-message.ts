@@ -1,8 +1,7 @@
 /**
  * @fileoverview The generated message of a failed constraint. It is built from the structural fields of a
  * Zod issue, which a rule can fill itself when it raises one, so it is withheld when a field holds the
- * value of the issue's variable or is a declared variable's value whole. Every rule of that comparison
- * is in this file.
+ * value of the issue's variable or is a declared variable's value whole.
  * @layer Utility
  */
 
@@ -73,8 +72,8 @@ function textOfValue(value: unknown): string | undefined {
  * The value of the issue's own variable counts anywhere inside the field's rendering. A declared
  * variable's value counts when the field is it, or is its text, whole: a short value is part of many
  * constraints, so it is not searched for, and a numeric bound is not the text a source string holds.
- * An empty value counts for neither, since every text holds it, and neither does a field the issue
- * lacks. Variables the schema does not declare are not compared: the source is the whole environment
+ * An empty value counts for neither, since every text holds it. No declared value matches an absent
+ * field. Variables the schema does not declare are not compared: the source is the whole environment
  * by default, and no rule receives them through the parse.
  *
  * @param field - The field as the issue holds it.

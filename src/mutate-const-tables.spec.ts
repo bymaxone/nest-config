@@ -7,7 +7,15 @@
  * Layer: repository tooling, tests.
  */
 import { spawn, spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 
@@ -44,7 +52,11 @@ function repo(files: Record<string, string>, required: readonly string[]): strin
       "const text = readFileSync(file, 'utf8')",
       "appendFileSync('log.jsonl', JSON.stringify(text) + '\\n')",
       `const required = ${JSON.stringify(required)}`,
-      'process.exit(required.every((snippet) => text.includes(snippet)) ? 0 : 1)'
+      'if (!required.every((snippet) => text.includes(snippet))) {',
+      // The script counts a kill only from a test summary that names a failed test.
+      "  console.error('Tests:       1 failed, 1 total')",
+      '  process.exit(1)',
+      '}'
     ].join('\n')
   )
   symlinkSync(REPOSITORY_MODULES, join(root, 'node_modules'))
@@ -52,18 +64,26 @@ function repo(files: Record<string, string>, required: readonly string[]): strin
   return root
 }
 
+/**
+ * The checker as a test command. It already says `--runInBand`, so the script has no second
+ * spelling of it to try on the unmutated file.
+ */
+const CHECKER = ['--', 'node', 'checker.mjs', '{file}', '--runInBand'] as const
+
 /** Runs the script against `root`, with the checker as the test command unless `args` say otherwise. */
-function run(
-  root: string,
-  args: readonly string[] = ['--', 'node', 'checker.mjs', '{file}']
-): Result {
+function run(root: string, args: readonly string[] = CHECKER): Result {
   const result = spawnSync('node', [SCRIPT, '--root', root, ...args], { encoding: 'utf8' })
   return { status: result.status, stdout: result.stdout, stderr: result.stderr }
 }
 
-/** The texts the checker saw, one per run: the unmutated baseline first, then each mutant. */
+/**
+ * The texts the checker saw, one per run: the unmutated baseline of each table file first, then
+ * each mutant. Empty when the checker never ran.
+ */
 function seen(root: string): string[] {
-  return readFileSync(join(root, 'log.jsonl'), 'utf8')
+  const log = join(root, 'log.jsonl')
+  if (!existsSync(log)) return []
+  return readFileSync(log, 'utf8')
     .split('\n')
     .filter((line) => line !== '')
     .map((line) => JSON.parse(line) as string)
@@ -157,7 +177,7 @@ describe('mutate-const-tables', () => {
 
     const result = run(root)
 
-    expect(seen(root)).toHaveLength(1)
+    expect(seen(root)).toHaveLength(0)
     expect(result.status).toBe(0)
   })
 
@@ -169,7 +189,7 @@ describe('mutate-const-tables', () => {
 
       run(root)
 
-      expect(seen(root)).toHaveLength(1)
+      expect(seen(root)).toHaveLength(0)
     }
   )
 
@@ -177,7 +197,7 @@ describe('mutate-const-tables', () => {
   it('should mutate only the files matching --only', () => {
     const root = repo({ 'src/one.ts': TABLE, 'src/two.ts': TABLE.replace('T', 'U') }, [])
 
-    run(root, ['--only', 'two', '--', 'node', 'checker.mjs', 'src/two.ts'])
+    run(root, ['--only', 'two', ...CHECKER])
 
     expect(seen(root)).toHaveLength(5)
   })
@@ -186,7 +206,7 @@ describe('mutate-const-tables', () => {
   it('should mutate only the files under --src', () => {
     const root = repo({ 'lib/one.ts': TABLE, 'src/two.ts': TABLE }, [])
 
-    run(root, ['--src', 'lib', '--', 'node', 'checker.mjs', 'lib/one.ts'])
+    run(root, ['--src', 'lib', ...CHECKER])
 
     expect(seen(root)).toHaveLength(5)
   })
@@ -199,11 +219,10 @@ describe('mutate-const-tables', () => {
       "import { appendFileSync } from 'node:fs'\nappendFileSync('env.log', `${process.argv[2]}|${process.env.MUTATED_FILE}\\n`)\n"
     )
 
-    run(root, ['--', 'node', 'env.mjs', '{file}'])
+    run(root, ['--', 'node', 'env.mjs', '{file}', '--runInBand'])
 
     const lines = readFileSync(join(root, 'env.log'), 'utf8').split('\n').filter(Boolean)
-    expect(lines[0]).toBe('|')
-    expect(lines.slice(1)).toEqual(Array<string>(4).fill('src/table.ts|src/table.ts'))
+    expect(lines).toEqual(Array<string>(5).fill('src/table.ts|src/table.ts'))
   })
 
   // With no command the tool cannot run anything; it must say how to call it.
@@ -223,7 +242,7 @@ describe('mutate-const-tables', () => {
     const result = run(root)
 
     expect(result.status).toBe(2)
-    expect(result.stderr).toContain('fails on the unmutated tree')
+    expect(result.stderr).toContain('fails on the unmutated file src/table.ts')
     expect(seen(root)).toHaveLength(1)
   })
   // An inner object is part of the table it sits in, so its entries are mutated too.

@@ -273,8 +273,8 @@ a review that proposes closing that hole should read it first.
 
 ## Release authority
 
-For every release, the project manager's GO that names the full commit SHA is the repository owner's
-decision on the version number, the merge, the tag and the publish.
+For every release, the PM's GO, naming the version and the full SHA, is the maintainer's decision on
+version number, merge, tag and publish (owner standing order, 2026-11-26).
 
 ## Session memory (Obsidian vault)
 

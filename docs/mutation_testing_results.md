@@ -12,14 +12,14 @@
 | **Global mutation score**                          | **100.00 %**               |
 | Break threshold (`thresholds.break`)               | 100 % -> **PASS (exit 0)** |
 | Aspirational target (`thresholds.high`)            | 100 % -> **reached**       |
-| Killed                                             | 1262                       |
+| Killed                                             | 1296                       |
 | Survived                                           | 0                          |
-| Timeout (counts as detected)                       | 28                         |
-| Type-invalid mutants (checker-discarded, excluded) | 653                        |
+| Timeout (counts as detected)                       | 29                         |
+| Type-invalid mutants (checker-discarded, excluded) | 664                        |
 | Runtime errors (excluded)                          | 30                         |
-| Ignored static mutants (`ignoreStatic`, excluded)  | 49                         |
+| Ignored static mutants (`ignoreStatic`, excluded)  | 64                         |
 
-Score = `(killed + timeout) / (killed + timeout + survived)` = `1290 / 1290` = **100.00 %**.
+Score = `(killed + timeout) / (killed + timeout + survived)` = `1325 / 1325` = **100.00 %**.
 `pnpm mutation` exits green against `break: 100`, which is also the `high` and `low` target.
 
 The moves that produced that number are different in kind.
@@ -106,7 +106,7 @@ non-equivalent survivors:
 | `report-formatter.ts`                | 100.00 % | 35       | 0         |
 | `source-mapping.ts`                  | 100.00 % | 106      | 0         |
 | `testing/create-test-config.ts`      | 100.00 % | 112      | 0         |
-| `testing/placeholder-synthesizer.ts` | 100.00 % | 133      | 0         |
+| `testing/placeholder-synthesizer.ts` | 100.00 % | 168      | 0         |
 
 `define-env.ts` and `testing/config-testing.module.ts` produce only type-invalid
 mutants, so they carry no runtime mutant to score.
@@ -635,3 +635,29 @@ files left out.
 
 Score = `1290 / 1290`. The 49 ignored mutants are all static ones dropped by `ignoreStatic`; none is
 silenced by a directive.
+
+## Re-run — 2026-11-26 (1.2.29)
+
+The release gate for `v1.2.29`. Command: **`pnpm mutation:full`**, run cold on a hosted runner by the
+`Mutation (full)` workflow dispatched on `main` at `362aed9`. Run
+[45803470372](https://github.com/bymaxone/nest-config/actions/runs/45803470372); the job concluded
+`success`, and the inventory check passed: all 1535 unit tests ran in the mutation run, with 12 exempt spec
+files left out.
+
+| Metric                      | Value         |
+| --------------------------- | ------------- |
+| **Mutation score**          | **100.00 %**  |
+| Killed                      | 1296          |
+| Surviving mutants           | 0             |
+| Timeout                     | 29            |
+| Ignored                     | 64            |
+| Break threshold             | 100 % -> PASS |
+| CompileError (type-invalid) | 664           |
+| RuntimeError                | 30            |
+
+Score = `1325 / 1325`. The 64 ignored mutants are all static ones dropped by `ignoreStatic`; none is
+silenced by a directive. 38 of them are in `testing/placeholder-synthesizer.ts`.
+
+The released source is later than the run: `9a814b7` changes the const-table mutation script and
+`src/mutate-const-tables.spec.ts`, and adds the script's self-test. No file in the
+mutate list differs from `362aed9`.

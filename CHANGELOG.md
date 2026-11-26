@@ -15,6 +15,8 @@ as the GitHub Release body, so each released version needs a matching
 
 ## [Unreleased]
 
+## [1.2.29] - 2026-11-26
+
 ### Fixed
 
 - **A testing placeholder for a number leaf stays inside the range of its number format.** A bound declared outside that range was taken as written: `uint32` with `min(-10).max(2)` gave a negative value, which validation refused.
@@ -23,6 +25,8 @@ as the GitHub Release body, so each released version needs a matching
 ### Documentation
 
 - **README states a known limit: another variable's value that a rule wraps in an array or a `toString` object, and writes into a constraint field the line would print, can be printed.**
+
+No declaration change: there is nothing to apply to a derived backend.
 
 ## [1.2.28] - 2026-11-26
 
@@ -1287,6 +1291,7 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.17]: https://github.com/bymaxone/nest-config/compare/v1.2.16...v1.2.17
 [1.2.18]: https://github.com/bymaxone/nest-config/compare/v1.2.17...v1.2.18
 [1.2.28]: https://github.com/bymaxone/nest-config/compare/v1.2.27...v1.2.28
+[1.2.29]: https://github.com/bymaxone/nest-config/compare/v1.2.28...v1.2.29
 [1.2.27]: https://github.com/bymaxone/nest-config/compare/v1.2.26...v1.2.27
 [1.2.26]: https://github.com/bymaxone/nest-config/compare/v1.2.25...v1.2.26
 [1.2.25]: https://github.com/bymaxone/nest-config/compare/v1.2.24...v1.2.25
@@ -1296,4 +1301,4 @@ have regressed from. They are kept because the reasoning is worth having.
 [1.2.21]: https://github.com/bymaxone/nest-config/compare/v1.2.20...v1.2.21
 [1.2.20]: https://github.com/bymaxone/nest-config/compare/v1.2.19...v1.2.20
 [1.2.19]: https://github.com/bymaxone/nest-config/compare/v1.2.18...v1.2.19
-[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.28...HEAD
+[Unreleased]: https://github.com/bymaxone/nest-config/compare/v1.2.29...HEAD

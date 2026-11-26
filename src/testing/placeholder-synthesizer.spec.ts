@@ -540,6 +540,12 @@ describe('synthesizePlaceholderSource number format ranges', () => {
   it.each<[string, z.ZodType, number]>([
     ['uint32() with a minimum below the format', z.uint32(coercing).min(-10).max(2), 1],
     ['a uint32() check', z.coerce.number().check(z.uint32()).min(-10).max(2), 1],
+    ['uint32() with an exclusive minimum on the format edge', z.uint32(coercing).gt(0), 1],
+    [
+      'uint32() with an exclusive maximum on the format edge',
+      z.uint32(coercing).lt(4294967295),
+      4294967294
+    ],
     ['uint32() with only a minimum below the format', z.uint32(coercing).min(-10), 0],
     ['uint32() with an exclusive minimum below it', z.uint32(coercing).gt(-10).lt(1), 0],
     [
@@ -581,6 +587,8 @@ describe('synthesizePlaceholderSource repeated bounds', () => {
     ['min(5).gt(5)', z.coerce.number().int().min(5).gt(5), 6],
     ['lt(5).max(5)', z.coerce.number().int().lt(5).max(5), 4],
     ['max(5).lt(5)', z.coerce.number().int().max(5).lt(5), 4],
+    ['min(5).gt(-10)', z.coerce.number().int().min(5).gt(-10), 5],
+    ['max(2).lt(10)', z.coerce.number().int().max(2).lt(10), 2],
     ['string min(10).min(2)', z.string().min(10).min(2), 'aaaaaaaaaa'],
     ['url max(12).max(100)', z.url().max(12).max(100), 'http://aaaaa']
   ])('gives a leaf with %s a value that meets both', (_name, leaf, expected) => {

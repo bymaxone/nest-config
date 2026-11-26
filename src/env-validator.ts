@@ -3,10 +3,10 @@
  * onto the nested schema through the resolved source-name bindings, runs exactly
  * one Zod parse, and either returns the typed parsed output or throws a
  * BymaxConfigValidationError aggregating every violation. Zod issues are
- * translated into value-free ConfigIssue descriptions that state only the
- * expected constraint, never the received value. The one exception is the
- * message a schema author attaches to a `custom` issue (`.check`, `.refine`,
- * `.superRefine`), which is reported as written: it is schema text, not input,
+ * translated into ConfigIssue descriptions of the expected constraint, never
+ * of the received value (see constraint-message for a field a rule filled).
+ * The message a schema author attaches to a `custom` issue (`.check`, `.refine`,
+ * `.superRefine`) is reported as written: it is schema text, not input,
  * and it is the only place a conditional or cross-field rule can explain itself.
  * @layer Service
  */
@@ -179,7 +179,7 @@ function authoredMessage(issue: ZodValidationIssue): string | undefined {
  * @param source - The source values: they classify missing versus invalid, and a generated message
  * that would repeat one of them is withheld.
  * @returns The issue with resolved variable name and code; its message is a
- * generated, value-free description unless the author wrote one.
+ * generated description of the constraint unless the author wrote one.
  */
 function toConfigIssue(
   binding: SourceBinding,

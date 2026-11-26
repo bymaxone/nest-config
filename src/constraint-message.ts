@@ -46,9 +46,9 @@ function describeConstraint(issue: ZodValidationIssue, show: Show): string {
 
 /**
  * Whether a field repeats a source value: the value of the issue's own variable anywhere inside its
- * rendering, or a field that is another variable's value whole. A source value is a string, so a rule
- * that writes one writes that string, and a numeric bound is never taken for a neighbour's value. Another
- * variable's value is not searched for inside a field, because a short one is part of many constraints.
+ * rendering, or a field that is another variable's value whole. Source values are strings and that
+ * comparison is strict, so a numeric bound is never taken for a neighbour's value. Another variable's
+ * value is not searched for inside a field, because a short one is part of many constraints.
  *
  * @param field - The field as the issue holds it.
  * @param text - The field as it is printed.

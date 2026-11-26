@@ -21,7 +21,7 @@ as the GitHub Release body, so each released version needs a matching
 
 ### Fixed
 
-- **A generated message no longer repeats a source value a rule wrote whole into a field of its issue.** A rule that raises a non-`custom` issue itself (`ctx.addIssue`) chooses what the printed fields hold, and 1.2.27 and earlier printed them, so the value reached the message, the report and the issues. The line now reads `invalid value` when a printed field holds the value of its own variable anywhere inside it, or is another variable's value, whole and as a string. A native constraint that happens to contain the value is withheld too: `prod` against `z.enum(['development', 'production'])` reads `invalid value`. Any other text in a field is your rule's own and is printed, as a `custom` message is.
+- **A generated message withholds a field a rule filled with a source value, as described here.** A rule that raises a non-`custom` issue itself (`ctx.addIssue`) chooses what the printed fields hold, and 1.2.27 and earlier printed them, so the value reached the message, the report and the issues. The line now reads `invalid value` when a printed field holds the value of its own variable anywhere inside it, or is another variable's value, whole and as a string. A native constraint that happens to contain the value is withheld too: `prod` against `z.enum(['development', 'production'])` reads `invalid value`. Any other text in a field is your rule's own and is printed, as a `custom` message is.
 - **The placeholder synthesizer does not take a `lower`, `upper` or `exact` planted on `Object.prototype` for a bound of a leaf.**
 
 ### Documentation

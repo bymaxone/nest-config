@@ -17,7 +17,7 @@ type Show = (field: unknown) => string
 
 /**
  * Describe a Zod issue by its structural constraint fields (expected type, bounds, format, enum options).
- * Every field that reaches the text goes through `show`, so what is compared is what is printed.
+ * Every field that reaches the text goes through `show`, so the text searched is the text printed.
  *
  * @param issue - The issue.
  * @param show - Renders a field.

@@ -305,50 +305,60 @@ interface NumberBounds {
   upper?: number
   lowerExclusive?: boolean
   upperExclusive?: boolean
-  integer?: boolean
 }
 
 /**
- * Choose an in-range number from the resolved inclusive bounds.
+ * Choose an integer inside the declared bounds.
  *
- * @param lower - The inclusive lower bound, when declared.
- * @param upper - The inclusive upper bound, when declared.
- * @returns The bounded midpoint, a present bound, or the fixed default.
+ * Each bound, which may be fractional, is first turned into the nearest integer it admits, so the
+ * chosen value is in range whenever that window is non-empty: gt(0).max(1) -> [1,1];
+ * min(1.1).max(2.2) -> [2,2]; min(1.5) -> 2.
+ *
+ * @param bounds - The declared bounds of an integer leaf.
+ * @returns The floored midpoint, the one present bound, or the fixed default.
+ */
+function selectInteger(bounds: NumberBounds): number {
+  const { lower, upper, lowerExclusive, upperExclusive } = bounds
+  const lowest =
+    lower === undefined ? undefined : lowerExclusive ? Math.floor(lower) + 1 : Math.ceil(lower)
+  const highest =
+    upper === undefined ? undefined : upperExclusive ? Math.ceil(upper) - 1 : Math.floor(upper)
+  if (lowest !== undefined && highest !== undefined) return Math.floor((lowest + highest) / 2)
+  return lowest ?? highest ?? DEFAULT_NUMBER
+}
+
+/**
+ * Choose a number inside the declared bounds of a leaf that is not an integer.
+ *
+ * @param bounds - The declared bounds.
+ * @returns The midpoint, a value at or just past the one present bound, or the fixed default.
  */
 function selectNumber(bounds: NumberBounds): number {
-  const { lower, upper, integer } = bounds
-  if (lower !== undefined && upper !== undefined) {
-    if (integer) {
-      // Derive the admissible integer window from the (possibly fractional)
-      // bounds, respecting exclusivity, so the chosen integer is inside the
-      // range whenever that window is non-empty: gt(0).max(1) -> [1,1]; min(1.1).max(2.2) -> [2,2].
-      const lo = bounds.lowerExclusive ? Math.floor(lower) + 1 : Math.ceil(lower)
-      const hi = bounds.upperExclusive ? Math.ceil(upper) - 1 : Math.floor(upper)
-      return Math.floor((lo + hi) / 2)
-    }
-    // Floats: the midpoint of any interval is strictly inside it, so it
-    // satisfies inclusive and exclusive bounds alike without stepping.
-    return (lower + upper) / 2
-  }
-  // With one bound only, step past an exclusive edge (there is no opposite bound
-  // to cross); a fractional step keeps a float leaf strictly beyond its edge.
-  if (lower !== undefined) return bounds.lowerExclusive ? lower + (integer ? 1 : 0.5) : lower
-  if (upper !== undefined) return bounds.upperExclusive ? upper - (integer ? 1 : 0.5) : upper
+  const { lower, upper } = bounds
+  // The midpoint of any interval is strictly inside it, so it satisfies inclusive and exclusive
+  // bounds alike without stepping.
+  if (lower !== undefined && upper !== undefined) return (lower + upper) / 2
+  // With one bound only, step past an exclusive edge: there is no opposite bound to cross.
+  if (lower !== undefined) return bounds.lowerExclusive ? lower + 0.5 : lower
+  if (upper !== undefined) return bounds.upperExclusive ? upper - 0.5 : upper
   return DEFAULT_NUMBER
 }
+
+/** The number formats whose values are integers; zod's float formats are not among them. */
+const INTEGER_FORMATS: ReadonlySet<string | undefined> = new Set(['safeint', 'int32', 'uint32'])
 
 /**
  * Synthesize a placeholder for a number leaf within its declared range.
  *
- * Reads the greater-than/less-than bounds and whether the leaf is an integer,
- * then picks an in-range value: the midpoint for a two-sided range (floored for
- * integers), or a value stepped just past a single exclusive edge.
+ * Reads the greater-than/less-than bounds and whether the leaf is an integer, which `z.int()`
+ * records on the leaf itself and `.int()` records as a check, then picks an in-range value.
  *
  * @param def - The number leaf definition.
  * @returns The string form of a constraint-compliant number.
  */
 function synthesizeNumber(def: LeafDefinition): string {
   const bounds = ownCopy<NumberBounds>({})
+  let integer = INTEGER_FORMATS.has(def.format)
   for (const wrapper of checksOf(def)) {
     const check = readCheck(wrapper)
     if (check.check === 'greater_than') {
@@ -359,9 +369,9 @@ function synthesizeNumber(def: LeafDefinition): string {
       bounds.upper = check.value
       bounds.upperExclusive = check.inclusive !== true
     }
-    if (check.check === 'number_format') bounds.integer = true
+    if (INTEGER_FORMATS.has(check.format)) integer = true
   }
-  return String(selectNumber(bounds))
+  return String(integer ? selectInteger(bounds) : selectNumber(bounds))
 }
 
 /**

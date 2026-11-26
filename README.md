@@ -207,10 +207,10 @@ is a different mistake: merging the two would hide the one that explains the oth
 In a message this package generates, raw values are never printed — not
 truncated, not masked, absent. That is a hard guarantee, verified by tests. A rule
 that raises a non-`custom` issue itself chooses what its printed fields hold, so
-when one would repeat a source value the line reads `invalid value` instead; a
-native constraint that happens to contain the value reads the same. A message you
-write yourself, described next, is printed as written, and so is a value your rule
-changed before writing it into a field.
+the line reads `invalid value` when one holds its own variable's value or is
+another's, whole; a native constraint doing so reads the same. A message you
+write yourself, described next, is printed as written, as is any other text your
+rule puts in a field.
 
 A rule you write yourself — a `.check`, `.refine` or `.superRefine` raising a
 `custom` issue — has no structural constraint to describe, so its own message is

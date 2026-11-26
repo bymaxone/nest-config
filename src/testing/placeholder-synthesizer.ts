@@ -347,18 +347,49 @@ function selectNumber(bounds: NumberBounds): number {
 /** The number formats whose values are integers; zod's float formats are not among them. */
 const INTEGER_FORMATS: ReadonlySet<string | undefined> = new Set(['safeint', 'int32', 'uint32'])
 
+/** The range each bounded number format admits, as zod enforces it; a double has no narrower one. */
+const FORMAT_RANGES: ReadonlyMap<string | undefined, readonly [number, number]> = new Map([
+  ['safeint', [Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER]],
+  ['int32', [-2_147_483_648, 2_147_483_647]],
+  ['uint32', [0, 4_294_967_295]],
+  ['float32', [-3.4028234663852886e38, 3.4028234663852886e38]]
+])
+
+/**
+ * Pull a declared bound that lies outside a number format's range back to the edge of that range,
+ * which the format admits. A side with no declared bound stays without one, so the value chosen
+ * for it does not move to a format's edge.
+ *
+ * @param bounds - The declared bounds, narrowed in place.
+ * @param format - A number format of the leaf, from the leaf itself or from one of its checks.
+ */
+function narrowToFormat(bounds: NumberBounds, format: string | undefined): void {
+  const range = FORMAT_RANGES.get(format)
+  if (range === undefined) return
+  const [minimum, maximum] = range
+  if (bounds.lower !== undefined && bounds.lower < minimum) {
+    bounds.lower = minimum
+    bounds.lowerExclusive = false
+  }
+  if (bounds.upper !== undefined && bounds.upper > maximum) {
+    bounds.upper = maximum
+    bounds.upperExclusive = false
+  }
+}
+
 /**
  * Synthesize a placeholder for a number leaf within its declared range.
  *
- * Reads the greater-than/less-than bounds and whether the leaf is an integer, which `z.int()`
- * records on the leaf itself and `.int()` records as a check, then picks an in-range value.
+ * Reads the greater-than/less-than bounds and the number formats, which `z.int()` records on the
+ * leaf itself and `.int()` records as a check, then picks a value inside the bounds and inside the
+ * range of those formats.
  *
  * @param def - The number leaf definition.
  * @returns The string form of a constraint-compliant number.
  */
 function synthesizeNumber(def: LeafDefinition): string {
   const bounds = ownCopy<NumberBounds>({})
-  let integer = INTEGER_FORMATS.has(def.format)
+  const formats: (string | undefined)[] = [def.format]
   for (const wrapper of checksOf(def)) {
     const check = readCheck(wrapper)
     if (check.check === 'greater_than') {
@@ -369,8 +400,10 @@ function synthesizeNumber(def: LeafDefinition): string {
       bounds.upper = check.value
       bounds.upperExclusive = check.inclusive !== true
     }
-    if (INTEGER_FORMATS.has(check.format)) integer = true
+    formats.push(check.format)
   }
+  for (const format of formats) narrowToFormat(bounds, format)
+  const integer = formats.some((format) => INTEGER_FORMATS.has(format))
   return String(integer ? selectInteger(bounds) : selectNumber(bounds))
 }
 

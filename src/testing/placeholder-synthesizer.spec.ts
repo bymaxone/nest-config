@@ -532,3 +532,40 @@ describe('synthesizePlaceholderSource integer leaves', () => {
     expect(config).toEqual({ sample: { value: expected } })
   })
 })
+
+describe('synthesizePlaceholderSource number format ranges', () => {
+  // Held in a variable because zod accepts `coerce` here but does not declare it for these.
+  const coercing = { abort: false, coerce: true }
+
+  it.each<[string, z.ZodType, number]>([
+    ['uint32() with a minimum below the format', z.uint32(coercing).min(-10).max(2), 1],
+    ['a uint32() check', z.coerce.number().check(z.uint32()).min(-10).max(2), 1],
+    ['uint32() with only a minimum below the format', z.uint32(coercing).min(-10), 0],
+    ['uint32() with an exclusive minimum below it', z.uint32(coercing).gt(-10).lt(1), 0],
+    [
+      'int32() with a minimum below the format',
+      z.int32(coercing).min(-3e9).max(-2147483646),
+      -2147483647
+    ],
+    ['int32() with a maximum above the format', z.int32(coercing).max(5e9), 2147483647],
+    [
+      'int32() with an exclusive maximum above it',
+      z.int32(coercing).min(2147483646).lt(5e9),
+      2147483646
+    ],
+    ['int() with a maximum above the safe range', z.int(coercing).max(1e300), 9007199254740991],
+    [
+      'float32() with a minimum below the format',
+      z.float32(coercing).min(-1e39).max(3.4028234663852886e38),
+      0
+    ],
+    ['uint32() with an exclusive minimum at its edge', z.uint32(coercing).gt(0).max(2), 1],
+    ['uint32() with no bound of its own', z.uint32(coercing), 1]
+  ])('gives %s a value it accepts', (_name, leaf, expected) => {
+    // Scenario: a number format admits only its own range, so a declared bound outside that
+    // range is not where the value is chosen from.
+    const schema = defineEnv({ sample: z.object({ value: leaf }) })
+    const config = validateEnv(schema, synthesizePlaceholderSource(schema))
+    expect(config).toEqual({ sample: { value: expected } })
+  })
+})

@@ -235,9 +235,8 @@ describe('the BYMAX_CONFIG provider factory and the validation hook', () => {
       order.push('hook finished')
     })
 
-    const pending = rejection({ schema, source: {}, onValidationError: hook })
-    void pending.then(() => order.push('boot failed'))
-    await pending
+    await rejection({ schema, source: {}, onValidationError: hook })
+    order.push('boot failed')
 
     expect(order).toEqual(['hook finished', 'boot failed'])
   })

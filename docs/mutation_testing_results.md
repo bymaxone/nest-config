@@ -16,7 +16,7 @@
 | Survived                                           | 0                          |
 | Timeout (counts as detected)                       | 29                         |
 | Type-invalid mutants (checker-discarded, excluded) | 664                        |
-| Runtime errors (excluded)                          | 30                         |
+| Runtime errors (excluded)                          | 30, each run by hand below |
 | Ignored static mutants (`ignoreStatic`, excluded)  | 64                         |
 
 Score = `(killed + timeout) / (killed + timeout + survived)` = `1325 / 1325` = **100.00 %**.
@@ -661,3 +661,60 @@ silenced by a directive. 38 of them are in `testing/placeholder-synthesizer.ts`.
 The released source is later than the run: `9a814b7` changes the const-table mutation script and
 `src/mutate-const-tables.spec.ts`, and adds the script's self-test. No file in the
 mutate list differs from `362aed9`.
+
+## RuntimeError mutants, run by hand — 2026-11-27
+
+Stryker leaves a `RuntimeError` mutant out of the score because the harness reports no verdict for
+it. Each of the 30 in run
+[45803470372](https://github.com/bymaxone/nest-config/actions/runs/45803470372) was applied by hand to
+`main` at `cbfba5a`, where every mutated file is identical to the source in that run's report, and run
+against the unit tests with plain Jest and one worker (`ts-jest` diagnostics off, so a type error
+cannot stand in for a test failure). The runs leave out the specs matching `check-api-surface`,
+`check-file-length`, `mutate-const-tables` and `strip-bundle-comments`. The unmutated tree runs 1685
+tests with none failing.
+
+**All 30 are caught by failing tests. None survives.**
+
+For the 19 mutants in `errors.ts` and `report-formatter.ts` the full run ends the Node process before
+Jest writes a report: `src/config.providers.spec.ts` chains `.then` on a pending rejection without a
+rejection handler, so a failing assertion inside it is unhandled. A process that dies is not counted
+as a catch. Those 19 are run again without that spec file (1657 tests, none failing unmutated), and
+the counts below are from that second run; spec files that do not load under the mutant add no test
+to the count.
+
+One row per group, a group being the mutants Stryker reports with the same reason:
+
+| Stryker's reason                                 | Mutants                                                                                    | Failing tests, by hand |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------ | ---------------------- |
+| Test suite must contain at least one test        | `captured.ts:208` (`false`, `>=`, empty body), `:210` `[]`, `env-validator.ts:690` `false` | 53, 414, 53, 53, 2     |
+| Cannot read properties of undefined (`variable`) | `report-formatter.ts:71` (`<=`, `-=`), `:115` (`<=`, `-=`)                                 | 606, 583, 606, 583     |
+| Issues must be a list with a whole-number length | `errors.ts:172` returns `undefined`, `:173` (negation dropped, `>=`)                       | 605, 605, 605          |
+| Issues claims no entries but lists some          | `errors.ts:183` (`\|\|`, `true`, `!==`)                                                    | 596, 573, 581          |
+| `.each` called with an empty array               | `builtins.ts:56`, `:57` (empty body)                                                       | 7, 7                   |
+| Cannot read properties of undefined (`0`)        | `builtins.ts:326` (`<=`, `-=`)                                                             | 24, 24                 |
+| The promise prototype's constructor was replaced | `captured.ts:40` `true`, `:41` `===`                                                       | 24, 24                 |
+| Invalid code point `NaN`                         | `errors.ts:74` `<=`, `:77` `-=`                                                            | 570, 570               |
+| Issues must be an array                          | `errors.ts:169` (negation dropped, returns `undefined`)                                    | 616, 609               |
+| Issue 0 field path must be a string              | `errors.ts:138` returns `undefined`                                                        | 570                    |
+| At most 10000 issues, received 1                 | `errors.ts:178` `<=`                                                                       | 604                    |
+| Issue 1 must be an object                        | `errors.ts:187` `<=`                                                                       | 585                    |
+| Issue -1 must be an object                       | `errors.ts:187` `-=`                                                                       | 569                    |
+| Issue 0 must be an object                        | `errors.ts:188` returns `undefined`                                                        | 571                    |
+
+For `builtins.ts:326` and `captured.ts:40` and `:41` the failing tests fail with the `TypeError` the
+mutated module throws, not with an assertion mismatch.
+
+### The README's two Known limits, on the same tree
+
+Measured with a rule raising a `too_big` issue whose `maximum` holds another declared variable's
+value, and a `custom` issue whose `message` holds it, beside a second invalid variable:
+
+| What the rule writes                  | In `maximum`                        | As a `custom` message  |
+| ------------------------------------- | ----------------------------------- | ---------------------- |
+| The value itself                      | `invalid value`                     | printed as written     |
+| An array holding it                   | **the value is printed**            | single `(schema)` line |
+| An object whose `toString` returns it | **the value is printed**            | single `(schema)` line |
+| An object with no prototype           | single `(schema)` line, `TypeError` | single `(schema)` line |
+
+Both README sentences hold, so the README is unchanged. The single `(schema)` line also appears for an
+array or a `toString` object written as a `custom` message, which the second sentence does not name.

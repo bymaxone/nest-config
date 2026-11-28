@@ -34,13 +34,14 @@ empty; everything ships as a `peerDependency` or a `node:` builtin.
 ## Verification, run before every PR
 
 ```bash
-pnpm typecheck && pnpm lint && pnpm test:cov:all && pnpm build && pnpm size
+pnpm typecheck && pnpm lint && pnpm format:check && pnpm test:cov:all && pnpm build && pnpm size
 ```
 
 All of the following must pass:
 
 - **Typecheck**: `tsc --noEmit` (strict, zero errors)
 - **Lint**: ESLint (zero `any`, import order, security rules)
+- **Format**: Prettier over every file `.prettierignore` does not list
 - **Coverage**: 100% statements / branches / functions / lines
 - **Build**: tsup produces ESM + CJS + `.d.ts` for every subpath
 - **Size**: every subpath stays within the budget in `scripts/check-size.mjs`
@@ -50,16 +51,16 @@ tagging a version, never on every PR.
 
 ### Three checks always report `SKIPPED`, and none of them is a path filter
 
-A pull request's rollup shows `ci / Format check`, `ci / Build` and
-`ci / Mutation testing` as `SKIPPED` on **every** run, whatever the diff touches.
-That is deliberate, and it is worth knowing because `SKIPPED` renders as a
-non-failure rather than as something visibly different from a pass.
+A pull request's rollup shows `ci / Build`, `ci / Mutation testing` and
+`ci / Latest peers in range` as `SKIPPED` on **every** run, whatever the diff
+touches. That is deliberate, and it is worth knowing because `SKIPPED` renders as
+a non-failure rather than as something visibly different from a pass.
 
-| Check              | Why it never runs                       | What covers it instead                                                            |
-| ------------------ | --------------------------------------- | --------------------------------------------------------------------------------- |
-| `Format check`     | No `format:check` script exists         | `prettier/prettier` inside ESLint, plus lint-staged on commit                     |
-| `Build`            | `run-build: false` to the reusable      | The `verify` job here — build, output integrity across every subpath, size budget |
-| `Mutation testing` | Push to `main` and manual dispatch only | The release gate, run cold before tagging                                         |
+| Check                   | Why it never runs                       | What covers it instead                                                            |
+| ----------------------- | --------------------------------------- | --------------------------------------------------------------------------------- |
+| `Build`                 | `run-build: false` to the reusable      | The `verify` job here — build, output integrity across every subpath, size budget |
+| `Mutation testing`      | Push to `main` and manual dispatch only | The release gate, run cold before tagging                                         |
+| `Latest peers in range` | Opt-in in the reusable, not enabled     | Nothing: the other jobs install the locked peer versions                          |
 
 There is no `paths` or `paths-ignore` filter anywhere in `ci.yml`, so nothing is
 skipped _because of_ which files a change touches — the same three skip on a

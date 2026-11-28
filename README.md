@@ -792,6 +792,7 @@ pnpm test:cov      # unit suite with the 100% coverage gate
 pnpm mutation      # Stryker mutation testing (break: 100)
 pnpm typecheck     # tsc strict check
 pnpm lint          # ESLint and the script tests
+pnpm format:check  # Prettier
 ```
 
 ### Testing helpers

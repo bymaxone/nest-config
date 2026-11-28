@@ -69,6 +69,7 @@
     "dogfood": "node scripts/dogfood-smoke-test.mjs",
     "lint": "eslint src scripts && node --test scripts/*.test.mjs",
     "lint:fix": "eslint src scripts --fix",
+    "format:check": "prettier --check .",
     "mutation": "stryker run",
     "mutation:dry-run": "stryker run --dryRunOnly",
     "mutation:full": "node -e \"require('node:fs').rmSync('reports/stryker-incremental.json',{force:true,recursive:true})\" && stryker run",

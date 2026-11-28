@@ -25,7 +25,6 @@ jobs:
   ci:
     uses: bymaxone/.github/.github/workflows/node-lib-ci.yml@v1
     with:
-      run-format-check: false # no format:check script; prettier runs via lint/pre-commit
       run-build: false # build + integrity + size verified in the `verify` job below
       unit-command: pnpm test:cov:all
       run-mutation: true
@@ -159,10 +158,12 @@ jobs:
         run: pnpm test:e2e
 
   security:
+    # Dependency review needs the dependency graph: a public repository, or a private one with a
+    # paid licence, which is not purchased.
     if: github.event_name == 'pull_request' && github.event.repository.visibility == 'public'
     uses: bymaxone/.github/.github/workflows/security.yml@v1
     with:
-      fail-on-severity: high
+      fail-on-severity: low
 
   # Single check the org ruleset can require, in every repo, under one name.
   #
@@ -173,14 +174,13 @@ jobs:
   # repository created from now on inherit the gate without being configured.
   #
   # `always()` is what makes this a gate rather than decoration: without it the
-  # job is skipped the moment a dependency fails, and a skipped check reports
-  # neutral — the pull request would look unblocked precisely when it is broken.
-  # `cancelled` is named explicitly for the same reason; a cancelled job is not
-  # a passing one, and a queue timeout produces exactly that.
+  # job is skipped the moment a dependency fails, and a skipped job reports
+  # success to a required check — the pull request would look unblocked precisely
+  # when it is broken.
   #
-  # A skipped dependency is accepted on purpose: jobs here are conditional on the
-  # event, and failing on skip would break every push that legitimately runs a
-  # subset.
+  # For the same reason every job that runs on every event has to be `success`
+  # here: a `cancelled` one, which a queue timeout produces, is not a pass, and
+  # `skipped` is allowed only for `security`, which carries an `if`.
   ci-pass:
     name: CI passed
     if: always()
@@ -203,8 +203,10 @@ jobs:
             echo "$NEEDS" | jq -r 'to_entries[] | "| \(.key) | \(.value.result) |"' | sort
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
-      # Named for what the condition does: `skipped` is deliberately not a failure
-      # here, so "did not succeed" would describe a stricter gate than this is.
-      - name: Fail when any dependency failed or was cancelled
-        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+      - name: Fail unless every dependency succeeded, or security was skipped
+        if: >-
+          needs.ci.result != 'success' ||
+          needs.verify.result != 'success' ||
+          needs.e2e.result != 'success' ||
+          (needs.security.result != 'success' && needs.security.result != 'skipped')
         run: exit 1

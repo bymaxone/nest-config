@@ -13,27 +13,21 @@ reports/
 scripts/check-file-length.mjs
 src/check-file-length.spec.ts
 
-# The function-length check and its specs are the family template's files, kept byte-identical to
+# The function-length check is the family template's file, kept byte-identical to
 # bymaxone/.github's copy: reformatting here would make every later sync a diff.
 scripts/check-function-length.mjs
-scripts/function-length-key.mjs
-src/check-function-length.spec.ts
-src/check-function-length.baseline.spec.ts
-src/check-function-length.key.spec.ts
 
 # The dist-freshness check and its test are the family template's files, kept byte-identical to
 # bymaxone/.github's copy: reformatting here would make every later sync a diff.
 scripts/check-dist-fresh.mjs
 scripts/check-dist-fresh.test.mjs
 
-# The spec-header check and its spec are the family template's files, kept byte-identical to
+# The spec of the spec-header check is the family template's file, kept byte-identical to
 # bymaxone/.github's copy: reformatting here would make every later sync a diff.
-scripts/check-spec-headers.mjs
 src/check-spec-headers.spec.ts
 
-# The double-assertion check and its spec are the family template's files, kept byte-identical to
-# the template; the repository's prettier config would reformat them.
-scripts/check-double-assertions.mjs
+# The spec of the double-assertion check is the family template's file, kept byte-identical to
+# the template; the repository's prettier config would reformat it.
 src/check-double-assertions.spec.ts
 
 # The link check of the published-surface gate is the family template's file, kept byte-identical

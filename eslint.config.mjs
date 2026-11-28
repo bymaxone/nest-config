@@ -109,7 +109,7 @@ export default [
       // Code quality
       'prefer-const': 'error',
       'no-var': 'error',
-      'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-empty': 'error',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
 
       // Security: block dynamic code evaluation.
@@ -198,7 +198,7 @@ export default [
     }
   },
 
-  // Test files: Jest + Node globals, relaxed rules.
+  // Test files: Jest + Node globals.
   {
     files: ['**/*.spec.ts', '**/*.test.ts'],
     languageOptions: {
@@ -212,14 +212,17 @@ export default [
         ...globals.node
       }
     },
+    plugins: {
+      '@typescript-eslint': tsPlugin
+    },
     rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/explicit-function-return-type': 'off',
-      '@typescript-eslint/explicit-module-boundary-types': 'off',
+      '@typescript-eslint/explicit-module-boundary-types': 'error',
       '@typescript-eslint/no-unused-vars': 'off',
       'no-unused-vars': 'off',
       'no-undef': 'off',
-      'no-console': 'off'
+      'no-console': 'error'
     }
   },
 

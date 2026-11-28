@@ -49,21 +49,23 @@ All of the following must pass:
 Mutation testing (`pnpm mutation:full`) is a release gate, run manually before
 tagging a version, never on every PR.
 
-### Three checks always report `SKIPPED`, and none of them is a path filter
+### Some checks always report `SKIPPED`, and none of them is a path filter
 
-A pull request's rollup shows `ci / Build`, `ci / Mutation testing` and
-`ci / Latest peers in range` as `SKIPPED` on **every** run, whatever the diff
-touches. That is deliberate, and it is worth knowing because `SKIPPED` renders as
-a non-failure rather than as something visibly different from a pass.
+A pull request's rollup shows the checks below as `SKIPPED` on **every** run,
+whatever the diff touches. That is deliberate, and it is worth knowing because
+`SKIPPED` renders as a non-failure rather than as something visibly different
+from a pass.
 
-| Check                   | Why it never runs                       | What covers it instead                                                            |
-| ----------------------- | --------------------------------------- | --------------------------------------------------------------------------------- |
-| `Build`                 | `run-build: false` to the reusable      | The `verify` job here — build, output integrity across every subpath, size budget |
-| `Mutation testing`      | Push to `main` and manual dispatch only | The release gate, run cold before tagging                                         |
-| `Latest peers in range` | Opt-in in the reusable, not enabled     | Nothing: the other jobs install the locked peer versions                          |
+| Check                                  | Why it never runs                       | What covers it instead                                                            |
+| -------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------- |
+| `ci / Build`                           | `run-build: false` to the reusable      | The `verify` job here — build, output integrity across every subpath, size budget |
+| `ci / Mutation testing`                | Push to `main` and manual dispatch only | The release gate, run cold before tagging                                         |
+| `ci / Latest peers in range`           | Opt-in in the reusable, not enabled     | Nothing: the other jobs install the locked peer versions                          |
+| `security / Semgrep`                   | Opt-in in the reusable, not enabled     | The `codeql` workflow, a different static analyser                                |
+| `security / Audit registry signatures` | Opt-in in the reusable, not enabled     | Nothing                                                                           |
 
 There is no `paths` or `paths-ignore` filter anywhere in `ci.yml`, so nothing is
-skipped _because of_ which files a change touches — the same three skip on a
+skipped _because of_ which files a change touches — the same ones skip on a
 one-line README edit and on a rewrite of `src/`. In particular `scripts/` is
 linted (`pnpm lint` covers `src` and `scripts`), but not every script runs in
 `ci.yml`. `check-published-surface.mjs` runs only through `prepublishOnly` and `dogfood-smoke-test.mjs` only in

@@ -174,14 +174,13 @@ jobs:
   # repository created from now on inherit the gate without being configured.
   #
   # `always()` is what makes this a gate rather than decoration: without it the
-  # job is skipped the moment a dependency fails, and a skipped check reports
-  # neutral — the pull request would look unblocked precisely when it is broken.
-  # `cancelled` is named explicitly for the same reason; a cancelled job is not
-  # a passing one, and a queue timeout produces exactly that.
+  # job is skipped the moment a dependency fails, and a skipped job reports
+  # success to a required check — the pull request would look unblocked precisely
+  # when it is broken.
   #
-  # A skipped job reports success to a required check, so every job that runs on
-  # every event has to be `success` here. Only `security` carries an `if`, so it
-  # is the only one that may be `skipped`.
+  # For the same reason every job that runs on every event has to be `success`
+  # here: a `cancelled` one, which a queue timeout produces, is not a pass, and
+  # `skipped` is allowed only for `security`, which carries an `if`.
   ci-pass:
     name: CI passed
     if: always()

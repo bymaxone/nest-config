@@ -67,7 +67,7 @@ one-line README edit and on a rewrite of `src/`. In particular `scripts/` is
 linted (`pnpm lint` covers `src` and `scripts`), but not every script runs in
 `ci.yml`. `check-published-surface.mjs` runs only through `prepublishOnly` and `dogfood-smoke-test.mjs` only in
 `release.yml`, so a change to either is linted and not executed by a pull request.
-`pnpm lint` also runs `scripts/check-mutation-directives.test.mjs`, which pins the directive gate.
+`pnpm lint` also runs every `scripts/*.test.mjs` with `node --test`.
 
 ## Commits, Conventional Commits
 

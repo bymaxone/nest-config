@@ -41,7 +41,7 @@ All of the following must pass:
 
 - **Typecheck**: `tsc --noEmit` (strict, zero errors)
 - **Lint**: ESLint (zero `any`, import order, security rules)
-- **Format**: Prettier over every file `.prettierignore` does not list
+- **Format**: Prettier over every file it can parse that neither `.gitignore` nor `.prettierignore` excludes
 - **Coverage**: 100% statements / branches / functions / lines
 - **Build**: tsup produces ESM + CJS + `.d.ts` for every subpath
 - **Size**: every subpath stays within the budget in `scripts/check-size.mjs`

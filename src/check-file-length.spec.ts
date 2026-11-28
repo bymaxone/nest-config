@@ -41,7 +41,7 @@ function repo(files: Record<string, string>, baseline: unknown = { files: {} }):
 /** Runs the script in `root` and returns its exit status and combined output. */
 function run(root: string, ...args: string[]): Result {
   const result = spawnSync(process.execPath, [SCRIPT, '--root', root, ...args], {
-    encoding: 'utf8',
+    encoding: 'utf8'
   })
   return { status: result.status, output: `${result.stdout}${result.stderr}` }
 }
@@ -51,7 +51,7 @@ function commitBase(root: string): void {
   spawnSync(
     'git',
     ['-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-q', '-m', 'base'],
-    { cwd: root },
+    { cwd: root }
   )
 }
 
@@ -92,7 +92,7 @@ describe('check-file-length', () => {
     'checks %s',
     (path) => {
       expect(run(repo({ [path]: lines(900) })).status).toBe(1)
-    },
+    }
   )
 
   it.each(['README.md', 'pnpm-lock.yaml', 'package.json', 'data.txt'])('ignores %s', (path) => {
@@ -138,7 +138,7 @@ describe('check-file-length', () => {
 
     expect(result.status).toBe(1)
     expect(result.output).toContain(
-      'src/big.ts is on the baseline but is no longer over 800 lines or tracked',
+      'src/big.ts is on the baseline but is no longer over 800 lines or tracked'
     )
   })
 
@@ -154,7 +154,7 @@ describe('check-file-length', () => {
   it('reports every problem, not only the first', () => {
     const root = repo(
       { 'src/new.ts': lines(900), 'src/old.ts': lines(960) },
-      { files: { 'src/old.ts': 950, 'src/gone.ts': 900 } },
+      { files: { 'src/old.ts': 950, 'src/gone.ts': 900 } }
     )
 
     const result = run(root)
@@ -170,7 +170,7 @@ describe('check-file-length', () => {
     ['a missing files table', {}],
     ['a files array', { files: [] }],
     ['a recorded length at or under the limit', { files: { 'src/a.ts': 800 } }],
-    ['a non-integer length', { files: { 'src/a.ts': 'long' } }],
+    ['a non-integer length', { files: { 'src/a.ts': 'long' } }]
   ])('rejects a baseline with %s', (_label, baseline) => {
     const result = run(repo({ 'src/a.ts': lines(3) }, baseline))
 
@@ -209,7 +209,7 @@ describe('check-file-length', () => {
 
       expect(result.status).toBe(1)
       expect(result.output).toContain(
-        'src/new.ts is on the baseline but the base revision does not have it',
+        'src/new.ts is on the baseline but the base revision does not have it'
       )
     })
 
@@ -224,7 +224,7 @@ describe('check-file-length', () => {
 
       expect(result.status).toBe(1)
       expect(result.output).toContain(
-        'src/big.ts is recorded at 1000 lines, above 950 on the base revision',
+        'src/big.ts is recorded at 1000 lines, above 950 on the base revision'
       )
     })
 

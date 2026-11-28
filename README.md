@@ -834,6 +834,8 @@ import { envSchema } from './config/env.schema'
 const config = createTestConfig(envSchema, {
   database: { url: 'postgres://localhost:5432/test' }
 })
+
+console.log(config.database.url) // postgres://localhost:5432/test
 ```
 
 `createTestConfig<TShape>(schema: EnvSchema<TShape>, overrides?: ConfigOverrides<TShape>): Readonly<EnvOutput<TShape>>`
@@ -858,6 +860,9 @@ const moduleRef = await Test.createTestingModule({
   imports: [configTestingModule(envSchema, { server: { port: 8080 } })],
   providers: [FeatureProvider]
 }).compile()
+
+const provider = moduleRef.get(FeatureProvider)
+console.log(provider.describeConnection())
 ```
 
 Overrides mirror the `namespace.leaf` shape with every key optional and typed from the schema. A value is typed as the leaf's parsed output and converted with `String(value)` before validation
@@ -1048,6 +1053,10 @@ import type { AppConfig } from './config/env.schema'
 @Injectable()
 export class RawConfigConsumer {
   public constructor(@Inject(BYMAX_CONFIG) private readonly config: Readonly<AppConfig>) {}
+
+  public port(): number {
+    return this.config.server.port
+  }
 }
 ```
 

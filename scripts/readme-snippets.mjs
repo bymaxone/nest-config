@@ -91,43 +91,64 @@ const declaredNames = (code) =>
     )
   ].map((m) => m[1])
 
+/** Every identifier the text mentions, read from the parse tree so that a name inside a
+ * comment or a string imports nothing. */
+function mentionedNames(code, ext) {
+  const kind = ext === 'tsx' ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+  const found = new Set()
+  const visit = (node) => {
+    if (ts.isIdentifier(node)) found.add(node.text)
+    ts.forEachChild(node, visit)
+  }
+  visit(ts.createSourceFile('snippet', code, ts.ScriptTarget.Latest, true, kind))
+  return found
+}
+
 /** Turns a README fragment into something a compiler can check without changing what
- * it claims. A snippet that does not import the package gets every public name
- * imported, except the ones it declares itself; one that uses `z` without importing it
- * gets zod; a fragment that is a property of the schema shape goes inside `defineEnv`;
- * a block of statements goes in an async function so `await` means what the prose
- * means. Imports are hoisted out of the wrapper, and a snippet that declares classes or
- * types is left as written, apart from a class that restates an exported one, which
- * becomes an ambient declaration so its fields need no initializer. */
-function prepareSnippet(code, importsPkg, names) {
+ * it claims. A snippet that does not import the package gets the public names it mentions
+ * imported, except the ones it declares itself; one that mentions `z` without importing it
+ * gets zod. The rest is wrapped by `wrapBody`, with imports hoisted out of the wrapper, and a
+ * class that restates an exported one becomes an ambient declaration so its fields need no
+ * initializer. */
+function prepareSnippet(code, ext, importsPkg, names) {
   const imports = code.match(IMPORT_STATEMENT) ?? []
   // `{ ... }` is how a snippet says "the usual arguments". Left alone it is a parse
   // error, and a parse error in a call hides every semantic error around it.
   let body = code.replace(IMPORT_STATEMENT, '').replaceAll('{ ... }', '{} as never')
   const declared = new Set(declaredNames(body))
   const restated = names.filter((n) => declared.has(n.name))
-  const headerLines = []
-  if (!importsPkg) {
-    const parts = names
-      .filter((n) => !declared.has(n.name))
-      .map((n) => (n.isValue ? n.name : `type ${n.name}`))
-    headerLines.push(`import { ${parts.join(', ')} } from '${PKG.name}'`)
-  }
-  if (/\bz\./.test(body) && !imports.some((i) => /from ['"]zod['"]/.test(i))) {
-    headerLines.push("import { z } from 'zod'")
-  }
-  const header = `${headerLines.join('\n')}${headerLines.length > 0 ? '\n' : ''}${imports.join('')}`
   if (restated.length > 0) {
     body = body.replace(/^((?:export\s+)?)class\s/gm, '$1declare class ')
   }
+  const wrapped = wrapBody(body)
+  const mentioned = mentionedNames(wrapped, ext)
+  const headerLines = []
+  if (!importsPkg) {
+    const parts = names
+      .filter((n) => !declared.has(n.name) && mentioned.has(n.name))
+      .map((n) => (n.isValue ? n.name : `type ${n.name}`))
+    if (parts.length > 0) headerLines.push(`import { ${parts.join(', ')} } from '${PKG.name}'`)
+  }
+  if (mentioned.has('z') && !imports.some((i) => /from ['"]zod['"]/.test(i))) {
+    headerLines.push("import { z } from 'zod'")
+  }
+  const header = `${headerLines.join('\n')}${headerLines.length > 0 ? '\n' : ''}${imports.join('')}`
+  return `${header}${wrapped}`
+}
+
+/** A snippet that declares classes, types or exports is left as written; a fragment that is
+ * a property of the schema shape goes inside `defineEnv`; a block of statements goes in an
+ * exported async function, so `await` means what the prose means and the wrapper itself is
+ * never reported as unused. */
+function wrapBody(body) {
   const declares =
     /^(export\s+)?(declare\s+)?(abstract\s+)?(class|interface|type|enum|function)\s|^export\s+const\s/m.test(
       body
     )
-  if (declares) return `${header}${body}`
+  if (declares) return body
   const isShapeProperty = /^(?:\s*\/\/.*\n)*\s*[A-Za-z_]\w*\s*:\s/.test(body)
-  if (isShapeProperty) return `${header}defineEnv({\n${body}})\n`
-  return `${header}async function snippet() {\n${body}}\n`
+  if (isShapeProperty) return `defineEnv({\n${body}})\n`
+  return `export async function snippet() {\n${body}}\n`
 }
 
 /** Where a snippet leaves an argument, an element or a property out with a bare `...`, as
@@ -194,10 +215,8 @@ function scaffoldConsumer() {
           rootDir: '..',
           baseUrl: '.',
           paths: {},
-          noUnusedLocals: false,
-          // A README snippet may name a handler parameter it does not use; that is
-          // prose, not an API defect.
-          noUnusedParameters: false,
+          noUnusedLocals: true,
+          noUnusedParameters: true,
           // A React snippet is JSX; without this it fails to parse for a reason
           // that says nothing about the published API. Inert when there is none.
           jsx: 'react-jsx'
@@ -303,7 +322,7 @@ export function checkSnippets(fail) {
 
   scaffoldConsumer()
   const names = publicNames(gateProject().options)
-  const prepare = (b) => prepareSnippet(b.code, importsPackage(b.code), names)
+  const prepare = (b) => prepareSnippet(b.code, b.ext, importsPackage(b.code), names)
 
   /** file name → what the author wrote, so a diagnostic can be traced back to the snippet. */
   const sources = new Map()

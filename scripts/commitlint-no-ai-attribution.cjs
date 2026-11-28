@@ -43,7 +43,7 @@ const SCISSORS = '# ------------------------ >8 ------------------------'
  */
 function messageOf(parsed) {
   const parts = [parsed.header, parsed.body, parsed.footer].filter(
-    (part) => typeof part === 'string' && part !== '',
+    (part) => typeof part === 'string' && part !== ''
   )
   if (parts.length > 0) return parts.join('\n')
   const lines = (parsed.raw ?? '').split(/\r?\n/)
@@ -95,23 +95,23 @@ function build(profile = 'strict') {
       'no-ai-attribution': (parsed, when = 'always') => {
         if (when !== 'always')
           throw new Error(
-            "no-ai-attribution has an always form only: configure it as [2, 'always']",
+            "no-ai-attribution has an always form only: configure it as [2, 'always']"
           )
         const text = messageOf(parsed)
         if (PADDED.test(text))
           return [
             false,
-            `the message has a run of ${PADDING} or more blank or mark characters; padding stalls the check, shorten it`,
+            `the message has a run of ${PADDING} or more blank or mark characters; padding stalls the check, shorten it`
           ]
         const match = pattern.exec(text)
         if (match === null) return [true]
         const found = oneLine(match[0])
         return [
           false,
-          `the message names an AI tool as its author or its reviewer ("${found}"); reword it, no commit does this`,
+          `the message names an AI tool as its author or its reviewer ("${found}"); reword it, no commit does this`
         ]
-      },
-    },
+      }
+    }
   }
 }
 

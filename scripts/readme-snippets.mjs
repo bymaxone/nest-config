@@ -110,7 +110,7 @@ function mentionedNames(code, ext) {
  * gets zod. The rest is wrapped by `wrapBody`, with imports hoisted out of the wrapper, and a
  * class that restates an exported one becomes an ambient declaration so its fields need no
  * initializer. */
-function prepareSnippet(code, ext, importsPkg, names) {
+export function prepareSnippet(code, ext, importsPkg, names) {
   const imports = code.match(IMPORT_STATEMENT) ?? []
   // `{ ... }` is how a snippet says "the usual arguments". Left alone it is a parse
   // error, and a parse error in a call hides every semantic error around it.
@@ -133,7 +133,9 @@ function prepareSnippet(code, ext, importsPkg, names) {
     headerLines.push("import { z } from 'zod'")
   }
   const header = `${headerLines.join('\n')}${headerLines.length > 0 ? '\n' : ''}${imports.join('')}`
-  return `${header}${wrapped}`
+  // The empty export makes the file a module whatever it imports: a script's declarations are
+  // visible to every other snippet, and its unused ones are never reported.
+  return `${header}${wrapped}export {}\n`
 }
 
 /** A snippet that declares classes, types or exports is left as written; a fragment that is

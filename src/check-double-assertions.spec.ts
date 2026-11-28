@@ -130,12 +130,15 @@ describe('check-double-assertions', () => {
     expect(result.output).toContain('Remove its entry')
   })
 
-  it.each([0, -1, 1.5, 'x'])('refuses the baseline count %j, which is not a positive integer', (count) => {
-    const result = run(repo({ 'src/a.ts': SITE }, { files: { 'src/a.ts': count } }))
+  it.each([0, -1, 1.5, 'x'])(
+    'refuses the baseline count %j, which is not a positive integer',
+    (count) => {
+      const result = run(repo({ 'src/a.ts': SITE }, { files: { 'src/a.ts': count } }))
 
-    expect(result.status).not.toBe(0)
-    expect(result.output).toContain('must record an integer count of 1 or more')
-  })
+      expect(result.status).not.toBe(0)
+      expect(result.output).toContain('must record an integer count of 1 or more')
+    }
+  )
 
   describe('against a base revision', () => {
     it('refuses a baseline entry the base did not have', () => {

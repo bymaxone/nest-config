@@ -102,7 +102,9 @@ describe('check-spec-headers', () => {
         ' * @layer x\n * Layer: x. Layer: x. Layer: x. Layer: x. Layer: x.'
       ]
       for (const body of bodies) {
-        expect(problemOf(`/**\n${body}\n */\n`)).toContain('states a layer but not what the file tests')
+        expect(problemOf(`/**\n${body}\n */\n`)).toContain(
+          'states a layer but not what the file tests'
+        )
       }
     })
 
@@ -111,10 +113,14 @@ describe('check-spec-headers', () => {
     // header that says what the file tests.
     it('accepts a header with a purpose beside several markers, and a purpose that names a layer in prose', () => {
       expect(
-        problemOf('/**\n * Specs of the widget and what it accepts. Layer: a.\n * @layer b\n * Layer: c.\n */\n')
+        problemOf(
+          '/**\n * Specs of the widget and what it accepts. Layer: a.\n * @layer b\n * Layer: c.\n */\n'
+        )
       ).toBeNull()
       expect(
-        problemOf('/**\n * Specs of the transport layer and its codecs.\n * @layer transport\n */\n')
+        problemOf(
+          '/**\n * Specs of the transport layer and its codecs.\n * @layer transport\n */\n'
+        )
       ).toBeNull()
     })
 
@@ -122,7 +128,11 @@ describe('check-spec-headers', () => {
     // fails as a header that names a layer and not what the file tests. Why: the purpose is the point of the
     // header, and a run of dots or dashes is as long as a sentence without saying one.
     it('refuses a purpose line that is only punctuation', () => {
-      for (const filler of ['...........................', '--------------------------', '* * * * * * * * * * * * *']) {
+      for (const filler of [
+        '...........................',
+        '--------------------------',
+        '* * * * * * * * * * * * *'
+      ]) {
         expect(problemOf(`/**\n * ${filler}\n * @layer transport\n */\n`)).toContain(
           'states a layer but not what the file tests'
         )
@@ -134,7 +144,9 @@ describe('check-spec-headers', () => {
     // the lines read it as one.
     it('refuses a bare @layer tag, even when prose follows on the next line', () => {
       expect(
-        problemOf('/**\n * What the widget spec covers in this file.\n * @layer\n * Further detail follows.\n */\n')
+        problemOf(
+          '/**\n * What the widget spec covers in this file.\n * @layer\n * Further detail follows.\n */\n'
+        )
       ).toContain('header has no layer marker')
     })
 
@@ -224,7 +236,9 @@ describe('check-spec-headers', () => {
     // Scenario: this repository's own tracked specs against the baseline it ships. Expected: pass. Why: the
     // baseline is the repository's own inherited list, whatever it holds, and it must stay exactly current.
     it('holds for this repository against its own shipped baseline', () => {
-      const result = spawnSync(process.execPath, [SCRIPT, '--root', REPO_ROOT], { encoding: 'utf8' })
+      const result = spawnSync(process.execPath, [SCRIPT, '--root', REPO_ROOT], {
+        encoding: 'utf8'
+      })
 
       expect({ status: result.status, output: `${result.stdout}${result.stderr}` }).toMatchObject({
         status: 0

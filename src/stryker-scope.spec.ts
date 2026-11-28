@@ -75,7 +75,7 @@ function mutated(path: string, mutate: readonly string[]): boolean {
 function entriesOf(text: string): string[] {
   const pair = /(?:'[^']+'|"[^"]+"|[A-Za-z_$][\w$-]*)\s*:\s*(?:'([^']+)'|"([^"]+)")/g
   return [...text.matchAll(/entry:\s*\{([^}]*)\}/g)].flatMap((object) =>
-    [...object[1]!.matchAll(pair)].map((match) => match[1] ?? match[2]!),
+    [...object[1]!.matchAll(pair)].map((match) => match[1] ?? match[2]!)
   )
 }
 
@@ -87,7 +87,7 @@ function entries(): string[] {
 /** The relative module specifiers a source file imports or re-exports, as written. */
 function relativeSpecifiers(text: string): string[] {
   return [...text.matchAll(/(?:from|import)\s*\(?\s*['"](\.{1,2}\/?[^'"]*)['"]/g)].map(
-    (match) => match[1]!,
+    (match) => match[1]!
   )
 }
 
@@ -96,7 +96,7 @@ const SOURCE_FOR_RUNTIME: Readonly<Record<string, readonly string[]>> = {
   '.js': ['.ts', '.tsx'],
   '.jsx': ['.tsx'],
   '.mjs': ['.mts'],
-  '.cjs': ['.cts'],
+  '.cjs': ['.cts']
 }
 
 /**
@@ -106,7 +106,7 @@ const SOURCE_FOR_RUNTIME: Readonly<Record<string, readonly string[]>> = {
 function resolveSpecifier(
   from: string,
   specifier: string,
-  exists: (path: string) => boolean = (path) => existsSync(join(ROOT, path)),
+  exists: (path: string) => boolean = (path) => existsSync(join(ROOT, path))
 ): string | undefined {
   const base = posix.normalize(posix.join(posix.dirname(from), specifier))
   const runtime = Object.keys(SOURCE_FOR_RUNTIME).find((extension) => base.endsWith(extension))
@@ -151,8 +151,8 @@ function emittedStatements(text: string): string[] {
       module: ts.ModuleKind.CommonJS,
       target: ts.ScriptTarget.ES2022,
       isolatedModules: true,
-      removeComments: true,
-    },
+      removeComments: true
+    }
   })
   return outputText
     .split('\n')
@@ -162,7 +162,7 @@ function emittedStatements(text: string): string[] {
         line !== '' &&
         line !== '"use strict";' &&
         line !== 'Object.defineProperty(exports, "__esModule", { value: true });' &&
-        !line.startsWith('//'),
+        !line.startsWith('//')
     )
 }
 
@@ -193,7 +193,7 @@ const LOGIC_KINDS: ReadonlySet<ts.SyntaxKind> = new Set([
   ts.SyntaxKind.PostfixUnaryExpression,
   ts.SyntaxKind.MethodDeclaration,
   ts.SyntaxKind.GetAccessor,
-  ts.SyntaxKind.SetAccessor,
+  ts.SyntaxKind.SetAccessor
 ])
 
 /** Arithmetic over number literals alone (`24 * 3600`): a constant written out, not a decision. */
@@ -203,7 +203,7 @@ function isLiteralArithmetic(node: ts.Node): boolean {
   return (
     ts.isBinaryExpression(node) &&
     [ts.SyntaxKind.AsteriskToken, ts.SyntaxKind.PlusToken, ts.SyntaxKind.MinusToken].includes(
-      node.operatorToken.kind,
+      node.operatorToken.kind
     ) &&
     isLiteralArithmetic(node.left) &&
     isLiteralArithmetic(node.right)
@@ -228,7 +228,7 @@ const RUNTIME_GLOBALS: ReadonlySet<string> = new Set([
   'Reflect',
   'Object',
   'JSON',
-  'Promise',
+  'Promise'
 ])
 
 /** A read of a runtime global, such as `process.env.X` or `Date.now`, which is not constant data. */
@@ -268,7 +268,7 @@ function isPlainLiteral(node: ts.Expression): boolean {
       (property) =>
         ts.isPropertyAssignment(property) &&
         !ts.isComputedPropertyName(property.name) &&
-        isPlainLiteral(property.initializer),
+        isPlainLiteral(property.initializer)
     )
   }
   return false
@@ -288,7 +288,7 @@ function nonTableStatements(text: string): string[] {
             ts.isAsExpression(declaration.initializer) &&
             ts.isTypeReferenceNode(declaration.initializer.type) &&
             declaration.initializer.type.typeName.getText(file) === 'const' &&
-            isPlainLiteral(declaration.initializer.expression),
+            isPlainLiteral(declaration.initializer.expression)
         )
       }
       return true
@@ -330,10 +330,10 @@ describe('mutation scope', () => {
       for (const pattern of exclusion.files) {
         expect({
           pattern,
-          matches: shipped.filter((path) => globToRegExp(pattern).test(path)).length,
+          matches: shipped.filter((path) => globToRegExp(pattern).test(path)).length
         }).not.toEqual({
           pattern,
-          matches: 0,
+          matches: 0
         })
       }
       expect(exclusion.reason.length).toBeGreaterThan(20)
@@ -351,10 +351,10 @@ describe('mutation scope', () => {
         rest: withoutComments(read(path))
           .replace(/^\s*'use client'\s*;?/m, '')
           .replace(reexport, '')
-          .trim(),
+          .trim()
       }).toEqual({
         path,
-        rest: '',
+        rest: ''
       })
     }
   })
@@ -371,8 +371,8 @@ describe('mutation scope', () => {
   it('detects runtime output in a types file that a keyword scan misses', () => {
     expect(
       emittedStatements(
-        "export type A = { a: 1 }\nexport interface B { b: A }\nimport type { C } from './c'",
-      ),
+        "export type A = { a: 1 }\nexport interface B { b: A }\nimport type { C } from './c'"
+      )
     ).toEqual([])
     expect(emittedStatements("export { value } from './runtime'")).not.toEqual([])
     expect(emittedStatements('export default { a: 1 }')).not.toEqual([])
@@ -391,7 +391,7 @@ describe('mutation scope', () => {
   /** The check sees logic a name-based scan cannot: a function, a branch or a constructor call. */
   it('detects logic in a constants file that a name scan misses', () => {
     expect(logicIn("export const A = { a: 'a' } as const\nexport const B = Symbol('b')")).toEqual(
-      [],
+      []
     )
     expect(logicIn('export const A = () => 1')).not.toEqual([])
     expect(logicIn("export const A = process.env.X ? 'a' : 'b'")).not.toEqual([])
@@ -419,7 +419,7 @@ describe('mutation scope', () => {
       'src/runtime.ts',
       'src/view.tsx',
       'src/component/index.tsx',
-      'src/util/index.ts',
+      'src/util/index.ts'
     ])
     const resolve = (specifier: string): string | undefined =>
       resolveSpecifier('src/index.ts', specifier, (path) => files.has(path))
@@ -437,19 +437,19 @@ describe('mutation scope', () => {
     expect(entriesOf("entry: { 'index': 'src/index.ts' }")).toEqual(['src/index.ts'])
     expect(entriesOf("entry: { 'a': 'src/a.ts', 'b': 'src/b.ts' }")).toEqual([
       'src/a.ts',
-      'src/b.ts',
+      'src/b.ts'
     ])
     expect(entriesOf("entry: { index: 'src/index.ts', server: 'src/server.ts' }")).toEqual([
       'src/index.ts',
-      'src/server.ts',
+      'src/server.ts'
     ])
     expect(entriesOf('entry: {\n  "a/b": "src/a/b.ts",\n  c: "src/c.ts",\n}')).toEqual([
       'src/a/b.ts',
-      'src/c.ts',
+      'src/c.ts'
     ])
     expect(entriesOf("entry: { 'a': 'src/a.ts' }, x: 1, entry: { 'b': 'src/b.ts' }")).toEqual([
       'src/a.ts',
-      'src/b.ts',
+      'src/b.ts'
     ])
   })
 
@@ -465,20 +465,20 @@ describe('mutation scope', () => {
   it('detects a statement that is not an as-const table', () => {
     expect(
       nonTableStatements(
-        "export const A = { a: 'x' } as const\nexport type B = (typeof A)[keyof typeof A]",
-      ),
+        "export const A = { a: 'x' } as const\nexport type B = (typeof A)[keyof typeof A]"
+      )
     ).toEqual([])
     expect(nonTableStatements("export const A = { a: 'x' }")).toHaveLength(1)
     expect(nonTableStatements('export function f() { return 1 }')).toHaveLength(1)
     expect(nonTableStatements('export const A = f() as const')).toHaveLength(1)
     expect(nonTableStatements('export const A = { a: g() } as const')).toHaveLength(1)
     expect(
-      nonTableStatements("export const A = { [String(Date.now())]: 'x' } as const"),
+      nonTableStatements("export const A = { [String(Date.now())]: 'x' } as const")
     ).toHaveLength(1)
     expect(nonTableStatements("export const A = { ['a']: 'x' } as const")).toHaveLength(1)
     expect(nonTableStatements('export const A = { ...B } as const')).toHaveLength(1)
     expect(nonTableStatements("export const A = { 'a-b': 'x', 1: 'y', c: 'z' } as const")).toEqual(
-      [],
+      []
     )
     expect(nonTableStatements("export const A = { a: 'x' } as const\nA.a")).toHaveLength(1)
   })

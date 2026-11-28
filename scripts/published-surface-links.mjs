@@ -164,7 +164,6 @@ async function fetchChecked(url, init, hops = 0) {
   return fetchChecked(next, init, hops + 1)
 }
 
-
 /** The `href` of every raw HTML anchor in a text, whichever quote it is written with. */
 function rawHrefs(text) {
   return [...text.matchAll(/<a\s+href=(?:"([^"]+)"|'([^']+)')/g)].map((m) => m[1] ?? m[2])
